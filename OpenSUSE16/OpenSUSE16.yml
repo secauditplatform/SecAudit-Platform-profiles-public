@@ -1,0 +1,1417 @@
+---
+- name: "OpenSUSE 16 CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    opensuse_16_fail_on_noncompliance: false
+    opensuse_16_strict_os_check: true
+    opensuse_16_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "The cramfs kernel module is not available"
+        severity: "LOW"
+      RULE2:
+        id: "RULE2"
+        summary: "The freevxfs kernel module is not available"
+        severity: "LOW"
+      RULE3:
+        id: "RULE3"
+        summary: "The hfs kernel module is not available"
+        severity: "LOW"
+      RULE4:
+        id: "RULE4"
+        summary: "The hfsplus kernel module is not available"
+        severity: "LOW"
+      RULE5:
+        id: "RULE5"
+        summary: "The jffs2 kernel module is not available"
+        severity: "LOW"
+      RULE6:
+        id: "RULE6"
+        summary: "The overlayfs kernel module is not available"
+        severity: "LOW"
+      RULE7:
+        id: "RULE7"
+        summary: "The squashfs kernel module is not available"
+        severity: "LOW"
+      RULE8:
+        id: "RULE8"
+        summary: "The udf kernel module is not available"
+        severity: "LOW"
+      RULE9:
+        id: "RULE9"
+        summary: "The usb-storage kernel module is not available"
+        severity: "LOW"
+      RULE10:
+        id: "RULE10"
+        summary: "Unused filesystem kernel modules are not available"
+        severity: "LOW"
+      RULE11:
+        id: "RULE11"
+        summary: "/tmp is a separate partition"
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "The nodev mount option is set on /tmp"
+        severity: "MEDIUM"
+      RULE13:
+        id: "RULE13"
+        summary: "The nosuid mount option is set on /tmp"
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "The noexec mount option is set on /tmp"
+        severity: "MEDIUM"
+      RULE15:
+        id: "RULE15"
+        summary: "/dev/shm is a separate partition"
+        severity: "MEDIUM"
+      RULE16:
+        id: "RULE16"
+        summary: "The nodev mount option is set on /dev/shm"
+        severity: "MEDIUM"
+      RULE17:
+        id: "RULE17"
+        summary: "The nosuid mount option is set on /dev/shm"
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "The noexec mount option is set on /dev/shm"
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "A separate partition exists for /home"
+        severity: "MEDIUM"
+      RULE20:
+        id: "RULE20"
+        summary: "The nodev mount option is set on /home"
+        severity: "MEDIUM"
+      RULE21:
+        id: "RULE21"
+        summary: "The nosuid mount option is set on /home"
+        severity: "MEDIUM"
+      RULE22:
+        id: "RULE22"
+        summary: "A separate partition exists for /var"
+        severity: "MEDIUM"
+      RULE23:
+        id: "RULE23"
+        summary: "The nodev mount option is set on /var"
+        severity: "MEDIUM"
+      RULE24:
+        id: "RULE24"
+        summary: "The nosuid mount option is set on /var"
+        severity: "MEDIUM"
+      RULE25:
+        id: "RULE25"
+        summary: "A separate partition exists for /var/tmp"
+        severity: "MEDIUM"
+      RULE26:
+        id: "RULE26"
+        summary: "The nodev mount option is set on /var/tmp"
+        severity: "MEDIUM"
+      RULE27:
+        id: "RULE27"
+        summary: "The nosuid mount option is set on /var/tmp"
+        severity: "MEDIUM"
+      RULE28:
+        id: "RULE28"
+        summary: "The noexec mount option is set on /var/tmp"
+        severity: "MEDIUM"
+      RULE29:
+        id: "RULE29"
+        summary: "A separate partition exists for /var/log"
+        severity: "MEDIUM"
+      RULE30:
+        id: "RULE30"
+        summary: "The nodev mount option is set on /var/log"
+        severity: "MEDIUM"
+      RULE31:
+        id: "RULE31"
+        summary: "The nosuid mount option is set on /var/log"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "The noexec mount option is set on /var/log"
+        severity: "MEDIUM"
+      RULE33:
+        id: "RULE33"
+        summary: "A separate partition exists for /var/log/audit"
+        severity: "MEDIUM"
+      RULE34:
+        id: "RULE34"
+        summary: "The nodev mount option is set on /var/log/audit"
+        severity: "MEDIUM"
+      RULE35:
+        id: "RULE35"
+        summary: "The nosuid mount option is set on /var/log/audit"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "The noexec mount option is set on /var/log/audit"
+        severity: "MEDIUM"
+      RULE37:
+        id: "RULE37"
+        summary: "Repository GPG keys are configured"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "/etc/apt/sources.list and /etc/apt/sources.list.d/ are configured correctly"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "The repo_gpgcheck parameter is enabled globally"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "Package manager repositories are configured"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "Weak dependencies are configured"
+        severity: "MEDIUM"
+      RULE42:
+        id: "RULE42"
+        summary: "The apparmor package is installed"
+        severity: "HIGH"
+      RULE43:
+        id: "RULE43"
+        summary: "AppArmor is enabled in the bootloader configuration"
+        severity: "HIGH"
+      RULE44:
+        id: "RULE44"
+        summary: "All AppArmor profiles are in enforce or complain mode"
+        severity: "HIGH"
+      RULE45:
+        id: "RULE45"
+        summary: "All AppArmor profiles are in enforce mode"
+        severity: "HIGH"
+      RULE46:
+        id: "RULE46"
+        summary: "The SELinux mode is enforcing"
+        severity: "HIGH"
+      RULE47:
+        id: "RULE47"
+        summary: "No unconfined services exist"
+        severity: "HIGH"
+      RULE48:
+        id: "RULE48"
+        summary: "The MCS Translation service (mcstrans) is not installed"
+        severity: "HIGH"
+      RULE49:
+        id: "RULE49"
+        summary: "A password is set for the bootloader (GRUB)"
+        severity: "HIGH"
+      RULE50:
+        id: "RULE50"
+        summary: "Permissions on bootloader configuration files are configured"
+        severity: "HIGH"
+      RULE51:
+        id: "RULE51"
+        summary: "ASLR is enabled (kernel.randomize_va_space = 2)"
+        severity: "MEDIUM"
+      RULE52:
+        id: "RULE52"
+        summary: "Kernel.yama.ptrace_scope is set to 1 or higher"
+        severity: "MEDIUM"
+      RULE53:
+        id: "RULE53"
+        summary: "Core dumps are restricted"
+        severity: "MEDIUM"
+      RULE54:
+        id: "RULE54"
+        summary: "The password hashing algorithm is SHA-512"
+        severity: "MEDIUM"
+      RULE55:
+        id: "RULE55"
+        summary: "Automatic error reporting is disabled"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "The kernel.kptr_restrict parameter is configured"
+        severity: "MEDIUM"
+      RULE57:
+        id: "RULE57"
+        summary: "The kernel.yama.ptrace_scope parameter is configured"
+        severity: "MEDIUM"
+      RULE58:
+        id: "RULE58"
+        summary: "The kernel.randomize_va_space parameter is configured"
+        severity: "MEDIUM"
+      RULE59:
+        id: "RULE59"
+        summary: "ProcessSizeMax is configured for systemd-coredump"
+        severity: "MEDIUM"
+      RULE60:
+        id: "RULE60"
+        summary: "/etc/motd contains an appropriate warning banner"
+        severity: "MEDIUM"
+      RULE61:
+        id: "RULE61"
+        summary: "A local login warning banner is configured in /etc/issue"
+        severity: "MEDIUM"
+      RULE62:
+        id: "RULE62"
+        summary: "/etc/issue.net contains an appropriate warning banner"
+        severity: "MEDIUM"
+      RULE63:
+        id: "RULE63"
+        summary: "Permissions on /etc/motd are configured"
+        severity: "MEDIUM"
+      RULE64:
+        id: "RULE64"
+        summary: "Permissions on /etc/issue are configured"
+        severity: "MEDIUM"
+      RULE65:
+        id: "RULE65"
+        summary: "Permissions on /etc/issue.net are configured"
+        severity: "MEDIUM"
+      RULE66:
+        id: "RULE66"
+        summary: "The system-wide crypto policy disables EtM for SSH"
+        severity: "MEDIUM"
+      RULE67:
+        id: "RULE67"
+        summary: "The gdm3 package is not installed if a graphical interface is not required"
+        severity: "LOW"
+      RULE68:
+        id: "RULE68"
+        summary: "A GDM login banner is configured"
+        severity: "LOW"
+      RULE69:
+        id: "RULE69"
+        summary: "Disable-user-list is enabled in GDM"
+        severity: "LOW"
+      RULE70:
+        id: "RULE70"
+        summary: "GDM screen lock on idle is enabled"
+        severity: "LOW"
+      RULE71:
+        id: "RULE71"
+        summary: "GDM screen lock settings cannot be overridden by users"
+        severity: "LOW"
+      RULE72:
+        id: "RULE72"
+        summary: "GDM automount is disabled"
+        severity: "LOW"
+      RULE73:
+        id: "RULE73"
+        summary: "GDM automount disablement cannot be overridden by users"
+        severity: "LOW"
+      RULE74:
+        id: "RULE74"
+        summary: "Autorun-never is enabled in GDM"
+        severity: "LOW"
+      RULE75:
+        id: "RULE75"
+        summary: "GDM autorun-never settings cannot be overridden by users"
+        severity: "LOW"
+      RULE76:
+        id: "RULE76"
+        summary: "GNOME Display Manager (GDM) is removed if not required"
+        severity: "LOW"
+      RULE77:
+        id: "RULE77"
+        summary: "The GDM disable-user-list parameter is configured"
+        severity: "LOW"
+      RULE78:
+        id: "RULE78"
+        summary: "Disable-user-list is enabled in GDM"
+        severity: "LOW"
+      RULE79:
+        id: "RULE79"
+        summary: "GDM screen lock on idle is configured"
+        severity: "LOW"
+      RULE80:
+        id: "RULE80"
+        summary: "GDM screen lock cannot be disabled by users"
+        severity: "LOW"
+      RULE81:
+        id: "RULE81"
+        summary: "Automatic mounting of removable media in GDM is disabled"
+        severity: "LOW"
+      RULE82:
+        id: "RULE82"
+        summary: "GDM automount disablement cannot be overridden by users"
+        severity: "LOW"
+      RULE83:
+        id: "RULE83"
+        summary: "Chargen services are not enabled"
+        severity: "MEDIUM"
+      RULE84:
+        id: "RULE84"
+        summary: "Daytime services are not enabled"
+        severity: "MEDIUM"
+      RULE85:
+        id: "RULE85"
+        summary: "Discard services are not enabled"
+        severity: "MEDIUM"
+      RULE86:
+        id: "RULE86"
+        summary: "Echo services are not enabled"
+        severity: "MEDIUM"
+      RULE87:
+        id: "RULE87"
+        summary: "Legacy time services are not enabled"
+        severity: "MEDIUM"
+      RULE88:
+        id: "RULE88"
+        summary: "The tftp service is not enabled"
+        severity: "MEDIUM"
+      RULE89:
+        id: "RULE89"
+        summary: "Talk services are not enabled"
+        severity: "MEDIUM"
+      RULE90:
+        id: "RULE90"
+        summary: "The telnet service is not installed"
+        severity: "MEDIUM"
+      RULE91:
+        id: "RULE91"
+        summary: "Rsh services are not enabled"
+        severity: "MEDIUM"
+      RULE92:
+        id: "RULE92"
+        summary: "The rsync daemon is not enabled if not required"
+        severity: "MEDIUM"
+      RULE93:
+        id: "RULE93"
+        summary: "Print server services are not in use"
+        severity: "MEDIUM"
+      RULE94:
+        id: "RULE94"
+        summary: "Rpcbind services are not in use"
+        severity: "MEDIUM"
+      RULE95:
+        id: "RULE95"
+        summary: "Rsync services are not in use"
+        severity: "MEDIUM"
+      RULE96:
+        id: "RULE96"
+        summary: "Samba file server services are not in use"
+        severity: "MEDIUM"
+      RULE97:
+        id: "RULE97"
+        summary: "SNMP services are not in use"
+        severity: "MEDIUM"
+      RULE98:
+        id: "RULE98"
+        summary: "The TFTP server is not in use"
+        severity: "MEDIUM"
+      RULE99:
+        id: "RULE99"
+        summary: "Web proxy services are not in use"
+        severity: "MEDIUM"
+      RULE100:
+        id: "RULE100"
+        summary: "Web server services are not in use"
+        severity: "MEDIUM"
+      RULE101:
+        id: "RULE101"
+        summary: "Xinetd services are not in use"
+        severity: "MEDIUM"
+      RULE102:
+        id: "RULE102"
+        summary: "X Window Server services are not in use"
+        severity: "MEDIUM"
+      RULE103:
+        id: "RULE103"
+        summary: "The mail transfer agent is configured for local-only mode"
+        severity: "MEDIUM"
+      RULE104:
+        id: "RULE104"
+        summary: "Ypserv is not enabled"
+        severity: "MEDIUM"
+      RULE105:
+        id: "RULE105"
+        summary: "Ypbind is not installed"
+        severity: "MEDIUM"
+      RULE106:
+        id: "RULE106"
+        summary: "The rsh client is not installed"
+        severity: "MEDIUM"
+      RULE107:
+        id: "RULE107"
+        summary: "The talk client is not installed"
+        severity: "MEDIUM"
+      RULE108:
+        id: "RULE108"
+        summary: "The telnet client is not installed"
+        severity: "MEDIUM"
+      RULE109:
+        id: "RULE109"
+        summary: "A single time synchronization daemon is in use"
+        severity: "MEDIUM"
+      RULE110:
+        id: "RULE110"
+        summary: "Chrony is enabled and running"
+        severity: "MEDIUM"
+      RULE111:
+        id: "RULE111"
+        summary: "The cron daemon is enabled and active"
+        severity: "LOW"
+      RULE112:
+        id: "RULE112"
+        summary: "Permissions on /etc/crontab are configured"
+        severity: "LOW"
+      RULE113:
+        id: "RULE113"
+        summary: "Permissions on /etc/cron.hourly are configured"
+        severity: "LOW"
+      RULE114:
+        id: "RULE114"
+        summary: "Permissions on /etc/cron.daily are configured"
+        severity: "LOW"
+      RULE115:
+        id: "RULE115"
+        summary: "Permissions on /etc/cron.weekly are configured"
+        severity: "LOW"
+      RULE116:
+        id: "RULE116"
+        summary: "Permissions on /etc/cron.monthly are configured"
+        severity: "LOW"
+      RULE117:
+        id: "RULE117"
+        summary: "Permissions on /etc/cron.d are configured"
+        severity: "LOW"
+      RULE118:
+        id: "RULE118"
+        summary: "Crontab is restricted to authorized users"
+        severity: "LOW"
+      RULE119:
+        id: "RULE119"
+        summary: "Crontab access is configured"
+        severity: "LOW"
+      RULE120:
+        id: "RULE120"
+        summary: "At is restricted to authorized users"
+        severity: "LOW"
+      RULE121:
+        id: "RULE121"
+        summary: "Access to systemd timer unit files is configured"
+        severity: "LOW"
+      RULE122:
+        id: "RULE122"
+        summary: "Access to systemd service unit files is configured"
+        severity: "LOW"
+      RULE123:
+        id: "RULE123"
+        summary: "Access to systemd timer drop-in directories is configured"
+        severity: "LOW"
+      RULE124:
+        id: "RULE124"
+        summary: "Systemd user timers disable-linger is configured"
+        severity: "LOW"
+      RULE125:
+        id: "RULE125"
+        summary: "ICMP redirects are not sent"
+        severity: "MEDIUM"
+      RULE126:
+        id: "RULE126"
+        summary: "IP forwarding is disabled"
+        severity: "MEDIUM"
+      RULE127:
+        id: "RULE127"
+        summary: "Bluetooth services are disabled"
+        severity: "MEDIUM"
+      RULE128:
+        id: "RULE128"
+        summary: "Source-routed packets are not accepted"
+        severity: "MEDIUM"
+      RULE129:
+        id: "RULE129"
+        summary: "ICMP redirects are not accepted"
+        severity: "MEDIUM"
+      RULE130:
+        id: "RULE130"
+        summary: "Secure ICMP redirects are not accepted"
+        severity: "MEDIUM"
+      RULE131:
+        id: "RULE131"
+        summary: "Suspicious packets are logged"
+        severity: "MEDIUM"
+      RULE132:
+        id: "RULE132"
+        summary: "Broadcast ICMP requests are ignored"
+        severity: "MEDIUM"
+      RULE133:
+        id: "RULE133"
+        summary: "Bogus ICMP responses are ignored"
+        severity: "MEDIUM"
+      RULE134:
+        id: "RULE134"
+        summary: "The net.ipv4.ip_forward parameter is configured"
+        severity: "MEDIUM"
+      RULE135:
+        id: "RULE135"
+        summary: "The net.ipv4.conf.all.forwarding parameter is configured"
+        severity: "MEDIUM"
+      RULE136:
+        id: "RULE136"
+        summary: "The net.ipv4.conf.default.forwarding parameter is configured"
+        severity: "MEDIUM"
+      RULE137:
+        id: "RULE137"
+        summary: "The net.ipv4.conf.all.send_redirects parameter is configured"
+        severity: "MEDIUM"
+      RULE138:
+        id: "RULE138"
+        summary: "Net.ipv4.conf.default.send_redirects is configured"
+        severity: "MEDIUM"
+      RULE139:
+        id: "RULE139"
+        summary: "The net.ipv4.icmp_ignore_bogus_error_responses parameter is configured"
+        severity: "MEDIUM"
+      RULE140:
+        id: "RULE140"
+        summary: "Net.ipv4.icmp_echo_ignore_broadcasts is configured"
+        severity: "MEDIUM"
+      RULE141:
+        id: "RULE141"
+        summary: "The net.ipv4.conf.all.accept_redirects parameter is configured"
+        severity: "MEDIUM"
+      RULE142:
+        id: "RULE142"
+        summary: "Net.ipv4.conf.default.accept_redirects is configured"
+        severity: "MEDIUM"
+      RULE143:
+        id: "RULE143"
+        summary: "The net.ipv4.conf.all.secure_redirects parameter is configured"
+        severity: "MEDIUM"
+      RULE144:
+        id: "RULE144"
+        summary: "Net.ipv4.conf.default.secure_redirects is configured"
+        severity: "MEDIUM"
+      RULE145:
+        id: "RULE145"
+        summary: "The net.ipv4.conf.all.rp_filter parameter is configured"
+        severity: "MEDIUM"
+      RULE146:
+        id: "RULE146"
+        summary: "Net.ipv4.conf.default.rp_filter is configured"
+        severity: "MEDIUM"
+      RULE147:
+        id: "RULE147"
+        summary: "Net.ipv4.conf.all.accept_source_route is configured"
+        severity: "MEDIUM"
+      RULE148:
+        id: "RULE148"
+        summary: "The net.ipv4.conf.default.accept_source_route parameter is configured"
+        severity: "MEDIUM"
+      RULE149:
+        id: "RULE149"
+        summary: "Net.ipv4.conf.all.log_martians is configured"
+        severity: "MEDIUM"
+      RULE150:
+        id: "RULE150"
+        summary: "The net.ipv4.conf.default.log_martians parameter is configured"
+        severity: "MEDIUM"
+      RULE151:
+        id: "RULE151"
+        summary: "The net.ipv4.tcp_syncookies parameter is configured"
+        severity: "MEDIUM"
+      RULE152:
+        id: "RULE152"
+        summary: "Net.ipv4.conf.lo.route_localnet is configured"
+        severity: "MEDIUM"
+      RULE153:
+        id: "RULE153"
+        summary: "The net.ipv6.conf.all.forwarding parameter is configured"
+        severity: "MEDIUM"
+      RULE154:
+        id: "RULE154"
+        summary: "The net.ipv6.conf.default.forwarding parameter is configured"
+        severity: "MEDIUM"
+      RULE155:
+        id: "RULE155"
+        summary: "The net.ipv6.conf.all.accept_redirects parameter is configured"
+        severity: "MEDIUM"
+      RULE156:
+        id: "RULE156"
+        summary: "Net.ipv6.conf.default.accept_redirects is configured"
+        severity: "MEDIUM"
+      RULE157:
+        id: "RULE157"
+        summary: "Net.ipv6.conf.all.accept_source_route is configured"
+        severity: "MEDIUM"
+      RULE158:
+        id: "RULE158"
+        summary: "The net.ipv6.conf.default.accept_source_route parameter is configured"
+        severity: "MEDIUM"
+      RULE159:
+        id: "RULE159"
+        summary: "The net.ipv6.conf.all.accept_ra parameter is configured"
+        severity: "MEDIUM"
+      RULE160:
+        id: "RULE160"
+        summary: "Net.ipv6.conf.default.accept_ra is configured"
+        severity: "MEDIUM"
+      RULE161:
+        id: "RULE161"
+        summary: "The auditd service is installed and running"
+        severity: "MEDIUM"
+      RULE162:
+        id: "RULE162"
+        summary: "Auditd is enabled at boot"
+        severity: "MEDIUM"
+      RULE163:
+        id: "RULE163"
+        summary: "Audit=1 is set in the bootloader configuration"
+        severity: "MEDIUM"
+      RULE164:
+        id: "RULE164"
+        summary: "Audit_backlog_limit is sufficient"
+        severity: "MEDIUM"
+      RULE165:
+        id: "RULE165"
+        summary: "Max_log_file is configured in auditd.conf"
+        severity: "MEDIUM"
+      RULE166:
+        id: "RULE166"
+        summary: "Max_log_file_action is not set to delete"
+        severity: "MEDIUM"
+      RULE167:
+        id: "RULE167"
+        summary: "Space_left_action is configured appropriately"
+        severity: "MEDIUM"
+      RULE168:
+        id: "RULE168"
+        summary: "Password quality requirements are configured"
+        severity: "HIGH"
+      RULE169:
+        id: "RULE169"
+        summary: "Account lockout is configured in faillock.conf"
+        severity: "HIGH"
+      RULE170:
+        id: "RULE170"
+        summary: "ENCRYPT_METHOD is set to SHA512"
+        severity: "HIGH"
+      RULE171:
+        id: "RULE171"
+        summary: "SSH access is restricted"
+        severity: "HIGH"
+      RULE172:
+        id: "RULE172"
+        summary: "The SSH banner is configured"
+        severity: "HIGH"
+      RULE173:
+        id: "RULE173"
+        summary: "SSH ciphers are configured"
+        severity: "HIGH"
+      RULE174:
+        id: "RULE174"
+        summary: "SSH ClientAliveInterval and ClientAliveCountMax are configured"
+        severity: "HIGH"
+      RULE175:
+        id: "RULE175"
+        summary: "SSH DisableForwarding is enabled"
+        severity: "HIGH"
+      RULE176:
+        id: "RULE176"
+        summary: "SSH GSSAPIAuthentication is disabled"
+        severity: "HIGH"
+      RULE177:
+        id: "RULE177"
+        summary: "SSH HostbasedAuthentication is disabled"
+        severity: "HIGH"
+      RULE178:
+        id: "RULE178"
+        summary: "SSH IgnoreRhosts is enabled"
+        severity: "HIGH"
+      RULE179:
+        id: "RULE179"
+        summary: "SSH KexAlgorithms are configured"
+        severity: "HIGH"
+      RULE180:
+        id: "RULE180"
+        summary: "The SSH LoginGraceTime parameter is configured"
+        severity: "HIGH"
+      RULE181:
+        id: "RULE181"
+        summary: "The SSH logging level is configured"
+        severity: "HIGH"
+      RULE182:
+        id: "RULE182"
+        summary: "SSH MAC algorithms are configured"
+        severity: "HIGH"
+      RULE183:
+        id: "RULE183"
+        summary: "The SSH MaxAuthTries parameter is configured"
+        severity: "HIGH"
+      RULE184:
+        id: "RULE184"
+        summary: "The SSH MaxSessions parameter is configured"
+        severity: "HIGH"
+      RULE185:
+        id: "RULE185"
+        summary: "The SSH MaxStartups parameter is configured"
+        severity: "HIGH"
+      RULE186:
+        id: "RULE186"
+        summary: "SSH login with empty passwords is disabled"
+        severity: "HIGH"
+      RULE187:
+        id: "RULE187"
+        summary: "SSH root login is disabled"
+        severity: "HIGH"
+      RULE188:
+        id: "RULE188"
+        summary: "SSH PermitUserEnvironment is disabled"
+        severity: "HIGH"
+      RULE189:
+        id: "RULE189"
+        summary: "SSH UsePAM is enabled"
+        severity: "HIGH"
+      RULE190:
+        id: "RULE190"
+        summary: "SSH UsePAM is enabled"
+        severity: "HIGH"
+      RULE191:
+        id: "RULE191"
+        summary: "Sshd ListenAddress is configured"
+        severity: "HIGH"
+      RULE192:
+        id: "RULE192"
+        summary: "Root login is restricted to authorized terminals"
+        severity: "HIGH"
+      RULE193:
+        id: "RULE193"
+        summary: "Pam_wheel is enabled to restrict su"
+        severity: "HIGH"
+      RULE194:
+        id: "RULE194"
+        summary: "Permissions on SSH host public key files are configured"
+        severity: "HIGH"
+      RULE195:
+        id: "RULE195"
+        summary: "Users must authenticate to elevate privileges"
+        severity: "HIGH"
+      RULE196:
+        id: "RULE196"
+        summary: "Re-authentication for privilege elevation is not disabled globally"
+        severity: "HIGH"
+      RULE197:
+        id: "RULE197"
+        summary: "SSH PAM is enabled"
+        severity: "HIGH"
+      RULE198:
+        id: "RULE198"
+        summary: "Access to the su command is restricted"
+        severity: "HIGH"
+      RULE199:
+        id: "RULE199"
+        summary: "Lockout for failed login attempts is configured"
+        severity: "HIGH"
+      RULE200:
+        id: "RULE200"
+        summary: "Lockout after failed password attempts is configured"
+        severity: "HIGH"
+      RULE201:
+        id: "RULE201"
+        summary: "Password unlock time is configured"
+        severity: "HIGH"
+      RULE202:
+        id: "RULE202"
+        summary: "Lockout after failed password attempts includes the root account"
+        severity: "HIGH"
+      RULE203:
+        id: "RULE203"
+        summary: "The number of changed characters in a new password is configured"
+        severity: "HIGH"
+      RULE204:
+        id: "RULE204"
+        summary: "Minimum password length is configured"
+        severity: "HIGH"
+      RULE205:
+        id: "RULE205"
+        summary: "Password complexity is configured"
+        severity: "HIGH"
+      RULE206:
+        id: "RULE206"
+        summary: "The maximum number of identical consecutive characters in a password is configured"
+        severity: "HIGH"
+      RULE207:
+        id: "RULE207"
+        summary: "The maximum monotonic character sequence length is configured"
+        severity: "HIGH"
+      RULE208:
+        id: "RULE208"
+        summary: "Password dictionary checking is enabled"
+        severity: "HIGH"
+      RULE209:
+        id: "RULE209"
+        summary: "Password quality checks are enforced for the root user"
+        severity: "HIGH"
+      RULE210:
+        id: "RULE210"
+        summary: "Password history is configured"
+        severity: "HIGH"
+      RULE211:
+        id: "RULE211"
+        summary: "Password history is enforced for the root user"
+        severity: "HIGH"
+      RULE212:
+        id: "RULE212"
+        summary: "Pam_pwhistory includes the use_authtok parameter"
+        severity: "HIGH"
+      RULE213:
+        id: "RULE213"
+        summary: "Pam_unix does not include the nullok parameter"
+        severity: "HIGH"
+      RULE214:
+        id: "RULE214"
+        summary: "Pam_unix does not include the remember parameter"
+        severity: "HIGH"
+      RULE215:
+        id: "RULE215"
+        summary: "Pam_unix uses a strong password hashing algorithm"
+        severity: "HIGH"
+      RULE216:
+        id: "RULE216"
+        summary: "Pam_unix includes the use_authtok parameter"
+        severity: "HIGH"
+      RULE217:
+        id: "RULE217"
+        summary: "Maximum password lifetime is configured"
+        severity: "HIGH"
+      RULE218:
+        id: "RULE218"
+        summary: "Minimum password lifetime is configured"
+        severity: "HIGH"
+      RULE219:
+        id: "RULE219"
+        summary: "Password expiration warning days are configured"
+        severity: "HIGH"
+      RULE220:
+        id: "RULE220"
+        summary: "A strong password hashing algorithm is configured"
+        severity: "HIGH"
+      RULE221:
+        id: "RULE221"
+        summary: "Inactive password lockout is configured"
+        severity: "HIGH"
+      RULE222:
+        id: "RULE222"
+        summary: "The last password change date is not in the future"
+        severity: "HIGH"
+      RULE223:
+        id: "RULE223"
+        summary: "Root is the only UID 0 account"
+        severity: "HIGH"
+      RULE224:
+        id: "RULE224"
+        summary: "Root is the only account with GID 0"
+        severity: "HIGH"
+      RULE225:
+        id: "RULE225"
+        summary: "Root is the only group with GID 0"
+        severity: "HIGH"
+      RULE226:
+        id: "RULE226"
+        summary: "The root password is set"
+        severity: "HIGH"
+      RULE227:
+        id: "RULE227"
+        summary: "Root PATH integrity is configured"
+        severity: "HIGH"
+      RULE228:
+        id: "RULE228"
+        summary: "The root user umask is configured"
+        severity: "HIGH"
+      RULE229:
+        id: "RULE229"
+        summary: "System accounts do not have a valid login shell"
+        severity: "HIGH"
+      RULE230:
+        id: "RULE230"
+        summary: "Accounts without a valid login shell are locked"
+        severity: "HIGH"
+      RULE231:
+        id: "RULE231"
+        summary: "Nologin is not listed in /etc/shells"
+        severity: "HIGH"
+      RULE232:
+        id: "RULE232"
+        summary: "The default user shell timeout is configured"
+        severity: "HIGH"
+      RULE233:
+        id: "RULE233"
+        summary: "The default user umask is configured"
+        severity: "HIGH"
+      RULE234:
+        id: "RULE234"
+        summary: "The default user umask in /etc/profile.d is configured"
+        severity: "HIGH"
+      RULE235:
+        id: "RULE235"
+        summary: "The journald service is enabled and active"
+        severity: "LOW"
+      RULE236:
+        id: "RULE236"
+        summary: "The rsyslog service is enabled"
+        severity: "LOW"
+      RULE237:
+        id: "RULE237"
+        summary: "Default rsyslog file permissions are configured"
+        severity: "LOW"
+      RULE238:
+        id: "RULE238"
+        summary: "Only one logging system is in use"
+        severity: "LOW"
+      RULE239:
+        id: "RULE239"
+        summary: "Journald compression is configured"
+        severity: "LOW"
+      RULE240:
+        id: "RULE240"
+        summary: "Journald log rotation is configured"
+        severity: "LOW"
+      RULE241:
+        id: "RULE241"
+        summary: "Access to journald log files is configured"
+        severity: "LOW"
+      RULE242:
+        id: "RULE242"
+        summary: "The rsyslog package is installed"
+        severity: "LOW"
+      RULE243:
+        id: "RULE243"
+        summary: "Journald ForwardToSyslog is disabled when not required"
+        severity: "LOW"
+      RULE244:
+        id: "RULE244"
+        summary: "Journald compression is configured"
+        severity: "LOW"
+      RULE245:
+        id: "RULE245"
+        summary: "Persistent journald storage is configured"
+        severity: "LOW"
+      RULE246:
+        id: "RULE246"
+        summary: "Rsyslog logging is configured"
+        severity: "LOW"
+      RULE247:
+        id: "RULE247"
+        summary: "Rsyslog is configured to send logs to a remote host"
+        severity: "LOW"
+      RULE248:
+        id: "RULE248"
+        summary: "Rsyslog is not configured to receive remote logs"
+        severity: "LOW"
+      RULE249:
+        id: "RULE249"
+        summary: "Logrotate is configured for system logs"
+        severity: "LOW"
+      RULE250:
+        id: "RULE250"
+        summary: "Rsyslog-gnutls is installed"
+        severity: "LOW"
+      RULE251:
+        id: "RULE251"
+        summary: "Rsyslog forwarding uses gtls"
+        severity: "LOW"
+      RULE252:
+        id: "RULE252"
+        summary: "CA certificates for rsyslog TLS are configured"
+        severity: "LOW"
+      RULE253:
+        id: "RULE253"
+        summary: "Rsyslog is installed"
+        severity: "LOW"
+      RULE254:
+        id: "RULE254"
+        summary: "Auditd packages are installed"
+        severity: "LOW"
+      RULE255:
+        id: "RULE255"
+        summary: "The auditd service is enabled and active"
+        severity: "LOW"
+      RULE256:
+        id: "RULE256"
+        summary: "Auditing of processes that start prior to auditd is enabled"
+        severity: "LOW"
+      RULE257:
+        id: "RULE257"
+        summary: "The audit backlog limit is sufficient"
+        severity: "LOW"
+      RULE258:
+        id: "RULE258"
+        summary: "Access to log files is configured"
+        severity: "LOW"
+      RULE259:
+        id: "RULE259"
+        summary: "Audit logs are not deleted automatically"
+        severity: "LOW"
+      RULE260:
+        id: "RULE260"
+        summary: "The system halts when audit logs are full"
+        severity: "LOW"
+      RULE261:
+        id: "RULE261"
+        summary: "The system warns when audit log space is low"
+        severity: "LOW"
+      RULE262:
+        id: "RULE262"
+        summary: "Changes to the system administration scope (sudoers) are collected"
+        severity: "LOW"
+      RULE263:
+        id: "RULE263"
+        summary: "Actions as another user are always logged"
+        severity: "LOW"
+      RULE264:
+        id: "RULE264"
+        summary: "Sudo log file changes are collected"
+        severity: "LOW"
+      RULE265:
+        id: "RULE265"
+        summary: "Date and time change events are collected"
+        severity: "LOW"
+      RULE266:
+        id: "RULE266"
+        summary: "Rsyslog logging rules are configured"
+        severity: "LOW"
+      RULE267:
+        id: "RULE267"
+        summary: "Use of privileged commands is collected"
+        severity: "LOW"
+      RULE268:
+        id: "RULE268"
+        summary: "Unsuccessful unauthorized file access attempts are collected"
+        severity: "LOW"
+      RULE269:
+        id: "RULE269"
+        summary: "User and group information changes are collected"
+        severity: "LOW"
+      RULE270:
+        id: "RULE270"
+        summary: "Events that modify /etc/NetworkManager are collected"
+        severity: "LOW"
+      RULE271:
+        id: "RULE271"
+        summary: "Successful filesystem mounts are collected"
+        severity: "LOW"
+      RULE272:
+        id: "RULE272"
+        summary: "Session initiation information is collected"
+        severity: "LOW"
+      RULE273:
+        id: "RULE273"
+        summary: "Login and logout events are collected"
+        severity: "LOW"
+      RULE274:
+        id: "RULE274"
+        summary: "File deletion events by users are collected"
+        severity: "LOW"
+      RULE275:
+        id: "RULE275"
+        summary: "Events that modify /etc/shadow and /etc/gshadow are collected"
+        severity: "LOW"
+      RULE276:
+        id: "RULE276"
+        summary: "Events that modify /etc/security/opasswd are collected"
+        severity: "LOW"
+      RULE277:
+        id: "RULE277"
+        summary: "Events that modify /etc/nsswitch.conf are collected"
+        severity: "LOW"
+      RULE278:
+        id: "RULE278"
+        summary: "Events that modify PAM configuration are collected"
+        severity: "LOW"
+      RULE279:
+        id: "RULE279"
+        summary: "Discretionary access control permission modification events are collected"
+        severity: "LOW"
+      RULE280:
+        id: "RULE280"
+        summary: "Kernel module load and unload events are collected"
+        severity: "LOW"
+      RULE281:
+        id: "RULE281"
+        summary: "The audit configuration is immutable"
+        severity: "LOW"
+      RULE282:
+        id: "RULE282"
+        summary: "Successful filesystem mounts are collected"
+        severity: "LOW"
+      RULE283:
+        id: "RULE283"
+        summary: "Changes to session event files are collected"
+        severity: "LOW"
+      RULE284:
+        id: "RULE284"
+        summary: "Login and logout events are monitored"
+        severity: "LOW"
+      RULE285:
+        id: "RULE285"
+        summary: "User file deletion events (unlink) are collected"
+        severity: "LOW"
+      RULE286:
+        id: "RULE286"
+        summary: "User file rename events are collected"
+        severity: "LOW"
+      RULE287:
+        id: "RULE287"
+        summary: "Events that modify mandatory access control configuration are collected"
+        severity: "LOW"
+      RULE288:
+        id: "RULE288"
+        summary: "Successful and unsuccessful uses of chcon are collected"
+        severity: "LOW"
+      RULE289:
+        id: "RULE289"
+        summary: "Successful and unsuccessful uses of setfacl are collected"
+        severity: "LOW"
+      RULE290:
+        id: "RULE290"
+        summary: "Successful and unsuccessful uses of chacl are collected"
+        severity: "LOW"
+      RULE291:
+        id: "RULE291"
+        summary: "Successful and unsuccessful uses of usermod are collected"
+        severity: "LOW"
+      RULE292:
+        id: "RULE292"
+        summary: "Kernel module load and unload events are collected"
+        severity: "LOW"
+      RULE293:
+        id: "RULE293"
+        summary: "Kernel module load events (init_module, finit_module) are collected"
+        severity: "LOW"
+      RULE294:
+        id: "RULE294"
+        summary: "Kernel module unload events (delete_module) are collected"
+        severity: "LOW"
+      RULE295:
+        id: "RULE295"
+        summary: "The audit configuration is immutable"
+        severity: "LOW"
+      RULE296:
+        id: "RULE296"
+        summary: "Permissions on audit log files are configured"
+        severity: "LOW"
+      RULE297:
+        id: "RULE297"
+        summary: "The owner of audit log files is configured"
+        severity: "LOW"
+      RULE298:
+        id: "RULE298"
+        summary: "The group owner of audit log files is configured"
+        severity: "LOW"
+      RULE299:
+        id: "RULE299"
+        summary: "Permissions on the audit log directory are configured"
+        severity: "LOW"
+      RULE300:
+        id: "RULE300"
+        summary: "Permissions on audit configuration files are configured"
+        severity: "LOW"
+      RULE301:
+        id: "RULE301"
+        summary: "The owner of audit configuration files is configured"
+        severity: "LOW"
+      RULE302:
+        id: "RULE302"
+        summary: "The group owner of audit configuration files is configured"
+        severity: "LOW"
+      RULE303:
+        id: "RULE303"
+        summary: "Permissions on audit tools are configured"
+        severity: "LOW"
+      RULE304:
+        id: "RULE304"
+        summary: "The owner of audit tools is configured"
+        severity: "LOW"
+      RULE305:
+        id: "RULE305"
+        summary: "The group owner of audit tools is configured"
+        severity: "LOW"
+      RULE306:
+        id: "RULE306"
+        summary: "AIDE is installed"
+        severity: "MEDIUM"
+      RULE307:
+        id: "RULE307"
+        summary: "Filesystem integrity is checked regularly"
+        severity: "MEDIUM"
+      RULE308:
+        id: "RULE308"
+        summary: "Permissions on /etc/passwd are configured"
+        severity: "HIGH"
+      RULE309:
+        id: "RULE309"
+        summary: "Permissions on /etc/passwd- are configured"
+        severity: "HIGH"
+      RULE310:
+        id: "RULE310"
+        summary: "Permissions on /etc/group are configured"
+        severity: "HIGH"
+      RULE311:
+        id: "RULE311"
+        summary: "Permissions on /etc/group- are configured"
+        severity: "HIGH"
+      RULE312:
+        id: "RULE312"
+        summary: "Permissions on /etc/shadow are configured"
+        severity: "HIGH"
+      RULE313:
+        id: "RULE313"
+        summary: "Permissions on /etc/shadow- are configured"
+        severity: "HIGH"
+      RULE314:
+        id: "RULE314"
+        summary: "Permissions on /etc/gshadow are configured"
+        severity: "HIGH"
+      RULE315:
+        id: "RULE315"
+        summary: "Permissions on /etc/gshadow- are configured"
+        severity: "HIGH"
+      RULE316:
+        id: "RULE316"
+        summary: "Permissions on /etc/shells are configured"
+        severity: "HIGH"
+      RULE317:
+        id: "RULE317"
+        summary: "Permissions on /etc/security/opasswd are configured"
+        severity: "HIGH"
+      RULE318:
+        id: "RULE318"
+        summary: "World-writable files and directories are reviewed"
+        severity: "HIGH"
+      RULE319:
+        id: "RULE319"
+        summary: "No unowned files or directories exist"
+        severity: "HIGH"
+      RULE320:
+        id: "RULE320"
+        summary: "Accounts in /etc/passwd use shadowed passwords"
+        severity: "HIGH"
+      RULE321:
+        id: "RULE321"
+        summary: "Password fields in /etc/shadow are not empty"
+        severity: "HIGH"
+      RULE322:
+        id: "RULE322"
+        summary: "All groups referenced in /etc/passwd exist in /etc/group"
+        severity: "HIGH"
+      RULE323:
+        id: "RULE323"
+        summary: "The shadow group is empty"
+        severity: "HIGH"
+      RULE324:
+        id: "RULE324"
+        summary: "No duplicate UIDs exist"
+        severity: "HIGH"
+      RULE325:
+        id: "RULE325"
+        summary: "No duplicate GIDs exist"
+        severity: "HIGH"
+      RULE326:
+        id: "RULE326"
+        summary: "No duplicate user names exist"
+        severity: "HIGH"
+      RULE327:
+        id: "RULE327"
+        summary: "No duplicate group names exist"
+        severity: "HIGH"
+      RULE328:
+        id: "RULE328"
+        summary: "Local interactive user home directories exist"
+        severity: "HIGH"
+      RULE329:
+        id: "RULE329"
+        summary: "Permissions on local user dot files are configured"
+        severity: "HIGH"
+
+  tasks:
+    - name: Confirm supported Suse-family distribution
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == 'Suse'
+        fail_msg: >-
+          Host OS family is {{ ansible_os_family }}, expected Suse-family
+          for OpenSUSE 16 CRE checks.
+        success_msg: "OS family {{ ansible_os_family }} is supported"
+      when: opensuse_16_strict_os_check | bool
+
+    - name: "Warn when distribution is not OpenSUSE 16"
+      ansible.builtin.debug:
+        msg: >-
+          Profile targets OpenSUSE 16; detected
+          {{ ansible_distribution }} {{ ansible_distribution_version }}.
+          Continuing audit with the same CRE script checks.
+      when: >-
+        ansible_distribution != 'OpenSUSE'
+        or (ansible_distribution_major_version | string) != '16'
+
+    - name: "Run OpenSUSE 16 CRE audit script (same checks as profile package)"
+      ansible.builtin.script: OpenSUSE16.sh
+      args:
+        executable: /bin/bash
+      register: opensuse_16_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        opensuse_16_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in opensuse_16_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = opensuse_16_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        opensuse_16_pass_count: >-
+          {{ opensuse_16_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        opensuse_16_fail_count: >-
+          {{ opensuse_16_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        opensuse_16_total_count: "{{ opensuse_16_compliance_lines | default([]) | length }}"
+
+    - name: "OpenSUSE 16 CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: OpenSUSE_CRE_16_NUP(1.3.0)_AI
+          script: OpenSUSE16.sh
+          total: "{{ opensuse_16_total_count }}"
+          passed: "{{ opensuse_16_pass_count }}"
+          failed: "{{ opensuse_16_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ opensuse_16_compliance_lines | default([]) }}"
+          script_rc: "{{ opensuse_16_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (opensuse_16_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from OpenSUSE16.sh output.
+          rc={{ opensuse_16_audit_raw.rc | default('n/a') }}
+          stderr={{ opensuse_16_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (opensuse_16_fail_count | int) == 0
+        fail_msg: >-
+          OpenSUSE 16 CRE audit found {{ opensuse_16_fail_count }} failed check(s)
+          out of {{ opensuse_16_total_count }}.
+        success_msg: >-
+          OpenSUSE 16 CRE audit passed {{ opensuse_16_pass_count }}/{{ opensuse_16_total_count }} checks.
+      when: opensuse_16_fail_on_noncompliance | bool
+

@@ -1,0 +1,17 @@
+{
+  "profile_name": "RHEL 10",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for RHEL 10 hosts, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence and evaluate RHEL 10 systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "os": {
+    "name": "Red Hat Enterprise Linux",
+    "vendor": "Red Hat, Inc.",
+    "version": "10.0"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "RHEL10.yml",
+  "compliance_playbook_version": "1.0"
+}

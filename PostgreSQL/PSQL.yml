@@ -1,0 +1,438 @@
+---
+- name: "PostgreSQL CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    psql_fail_on_noncompliance: false
+    psql_strict_os_check: false
+    psql_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "The PostgreSQL systemd unit is enabled"
+        severity: "MEDIUM"
+      RULE2:
+        id: "RULE2"
+        summary: "The PostgreSQL data cluster is initialized"
+        severity: "MEDIUM"
+      RULE3:
+        id: "RULE3"
+        summary: "The postgres user umask is set correctly"
+        severity: "HIGH"
+      RULE4:
+        id: "RULE4"
+        summary: "Pg_wheel group membership is restricted"
+        severity: "HIGH"
+      RULE5:
+        id: "RULE5"
+        summary: "Log_destination is configured"
+        severity: "MEDIUM"
+      RULE6:
+        id: "RULE6"
+        summary: "Logging_collector is enabled"
+        severity: "MEDIUM"
+      RULE7:
+        id: "RULE7"
+        summary: "Log_directory is set correctly"
+        severity: "MEDIUM"
+      RULE8:
+        id: "RULE8"
+        summary: "Log_file_mode is set correctly"
+        severity: "MEDIUM"
+      RULE9:
+        id: "RULE9"
+        summary: "Syslog_facility is set correctly"
+        severity: "MEDIUM"
+      RULE10:
+        id: "RULE10"
+        summary: "Log_min_messages is set correctly"
+        severity: "MEDIUM"
+      RULE11:
+        id: "RULE11"
+        summary: "Debug_print_parse is disabled"
+        severity: "LOW"
+      RULE12:
+        id: "RULE12"
+        summary: "Debug_print_rewritten is disabled"
+        severity: "LOW"
+      RULE13:
+        id: "RULE13"
+        summary: "Debug_print_plan is disabled"
+        severity: "LOW"
+      RULE14:
+        id: "RULE14"
+        summary: "Log_connections is enabled"
+        severity: "MEDIUM"
+      RULE15:
+        id: "RULE15"
+        summary: "Log_disconnections is enabled"
+        severity: "MEDIUM"
+      RULE16:
+        id: "RULE16"
+        summary: "Log_error_verbosity is set correctly"log_error_verbosity\" is set correctly"
+        severity: "MEDIUM"
+      RULE17:
+        id: "RULE17"
+        summary: "Log_hostname is set correctly"log_hostname\" is set correctly"
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "Log_statement is set correctly"log_statement\" is set correctly"
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "Log_timezone is set correctly"log_timezone\" is set correctly"
+        severity: "MEDIUM"
+      RULE20:
+        id: "RULE20"
+        summary: "The pgAudit extension is enabled"
+        severity: "HIGH"
+      RULE21:
+        id: "RULE21"
+        summary: "Sudo is configured for PostgreSQL administration"
+        severity: "HIGH"
+      RULE22:
+        id: "RULE22"
+        summary: "Excessive administrative privileges are revoked"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "Unnecessary SECURITY DEFINER and elevated function privileges are revoked"
+        severity: "HIGH"
+      RULE24:
+        id: "RULE24"
+        summary: "Predefined PostgreSQL roles are used for privileged capabilities"
+        severity: "HIGH"
+      RULE25:
+        id: "RULE25"
+        summary: "Local UNIX-domain socket authentication is configured correctly"
+        severity: "HIGH"
+      RULE26:
+        id: "RULE26"
+        summary: "Host TCP/IP authentication is configured correctly"host\" TCP/IP Socket is configured correctly."
+        severity: "HIGH"
+      RULE27:
+        id: "RULE27"
+        summary: "Backend runtime parameters are configured securely"backend\" runtime parameters are configured correctly."
+        severity: "HIGH"
+      RULE28:
+        id: "RULE28"
+        summary: "Postmaster runtime parameters are configured securely"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE29:
+        id: "RULE29"
+        summary: "SIGHUP runtime parameters are configured securely"
+        severity: "MEDIUM"
+      RULE30:
+        id: "RULE30"
+        summary: "Superuser runtime parameters are configured securely"Superuser\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE31:
+        id: "RULE31"
+        summary: "User-level runtime parameters are configured securely"User\" runtime environment parameters are configured"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "FIPS 140-2 OpenSSL cryptography is used"
+        severity: "MEDIUM"
+      RULE33:
+        id: "RULE33"
+        summary: "SSL/TLS is enabled and configured correctly"
+        severity: "HIGH"
+      RULE34:
+        id: "RULE34"
+        summary: "The pgcrypto extension is available"
+        severity: "HIGH"
+      RULE35:
+        id: "RULE35"
+        summary: "PostgreSQL configuration files reside outside the data directory"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "Selected PostgreSQL subdirectory locations reside outside the data directory"
+        severity: "MEDIUM"
+      RULE37:
+        id: "RULE37"
+        summary: "PgBackRest is installed and configured"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "The pg_permissions extension is used to audit object privileges"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "The set_user extension is installed"
+        severity: "MEDIUM"
+      RULE82:
+        id: "RULE82"
+        summary: "That the log file name template is set correctly"
+        severity: "MEDIUM"
+      RULE83:
+        id: "RULE83"
+        summary: "That the \"log_truncate_on_rotation\" parameter is enabled."
+        severity: "MEDIUM"
+      RULE84:
+        id: "RULE84"
+        summary: "That the maximum log file lifetime is set correctly"
+        severity: "MEDIUM"
+      RULE85:
+        id: "RULE85"
+        summary: "That the maximum log file size is set correctly"
+        severity: "MEDIUM"
+      RULE86:
+        id: "RULE86"
+        summary: "That the program name for PostgreSQL syslog messages is set correctly"
+        severity: "MEDIUM"
+      RULE87:
+        id: "RULE87"
+        summary: "That the \"debug_pretty_print\" parameter is enabled."
+        severity: "LOW"
+      RULE88:
+        id: "RULE88"
+        summary: "That excessive DML privileges are revoked"
+        severity: "HIGH"
+      RULE89:
+        id: "RULE89"
+        summary: "That WAL archiving is configured and working"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "Log_connections is enabled for backend sessions"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "Log_disconnections is enabled for backend sessions"
+        severity: "MEDIUM"
+      RULE42:
+        id: "RULE42"
+        summary: "Post_auth_delay is disabled"
+        severity: "MEDIUM"
+      RULE77:
+        id: "RULE77"
+        summary: "The SSL CA certificate file is configured"
+        severity: "MEDIUM"
+      RULE78:
+        id: "RULE78"
+        summary: "The SSL server certificate file is configured"
+        severity: "MEDIUM"
+      RULE79:
+        id: "RULE79"
+        summary: "The SSL certificate revocation list file is configured"
+        severity: "MEDIUM"
+      RULE80:
+        id: "RULE80"
+        summary: "The SSL server private key file is configured"
+        severity: "MEDIUM"
+      RULE81:
+        id: "RULE81"
+        summary: "Log_directory is located outside the data directory"
+        severity: "MEDIUM"
+      RULE43:
+        id: "RULE43"
+        summary: "Event_source is set appropriately"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE44:
+        id: "RULE44"
+        summary: "Listen_addresses is not set to a wildcard"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE45:
+        id: "RULE45"
+        summary: "Logging_collector is enabled for the postmaster"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE46:
+        id: "RULE46"
+        summary: "The PostgreSQL port is explicitly configured"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE47:
+        id: "RULE47"
+        summary: "SSL is enabled"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE48:
+        id: "RULE48"
+        summary: "Ssl_ca_file is configured"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE49:
+        id: "RULE49"
+        summary: "Ssl_cert_file is configured"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE50:
+        id: "RULE50"
+        summary: "Ssl_ciphers is configured securely"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE51:
+        id: "RULE51"
+        summary: "Ssl_crl_file is configured when certificate revocation is required"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE52:
+        id: "RULE52"
+        summary: "Ssl_ecdh_curve is configured"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE53:
+        id: "RULE53"
+        summary: "Ssl_key_file is configured"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE54:
+        id: "RULE54"
+        summary: "Ssl_prefer_server_ciphers is enabled"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE55:
+        id: "RULE55"
+        summary: "Unix_socket_group is configured"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "Unix_socket_permissions are restrictive"Postmaster\" runtime parameters are configured"
+        severity: "MEDIUM"
+      RULE57:
+        id: "RULE57"
+        summary: "Db_user_namespace is disabled"
+        severity: "MEDIUM"
+      RULE58:
+        id: "RULE58"
+        summary: "Krb_caseins_users is disabled"
+        severity: "MEDIUM"
+      RULE59:
+        id: "RULE59"
+        summary: "Krb_server_keyfile is set when GSS/SSPI authentication is used"
+        severity: "MEDIUM"
+      RULE60:
+        id: "RULE60"
+        summary: "Log_autovacuum_min_duration is configured"
+        severity: "MEDIUM"
+      RULE61:
+        id: "RULE61"
+        summary: "Log_destination is configured for SIGHUP-managed logging"
+        severity: "MEDIUM"
+      RULE62:
+        id: "RULE62"
+        summary: "Log_directory is configured for SIGHUP-managed logging"
+        severity: "MEDIUM"
+      RULE63:
+        id: "RULE63"
+        summary: "Log_file_mode is configured for SIGHUP-managed logging"
+        severity: "MEDIUM"
+      RULE64:
+        id: "RULE64"
+        summary: "Log_rotation_age is configured"
+        severity: "MEDIUM"
+      RULE65:
+        id: "RULE65"
+        summary: "Log_timezone is configured"
+        severity: "MEDIUM"
+      RULE66:
+        id: "RULE66"
+        summary: "Syslog_facility is configured"
+        severity: "MEDIUM"
+      RULE67:
+        id: "RULE67"
+        summary: "Syslog_ident is configured"
+        severity: "MEDIUM"
+      RULE68:
+        id: "RULE68"
+        summary: "Ignore_checksum_failure is disabled"
+        severity: "MEDIUM"
+      RULE69:
+        id: "RULE69"
+        summary: "Log_error_verbosity is configured"
+        severity: "MEDIUM"
+      RULE70:
+        id: "RULE70"
+        summary: "Log_min_messages is configured"
+        severity: "MEDIUM"
+      RULE71:
+        id: "RULE71"
+        summary: "Log_statement is not set to none"
+        severity: "MEDIUM"
+      RULE72:
+        id: "RULE72"
+        summary: "Backslash_quote is set securely"User\" runtime environment parameters are configured"
+        severity: "MEDIUM"
+      RULE73:
+        id: "RULE73"
+        summary: "Default_transaction_isolation is set correctly"User\" runtime environment parameters are configured"
+        severity: "MEDIUM"
+      RULE74:
+        id: "RULE74"
+        summary: "Idle_in_transaction_session_timeout is configured"User\" runtime environment parameters are configured"
+        severity: "MEDIUM"
+      RULE75:
+        id: "RULE75"
+        summary: "Password_encryption is set correctly"User\" runtime environment parameters are configured"
+        severity: "MEDIUM"
+      RULE76:
+        id: "RULE76"
+        summary: "Tcp_keepalives_idle is configured"User\" runtime environment parameters are configured"
+        severity: "MEDIUM"
+
+  tasks:
+    - name: "Run PostgreSQL CRE audit script (same checks as profile package)"
+      ansible.builtin.script: PSQL.sh
+      args:
+        executable: /bin/bash
+      register: psql_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        psql_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in psql_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = psql_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        psql_pass_count: >-
+          {{ psql_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        psql_fail_count: >-
+          {{ psql_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        psql_total_count: "{{ psql_compliance_lines | default([]) | length }}"
+
+    - name: "PostgreSQL CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: PostgreSQL_CRE_NUP(1.3.0)_AI
+          script: PSQL.sh
+          total: "{{ psql_total_count }}"
+          passed: "{{ psql_pass_count }}"
+          failed: "{{ psql_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ psql_compliance_lines | default([]) }}"
+          script_rc: "{{ psql_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (psql_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from PSQL.sh output.
+          rc={{ psql_audit_raw.rc | default('n/a') }}
+          stderr={{ psql_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (psql_fail_count | int) == 0
+        fail_msg: >-
+          PostgreSQL CRE audit found {{ psql_fail_count }} failed check(s)
+          out of {{ psql_total_count }}.
+        success_msg: >-
+          PostgreSQL CRE audit passed {{ psql_pass_count }}/{{ psql_total_count }} checks.
+      when: psql_fail_on_noncompliance | bool
+

@@ -1,0 +1,18 @@
+{
+  "profile_name": "PostgreSQL",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for PostgreSQL database servers, aligned with hardening best practices.",
+  "purpose": "Gather PostgreSQL configuration evidence (host version is detected automatically) and evaluate database instances against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "software": {
+    "name": "PostgreSQL",
+    "vendor": "PostgreSQL Community",
+    "category": "Application software",
+    "version": "*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "PSQL.yml",
+  "compliance_playbook_version": "1.0"
+}

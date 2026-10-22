@@ -1,0 +1,22 @@
+{
+  "profile_name": "XIAOMI_MIWIFI",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Secure configuration baseline for Xiaomi routers (MiWiFi)",
+  "purpose": "A secure-configuration audit profile for Xiaomi/MiWiFi network devices based on OpenWrt-like settings (uci). Covers management, Wi-Fi, firewall, UPnP/WPS, segmentation, and services per SOHO-router hardening best practices.",
+  "os": {
+    "name": "XIAOMI_MIWIFI",
+    "vendor": "Xiaomi",
+    "version": "*"
+  },
+  "software": {
+    "name": "XIAOMI_MIWIFI",
+    "vendor": "Xiaomi",
+    "category": "Operating systems",
+    "version": "*"
+  },
+  "encoding": "utf-8",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "XIAOMI_MIWIFI.yml",
+  "compliance_playbook_version": "1.0"
+}

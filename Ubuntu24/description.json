@@ -1,0 +1,17 @@
+{
+  "profile_name": "Ubuntu 24",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for Ubuntu 24.04 hosts, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence and evaluate Ubuntu 24.04 systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "os": {
+    "name": "Ubuntu Linux",
+    "vendor": "Canonical Ltd.",
+    "version": "24.04"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Ubuntu24.yml",
+  "compliance_playbook_version": "1.0"
+}

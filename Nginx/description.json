@@ -1,0 +1,18 @@
+{
+  "profile_name": "Nginx",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for NGINX web servers, aligned with hardening best practices.",
+  "purpose": "Gather NGINX configuration evidence—including modules, accounts, TLS, logging, headers, and limits—and evaluate systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "software": {
+    "name": "Nginx",
+    "vendor": "Nginx software",
+    "category": "Application software",
+    "version": "*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "nginx.yml",
+  "compliance_playbook_version": "1.0"
+}

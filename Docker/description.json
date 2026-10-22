@@ -1,0 +1,18 @@
+{
+  "profile_name": "Docker",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for Docker hosts and runtime, aligned with hardening best practices.",
+  "purpose": "Gather Docker configuration evidence and evaluate the container runtime against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "software": {
+    "name": "Docker",
+    "vendor": "Docker",
+    "category": "Application software",
+    "version": "*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Docker.yml",
+  "compliance_playbook_version": "1.0"
+}

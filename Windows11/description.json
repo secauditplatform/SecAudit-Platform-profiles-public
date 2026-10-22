@@ -1,0 +1,17 @@
+{
+  "profile_name": "Windows 11 Enterprise",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for Microsoft Windows 11 Enterprise 22H2 workstations, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence via WinRM/PowerShell—including secedit, auditpol, built-in accounts, and HKLM/HKU registry settings—and evaluate Windows 11 Enterprise systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "os": {
+    "name": "Windows 11",
+    "vendor": "Microsoft Corporation",
+    "version": "22H2"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Win11.yml",
+  "compliance_playbook_version": "1.0"
+}

@@ -1,0 +1,18 @@
+{
+  "profile_name": "Kubernetes",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for Kubernetes clusters, aligned with hardening best practices.",
+  "purpose": "Gather Kubernetes configuration evidence and evaluate cluster components against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "software": {
+    "name": "Kubernetes",
+    "vendor": "Kubernetes",
+    "category": "Application software",
+    "version": "*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Kubernetes.yml",
+  "compliance_playbook_version": "1.0"
+}

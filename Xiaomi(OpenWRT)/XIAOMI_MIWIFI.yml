@@ -1,0 +1,142 @@
+---
+- name: "Xiaomi MiWiFi network security baseline audit"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    xiaomi_miwifi_fail_on_noncompliance: false
+    xiaomi_miwifi_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "A unique hostname simplifies device identification in logs and during incident response."
+        severity: "MEDIUM"
+      RULE2:
+        id: "RULE2"
+        summary: "MiWiFi vulnerabilities (including command injection) are addressed by firmware updates."
+        severity: "HIGH"
+      RULE3:
+        id: "RULE3"
+        summary: "Open networks, WEP, and legacy WPA/TKIP allow interception and cracking of wireless traffic."
+        severity: "HIGH"
+      RULE4:
+        id: "RULE4"
+        summary: "WPS is vulnerable to PIN brute-force and authentication bypass."
+        severity: "HIGH"
+      RULE5:
+        id: "RULE5"
+        summary: "UPnP allows malware to automatically open ports to the outside."
+        severity: "HIGH"
+      RULE6:
+        id: "RULE6"
+        summary: "Remote access to the web admin interface/SSH from the Internet sharply increases the attack surface."
+        severity: "HIGH"
+      RULE7:
+        id: "RULE7"
+        summary: "Built-in firewall/SPI is basic perimeter protection."
+        severity: "HIGH"
+      RULE8:
+        id: "RULE8"
+        summary: "Telnet transmits credentials in cleartext."
+        severity: "HIGH"
+      RULE9:
+        id: "RULE9"
+        summary: "SSH on Xiaomi is often enabled for debugging and must not be accessible from the WAN."
+        severity: "HIGH"
+      RULE10:
+        id: "RULE10"
+        summary: "The factory SSID discloses the model/brand and facilitates targeted attacks."
+        severity: "MEDIUM"
+      RULE11:
+        id: "RULE11"
+        summary: "Segmentation reduces the risk of lateral movement from guest and IoT devices."
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "Client isolation blocks communication between devices on a guest WLAN."
+        severity: "MEDIUM"
+      RULE13:
+        id: "RULE13"
+        summary: "Uncontrolled DNS facilitates phishing and DNS hijacking."
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "Accurate time is critical for logs, certificates, and schedules."
+        severity: "LOW"
+      RULE15:
+        id: "RULE15"
+        summary: "A DMZ fully exposes the host to the internet."
+        severity: "HIGH"
+      RULE16:
+        id: "RULE16"
+        summary: "Responding to ICMP from the WAN facilitates scanning and reconnaissance."
+        severity: "LOW"
+      RULE17:
+        id: "RULE17"
+        summary: "USB shares and FTP often contain known vulnerabilities and weak accounts."
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "Each port forward expands the attack surface on the LAN."
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "The Xiaomi factory-default LAN subnet is well known to attackers and scripts."
+        severity: "LOW"
+      RULE20:
+        id: "RULE20"
+        summary: "TKIP and WEP are considered broken against modern threats."
+        severity: "HIGH"
+      RULE21:
+        id: "RULE21"
+        summary: "PMF protects against deauth/disassoc attacks on Wi‑Fi."
+        severity: "LOW"
+      RULE22:
+        id: "RULE22"
+        summary: "Remote management via Mi Home/MiWiFi cloud expands the trust boundary."
+        severity: "MEDIUM"
+      RULE23:
+        id: "RULE23"
+        summary: "Enabled uart_en/boot_wait settings are typical of jailbreak/SSH unlock and increase the risk of physical access."
+        severity: "MEDIUM"
+      RULE24:
+        id: "RULE24"
+        summary: "The WAN zone must not accept arbitrary traffic to the router itself."
+        severity: "HIGH"
+      RULE25:
+        id: "RULE25"
+        summary: "A weak or missing admin password is the primary vector for taking over MiWiFi."
+        severity: "HIGH"
+
+  tasks:
+    - name: "Run Xiaomi MiWiFi network audit collector"
+      ansible.builtin.script: XIAOMI_MIWIFI.py
+      args:
+        executable: python3
+      environment:
+        resource_ip: "{{ resource_ip | default(omit) }}"
+        resource_user: "{{ resource_user | default(omit) }}"
+        resource_pass: "{{ resource_pass | default(omit) }}"
+        SECAUDIT_CONFIG_FILE: "{{ secaudit_config_file | default(omit) }}"
+      register: xiaomi_miwifi_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE PASS/FAIL output
+      ansible.builtin.set_fact:
+        xiaomi_miwifi_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in xiaomi_miwifi_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_id = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = xiaomi_miwifi_rule_meta.get(rule_id, {}) -%}
+          {%- set _ = rows.append(status ~ '|' ~ meta.get('id', rule_id) ~ '|' ~ meta.get('summary', rule_id) ~ '|' ~ detail) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows | join('\n') }}
+
+    - name: Emit compliance summary lines
+      ansible.builtin.debug:
+        msg: "{{ xiaomi_miwifi_compliance_lines.split('\\n') }}"

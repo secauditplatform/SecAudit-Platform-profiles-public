@@ -1,0 +1,18 @@
+{
+  "profile_name": "Bind9",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for BIND 9 DNS servers, aligned with hardening best practices.",
+  "purpose": "Gather BIND 9 configuration evidence and evaluate name servers against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "software": {
+    "name": "Bind",
+    "vendor": "Bind",
+    "category": "Application software",
+    "version": "9.x"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Bind9.yml",
+  "compliance_playbook_version": "1.0"
+}

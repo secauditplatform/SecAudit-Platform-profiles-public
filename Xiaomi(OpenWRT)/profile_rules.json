@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_rules",
+  "rules": [
+    {
+      "num": "1",
+      "requirement_id": "RULE1",
+      "title": "A unique hostname simplifies device identification in logs and during incident response.",
+      "explanation": "Set a non-factory device name (not the default Xiaomi/MiWiFi/OpenWrt).",
+      "impact": "Event correlation and incident response are hindered.",
+      "scope": "system.@system[0].hostname / web interface → System",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE1=(.*)"
+    },
+    {
+      "num": "2",
+      "requirement_id": "RULE2",
+      "title": "MiWiFi vulnerabilities (including command injection) are addressed by firmware updates.",
+      "explanation": "Ensure that the firmware version is pinned and the device receives updates from Xiaomi Security Center / System → Upgrade.",
+      "impact": "Exploitation of known CVEs (for example, CVE-2024-45348) when firmware is outdated.",
+      "scope": "System → Update / /etc/openwrt_release / nvram",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE2=(.*)"
+    },
+    {
+      "num": "3",
+      "requirement_id": "RULE3",
+      "title": "Open networks, WEP, and legacy WPA/TKIP allow interception and cracking of wireless traffic.",
+      "explanation": "For all APs use sae (WPA3), sae-mixed, or psk2/psk2+ccmp. none, wep, and psk (WPA) are prohibited.",
+      "impact": "Unauthorized access to WLAN and MITM.",
+      "scope": "wireless.*.encryption / Wireless network → Encryption",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE3=(.*)"
+    },
+    {
+      "num": "4",
+      "requirement_id": "RULE4",
+      "title": "WPS is vulnerable to PIN brute-force and authentication bypass.",
+      "explanation": "Disable WPS (push-button/PIN) on all radio interfaces.",
+      "impact": "Wi-Fi compromise without knowledge of the PSK.",
+      "scope": "wireless.*.wps_* / Wi‑Fi Settings → WPS",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE4=(.*)"
+    },
+    {
+      "num": "5",
+      "requirement_id": "RULE5",
+      "title": "UPnP allows malware to automatically open ports to the outside.",
+      "explanation": "Disable miniupnpd/UPnP unless there is a justified need (games/media).",
+      "impact": "Unauthorized inbound access to the LAN.",
+      "scope": "upnpd.config.enabled / Advanced → UPnP",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE5=(.*)"
+    },
+    {
+      "num": "6",
+      "requirement_id": "RULE6",
+      "title": "Remote access to the web admin interface/SSH from the Internet sharply increases the attack surface.",
+      "explanation": "Prohibit management from the WAN (remote management / cloud remote / firewall ACCEPT on 80/443/22 from wan).",
+      "impact": "Router compromise from the Internet, RCE after authentication.",
+      "scope": "firewall / xiaoqiang remote / Advanced → Remote Management",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE6=(.*)"
+    },
+    {
+      "num": "7",
+      "requirement_id": "RULE7",
+      "title": "Built-in firewall/SPI is basic perimeter protection.",
+      "explanation": "The firewall must be active; the WAN zone input should be REJECT/DROP, with SYN flood protection enabled if the option is available.",
+      "impact": "Direct access to router services and LAN hosts from the outside.",
+      "scope": "firewall.@defaults / Advanced → Security → Firewall",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE7=(.*)"
+    },
+    {
+      "num": "8",
+      "requirement_id": "RULE8",
+      "title": "Telnet transmits credentials in cleartext.",
+      "explanation": "The telnet service must be disabled (nvram/bdata telnet_en≠1, no listening telnetd).",
+      "impact": "Interception of administrative credentials.",
+      "scope": "nvram/bdata telnet_en / management services",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE8=(.*)"
+    },
+    {
+      "num": "9",
+      "requirement_id": "RULE9",
+      "title": "SSH on Xiaomi is often enabled for debugging and must not be accessible from the WAN.",
+      "explanation": "Dropbear/SSH is disabled or bound only to LAN; there is no firewall ACCEPT from wan to port 22.",
+      "impact": "Brute force and remote root takeover.",
+      "scope": "dropbear / nvram ssh_en / firewall",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE9=(.*)"
+    },
+    {
+      "num": "10",
+      "requirement_id": "RULE10",
+      "title": "The factory SSID discloses the model/brand and facilitates targeted attacks.",
+      "explanation": "The SSID must not match patterns such as Xiaomi_*, MiWiFi_*, Xiaomi-Router*, and similar.",
+      "impact": "Reconnaissance and fingerprinting of the device by an attacker.",
+      "scope": "wireless.*.ssid",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE10=(.*)"
+    },
+    {
+      "num": "11",
+      "requirement_id": "RULE11",
+      "title": "Segmentation reduces the risk of lateral movement from guest and IoT devices.",
+      "explanation": "A separate guest network must be configured (guest interface/SSID).",
+      "impact": "Guests and IoT devices gain access to primary LAN hosts.",
+      "scope": "wireless guest / network.guest / Guest network",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE11=(.*)"
+    },
+    {
+      "num": "12",
+      "requirement_id": "RULE12",
+      "title": "Client isolation blocks communication between devices on a guest WLAN.",
+      "explanation": "For guest wifi-iface, isolate=1 (or equivalent AP isolation) must be enabled.",
+      "impact": "Compromise of neighboring guest devices.",
+      "scope": "wireless.*.isolate",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE12=(.*)"
+    },
+    {
+      "num": "13",
+      "requirement_id": "RULE13",
+      "title": "Uncontrolled DNS facilitates phishing and DNS hijacking.",
+      "explanation": "Specify explicit DNS (dnsmasq server= or wan.dns); do not leave empty or use only ISP peer DNS without a policy.",
+      "impact": "Redirection of traffic to malicious resources.",
+      "scope": "dhcp.@dnsmasq / network.wan.dns / Advanced → DNS",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE13=(.*)"
+    },
+    {
+      "num": "14",
+      "requirement_id": "RULE14",
+      "title": "Accurate time is critical for logs, certificates, and schedules.",
+      "explanation": "The NTP client is enabled and points to trusted time servers.",
+      "impact": "Incorrect logs and TLS/schedule failures.",
+      "scope": "system.ntp / System → Time",
+      "criticality": "LOW",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE14=(.*)"
+    },
+    {
+      "num": "15",
+      "requirement_id": "RULE15",
+      "title": "A DMZ fully exposes the host to the internet.",
+      "explanation": "The DMZ feature must be disabled unless there is an explicit production need.",
+      "impact": "Direct compromise of a host in the DMZ.",
+      "scope": "firewall dmz / Advanced → DMZ",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE15=(.*)"
+    },
+    {
+      "num": "16",
+      "requirement_id": "RULE16",
+      "title": "Responding to ICMP from the WAN facilitates scanning and reconnaissance.",
+      "explanation": "There is no ACCEPT icmp rule from WAN to the device; ping from the WAN must be dropped.",
+      "impact": "Device discovery by scanners and DoS.",
+      "scope": "firewall rules Allow-Ping / Security",
+      "criticality": "LOW",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE16=(.*)"
+    },
+    {
+      "num": "17",
+      "requirement_id": "RULE17",
+      "title": "USB shares and FTP often contain known vulnerabilities and weak accounts.",
+      "explanation": "Samba/vsftpd/proftpd must be disabled if file sharing is not required.",
+      "impact": "Data leakage and RCE via network shares.",
+      "scope": "samba / vsftpd / USB Sharing",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE17=(.*)"
+    },
+    {
+      "num": "18",
+      "requirement_id": "RULE18",
+      "title": "Each port forward expands the attack surface on the LAN.",
+      "explanation": "Only the minimum necessary set of redirect/DNAT rules is permitted; extras must be removed.",
+      "impact": "Direct access to internal services from the Internet.",
+      "scope": "firewall.@redirect / Advanced → Port Forwarding",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE18=(.*)"
+    },
+    {
+      "num": "19",
+      "requirement_id": "RULE19",
+      "title": "The Xiaomi factory-default LAN subnet is well known to attackers and scripts.",
+      "explanation": "LAN IP must not use the Xiaomi factory-default subnet range.",
+      "impact": "Simplified attack automation and conflicts with VPN/mesh.",
+      "scope": "network.lan.ipaddr",
+      "criticality": "LOW",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE19=(.*)"
+    },
+    {
+      "num": "20",
+      "requirement_id": "RULE20",
+      "title": "TKIP and WEP are considered broken against modern threats.",
+      "explanation": "encryption must not include wep/tkip/psk without AES; psk2+ccmp and sae are preferred.",
+      "impact": "Cryptanalysis and WLAN session hijacking.",
+      "scope": "wireless.*.encryption",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE20=(.*)"
+    },
+    {
+      "num": "21",
+      "requirement_id": "RULE21",
+      "title": "PMF protects against deauth/disassoc attacks on Wi‑Fi.",
+      "explanation": "With WPA3 (sae) or WPA2, ieee80211w=1/2 is recommended.",
+      "impact": "DoS and forced disconnect of clients.",
+      "scope": "wireless.*.ieee80211w",
+      "criticality": "LOW",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE21=(.*)"
+    },
+    {
+      "num": "22",
+      "requirement_id": "RULE22",
+      "title": "Remote management via Mi Home/MiWiFi cloud expands the trust boundary.",
+      "explanation": "If remote access is not needed, unbind/disable cloud remote; do not leave WAN management through an account.",
+      "impact": "Compromise of the cloud account equals control of the router.",
+      "scope": "xiaoqiang / MiWiFi App remote / cloud bind",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE22=(.*)"
+    },
+    {
+      "num": "23",
+      "requirement_id": "RULE23",
+      "title": "Enabled uart_en/boot_wait settings are typical of jailbreak/SSH unlock and increase the risk of physical access.",
+      "explanation": "On production devices, uart_en and boot_wait must not be enabled unless required for maintenance.",
+      "impact": "Local capture via UART and boot bypass.",
+      "scope": "nvram/bdata uart_en, boot_wait",
+      "criticality": "MEDIUM",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE23=(.*)"
+    },
+    {
+      "num": "24",
+      "requirement_id": "RULE24",
+      "title": "The WAN zone must not accept arbitrary traffic to the router itself.",
+      "explanation": "firewall zone wan input = REJECT or DROP.",
+      "impact": "Exposure of local router services to the Internet.",
+      "scope": "firewall.@zone[wan].input",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE24=(.*)"
+    },
+    {
+      "num": "25",
+      "requirement_id": "RULE25",
+      "title": "A weak or missing admin password is the primary vector for taking over MiWiFi.",
+      "explanation": "The configuration must not indicate an empty/factory password; a root/admin password hash must be present.",
+      "impact": "Full control over the device and network.",
+      "scope": "Accounts / /etc/shadow / web admin",
+      "criticality": "HIGH",
+      "check_script": "XIAOMI_MIWIFI",
+      "match_pattern": "RULE25=(.*)"
+    }
+  ]
+}

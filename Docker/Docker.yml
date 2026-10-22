@@ -1,0 +1,473 @@
+---
+- name: "Docker CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    docker_fail_on_noncompliance: false
+    docker_strict_os_check: false
+    docker_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "A separate partition is created for containers"
+        severity: "MEDIUM"
+      RULE2:
+        id: "RULE2"
+        summary: "A separate partition is created for containers"
+        severity: "MEDIUM"
+      RULE3:
+        id: "RULE3"
+        summary: "Only trusted users can control the Docker daemon"
+        severity: "HIGH"
+      RULE4:
+        id: "RULE4"
+        summary: "Auditing is configured for the Docker daemon"
+        severity: "MEDIUM"
+      RULE5:
+        id: "RULE5"
+        summary: "Auditing is configured for Docker files and directories — /run/containerd"
+        severity: "MEDIUM"
+      RULE6:
+        id: "RULE6"
+        summary: "Auditing is configured for Docker files and directories — /var/lib/docker"
+        severity: "MEDIUM"
+      RULE7:
+        id: "RULE7"
+        summary: "Auditing is configured for Docker files and directories — /etc/docker"
+        severity: "MEDIUM"
+      RULE8:
+        id: "RULE8"
+        summary: "Auditing is configured for Docker files and directories — docker.service"
+        severity: "MEDIUM"
+      RULE9:
+        id: "RULE9"
+        summary: "Auditing is configured for Docker files and directories — containerd.sock"
+        severity: "MEDIUM"
+      RULE10:
+        id: "RULE10"
+        summary: "Auditing is configured for Docker files and directories — docker.sock"
+        severity: "MEDIUM"
+      RULE11:
+        id: "RULE11"
+        summary: "Auditing is configured for Docker files and directories — /etc/default/docker"
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "Auditing is configured for Docker files and directories — /etc/docker/daemon.json"
+        severity: "MEDIUM"
+      RULE13:
+        id: "RULE13"
+        summary: "Auditing is configured for Docker files and directories — /etc/containerd/config.toml"
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "Auditing is configured for Docker files and directories — /etc/sysconfig/docker"
+        severity: "MEDIUM"
+      RULE15:
+        id: "RULE15"
+        summary: "Auditing is configured for Docker files and directories — /usr/bin/containerd"
+        severity: "MEDIUM"
+      RULE16:
+        id: "RULE16"
+        summary: "Auditing is configured for Docker files and directories — /usr/bin/containerd-shim"
+        severity: "MEDIUM"
+      RULE17:
+        id: "RULE17"
+        summary: "Auditing is configured for Docker files and directories — /usr/bin/containerd-shim-runc-v1"
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "Auditing is configured for Docker files and directories — /usr/bin/containerd-shim-runc-v2"
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "Auditing is configured for Docker files and directories — /usr/bin/runc"
+        severity: "MEDIUM"
+      RULE20:
+        id: "RULE20"
+        summary: "The Docker version is up to date"
+        severity: "LOW"
+      RULE21:
+        id: "RULE21"
+        summary: "The Docker daemon runs as a non-root user where possible"
+        severity: "MEDIUM"
+      RULE22:
+        id: "RULE22"
+        summary: "Network traffic between containers on the default bridge is restricted"
+        severity: "MEDIUM"
+      RULE23:
+        id: "RULE23"
+        summary: "The logging level is set to info"INFO\""
+        severity: "LOW"
+      RULE24:
+        id: "RULE24"
+        summary: "Docker is allowed to make changes to iptables"
+        severity: "HIGH"
+      RULE25:
+        id: "RULE25"
+        summary: "Insecure registries are not used"
+        severity: "HIGH"
+      RULE26:
+        id: "RULE26"
+        summary: "The aufs storage driver is not used"
+        severity: "HIGH"
+      RULE27:
+        id: "RULE27"
+        summary: "TLS authentication for the Docker daemon is configured"
+        severity: "HIGH"
+      RULE28:
+        id: "RULE28"
+        summary: "Authorization for Docker client commands is enabled"
+        severity: "MEDIUM"
+      RULE29:
+        id: "RULE29"
+        summary: "Centralized and remote logging is configured"
+        severity: "MEDIUM"
+      RULE30:
+        id: "RULE30"
+        summary: "Containers cannot gain new privileges"
+        severity: "HIGH"
+      RULE31:
+        id: "RULE31"
+        summary: "The userland proxy is disabled"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "A custom seccomp profile is applied daemon-wide when required"
+        severity: "MEDIUM"
+      RULE33:
+        id: "RULE33"
+        summary: "Experimental features are not enabled in production"
+        severity: "MEDIUM"
+      RULE34:
+        id: "RULE34"
+        summary: "Ownership of docker.service is set to root:root"
+        severity: "MEDIUM"
+      RULE35:
+        id: "RULE35"
+        summary: "Permissions on docker.service are set to 644 or more restrictive"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "Ownership of docker.socket is set to root:root"
+        severity: "MEDIUM"
+      RULE37:
+        id: "RULE37"
+        summary: "Permissions on docker.socket are set to 644 or more restrictive"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "Ownership of /etc/docker is set to root:root"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "Permissions on /etc/docker are set to 755 or more restrictive"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "Ownership of registry certificate files is set to root:root"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "Permissions on registry certificate files are set to 444 or more restrictive"
+        severity: "MEDIUM"
+      RULE42:
+        id: "RULE42"
+        summary: "Ownership of the TLS CA certificate file is set to root:root"
+        severity: "MEDIUM"
+      RULE43:
+        id: "RULE43"
+        summary: "Permissions on the TLS CA certificate file are set to 444 or more restrictive"
+        severity: "MEDIUM"
+      RULE44:
+        id: "RULE44"
+        summary: "Ownership of the Docker server certificate file is set to root:root"
+        severity: "MEDIUM"
+      RULE45:
+        id: "RULE45"
+        summary: "Permissions on the Docker server certificate file are set to 444 or more restrictive"
+        severity: "MEDIUM"
+      RULE46:
+        id: "RULE46"
+        summary: "Ownership of the Docker server certificate key file is set to root:root"
+        severity: "MEDIUM"
+      RULE47:
+        id: "RULE47"
+        summary: "Permissions on the Docker server certificate key file are set to 400"
+        severity: "MEDIUM"
+      RULE48:
+        id: "RULE48"
+        summary: "Ownership of the Docker socket file is set to root:docker"
+        severity: "HIGH"
+      RULE49:
+        id: "RULE49"
+        summary: "Permissions on the Docker socket file are set to 660 or more restrictive"
+        severity: "HIGH"
+      RULE50:
+        id: "RULE50"
+        summary: "Ownership of daemon.json is set to root:root"
+        severity: "HIGH"
+      RULE51:
+        id: "RULE51"
+        summary: "Permissions on daemon.json are set to 644 or more restrictive"
+        severity: "HIGH"
+      RULE52:
+        id: "RULE52"
+        summary: "Ownership of /etc/default/docker is set to root:root"
+        severity: "MEDIUM"
+      RULE53:
+        id: "RULE53"
+        summary: "Permissions on /etc/default/docker are set to 644 or more restrictive"
+        severity: "MEDIUM"
+      RULE54:
+        id: "RULE54"
+        summary: "Permissions on /etc/sysconfig/docker are set to 644 or more restrictive"
+        severity: "MEDIUM"
+      RULE55:
+        id: "RULE55"
+        summary: "Ownership of /etc/sysconfig/docker is set to root:root"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "Ownership of the containerd socket file is set to root:root"
+        severity: "HIGH"
+      RULE57:
+        id: "RULE57"
+        summary: "Permissions on the containerd socket file are set to 660 or more restrictive"
+        severity: "HIGH"
+      RULE58:
+        id: "RULE58"
+        summary: "Containers are configured to run as a non-root user"
+        severity: "MEDIUM"
+      RULE59:
+        id: "RULE59"
+        summary: "Docker Content Trust is enabled"
+        severity: "MEDIUM"
+      RULE60:
+        id: "RULE60"
+        summary: "An AppArmor profile is enabled where applicable"
+        severity: "MEDIUM"
+      RULE61:
+        id: "RULE61"
+        summary: "SELinux security options are configured where applicable"
+        severity: "MEDIUM"
+      RULE62:
+        id: "RULE62"
+        summary: "Linux kernel capabilities within containers are restricted"
+        severity: "MEDIUM"
+      RULE63:
+        id: "RULE63"
+        summary: "Privileged containers are not used"
+        severity: "MEDIUM"
+      RULE64:
+        id: "RULE64"
+        summary: "Sensitive host system directories are not mounted into containers"
+        severity: "MEDIUM"
+      RULE65:
+        id: "RULE65"
+        summary: "Sshd is not run inside containers"
+        severity: "HIGH"
+      RULE66:
+        id: "RULE66"
+        summary: "Privileged ports are not mapped within containers"
+        severity: "MEDIUM"
+      RULE67:
+        id: "RULE67"
+        summary: "The container root filesystem is mounted read-only"
+        severity: "MEDIUM"
+      RULE68:
+        id: "RULE68"
+        summary: "Incoming container traffic is bound to a specific host interface"
+        severity: "MEDIUM"
+      RULE69:
+        id: "RULE69"
+        summary: "The host PID namespace is not shared"
+        severity: "HIGH"
+      RULE70:
+        id: "RULE70"
+        summary: "The host IPC namespace is not shared"
+        severity: "MEDIUM"
+      RULE71:
+        id: "RULE71"
+        summary: "Host devices are not directly exposed to containers"
+        severity: "MEDIUM"
+      RULE72:
+        id: "RULE72"
+        summary: "The mount propagation mode is not set to shared"
+        severity: "MEDIUM"
+      RULE73:
+        id: "RULE73"
+        summary: "The host UTS namespace is not shared"
+        severity: "MEDIUM"
+      RULE74:
+        id: "RULE74"
+        summary: "The default seccomp profile is not disabled"
+        severity: "MEDIUM"
+      RULE75:
+        id: "RULE75"
+        summary: "Docker exec is not used with the --privileged option"
+        severity: "MEDIUM"
+      RULE76:
+        id: "RULE76"
+        summary: "Docker exec is not used with the --user=root option"
+        severity: "MEDIUM"
+      RULE77:
+        id: "RULE77"
+        summary: "Cgroup usage is confirmed"
+        severity: "MEDIUM"
+      RULE78:
+        id: "RULE78"
+        summary: "The container is restricted from gaining additional privileges"
+        severity: "MEDIUM"
+      RULE79:
+        id: "RULE79"
+        summary: "The default docker0 bridge is not used"docker0\" is not used."
+        severity: "MEDIUM"
+      RULE80:
+        id: "RULE80"
+        summary: "The host user namespace is not shared"
+        severity: "MEDIUM"
+      RULE81:
+        id: "RULE81"
+        summary: "The Docker socket is not mounted inside containers"
+        severity: "MEDIUM"
+      RULE82:
+        id: "RULE82"
+        summary: "Swarm services are bound to a specific host interface"
+        severity: "MEDIUM"
+      RULE83:
+        id: "RULE83"
+        summary: "Docker Swarm overlay networks are encrypted"
+        severity: "HIGH"
+      RULE84:
+        id: "RULE84"
+        summary: "Docker secret management commands are used for Swarm secrets"
+        severity: "MEDIUM"
+      RULE85:
+        id: "RULE85"
+        summary: "The Swarm manager runs with autolock enabled"
+        severity: "MEDIUM"
+      RULE86:
+        id: "RULE86"
+        summary: "The Swarm manager autolock key is rotated periodically"
+        severity: "HIGH"
+      RULE87:
+        id: "RULE87"
+        summary: "Swarm node certificates are rotated appropriately"
+        severity: "HIGH"
+      RULE88:
+        id: "RULE88"
+        summary: "Swarm CA certificates are rotated properly"
+        severity: "HIGH"
+      RULE89:
+        id: "RULE89"
+        summary: "Management plane traffic is separated from data traffic"
+        severity: "HIGH"
+      RULE90:
+        id: "RULE90"
+        summary: "The container host is hardened"
+        severity: "HIGH"
+      RULE91:
+        id: "RULE91"
+        summary: "Default ulimit values are configured appropriately"
+        severity: "MEDIUM"
+      RULE92:
+        id: "RULE92"
+        summary: "User namespace remapping is enabled"
+        severity: "MEDIUM"
+      RULE93:
+        id: "RULE93"
+        summary: "Default cgroup usage is confirmed"
+        severity: "MEDIUM"
+      RULE94:
+        id: "RULE94"
+        summary: "The device base size is not changed unless necessary"
+        severity: "MEDIUM"
+      RULE95:
+        id: "RULE95"
+        summary: "Setuid and setgid bits are removed where not required"
+        severity: "MEDIUM"
+      RULE96:
+        id: "RULE96"
+        summary: "Only trusted packages are installed in images"
+        severity: "MEDIUM"
+      RULE97:
+        id: "RULE97"
+        summary: "Signed artifacts are verified before use"
+        severity: "MEDIUM"
+      RULE98:
+        id: "RULE98"
+        summary: "Only necessary ports are published on containers"
+        severity: "MEDIUM"
+
+  tasks:
+    - name: "Run Docker CRE audit script (same checks as profile package)"
+      ansible.builtin.script: Docker.sh
+      args:
+        executable: /bin/bash
+      register: docker_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        docker_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in docker_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = docker_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        docker_pass_count: >-
+          {{ docker_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        docker_fail_count: >-
+          {{ docker_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        docker_total_count: "{{ docker_compliance_lines | default([]) | length }}"
+
+    - name: "Docker CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: Docker_CRE_NUP(1.3.0)_AI
+          script: Docker.sh
+          total: "{{ docker_total_count }}"
+          passed: "{{ docker_pass_count }}"
+          failed: "{{ docker_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ docker_compliance_lines | default([]) }}"
+          script_rc: "{{ docker_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (docker_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from Docker.sh output.
+          rc={{ docker_audit_raw.rc | default('n/a') }}
+          stderr={{ docker_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (docker_fail_count | int) == 0
+        fail_msg: >-
+          Docker CRE audit found {{ docker_fail_count }} failed check(s)
+          out of {{ docker_total_count }}.
+        success_msg: >-
+          Docker CRE audit passed {{ docker_pass_count }}/{{ docker_total_count }} checks.
+      when: docker_fail_on_noncompliance | bool
+

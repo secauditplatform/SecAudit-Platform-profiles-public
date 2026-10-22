@@ -1,0 +1,602 @@
+---
+- name: "Kubernetes CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    kubernetes_fail_on_noncompliance: false
+    kubernetes_strict_os_check: false
+    kubernetes_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "Permissions on the API server pod specification file are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE2:
+        id: "RULE2"
+        summary: "Ownership of the API server pod specification file is set to root:root"
+        severity: "HIGH"
+      RULE3:
+        id: "RULE3"
+        summary: "Permissions on the controller manager pod specification file are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE4:
+        id: "RULE4"
+        summary: "Ownership of the controller manager pod specification file is set to root:root"
+        severity: "HIGH"
+      RULE5:
+        id: "RULE5"
+        summary: "Permissions on the scheduler pod specification file are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE6:
+        id: "RULE6"
+        summary: "Ownership of the scheduler pod specification file is set to root:root"
+        severity: "HIGH"
+      RULE7:
+        id: "RULE7"
+        summary: "Permissions on the etcd pod specification file are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE8:
+        id: "RULE8"
+        summary: "Ownership of the etcd pod specification file is set to root:root"
+        severity: "HIGH"
+      RULE9:
+        id: "RULE9"
+        summary: "Permissions on Container Network Interface (CNI) files are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE10:
+        id: "RULE10"
+        summary: "Ownership of Container Network Interface (CNI) files is set to root:root"
+        severity: "HIGH"
+      RULE11:
+        id: "RULE11"
+        summary: "Permissions on the etcd data directory are set to 700 or more restrictive"
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "Ownership of the etcd data directory is set to etcd:etcd"
+        severity: "HIGH"
+      RULE13:
+        id: "RULE13"
+        summary: "Permissions on default administrator kubeconfig files are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "Ownership of default administrator kubeconfig files is set to root:root"
+        severity: "HIGH"
+      RULE15:
+        id: "RULE15"
+        summary: "Permissions on scheduler.conf are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE16:
+        id: "RULE16"
+        summary: "Ownership of scheduler.conf is set to root:root"
+        severity: "HIGH"
+      RULE17:
+        id: "RULE17"
+        summary: "Permissions on controller-manager.conf are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "Ownership of controller-manager.conf is set to root:root"
+        severity: "HIGH"
+      RULE19:
+        id: "RULE19"
+        summary: "Ownership of the Kubernetes PKI directory and files is set to root:root"
+        severity: "HIGH"
+      RULE20:
+        id: "RULE20"
+        summary: "Permissions on Kubernetes PKI certificate files are set to 600 or more restrictive"
+        severity: "MEDIUM"
+      RULE21:
+        id: "RULE21"
+        summary: "Permissions on Kubernetes PKI key files are set to 600"
+        severity: "MEDIUM"
+      RULE22:
+        id: "RULE22"
+        summary: "The API server --anonymous-auth argument is set to false"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "The API server --token-auth-file argument is not set"
+        severity: "MEDIUM"
+      RULE24:
+        id: "RULE24"
+        summary: "The DenyServiceExternalIPs admission controller is enabled"
+        severity: "HIGH"
+      RULE25:
+        id: "RULE25"
+        summary: "The API server --kubelet-client-certificate and --kubelet-client-key arguments are set"
+        severity: "MEDIUM"
+      RULE26:
+        id: "RULE26"
+        summary: "The API server --kubelet-certificate-authority argument is set"
+        severity: "MEDIUM"
+      RULE27:
+        id: "RULE27"
+        summary: "The API server --authorization-mode argument is not set to AlwaysAllow"
+        severity: "HIGH"
+      RULE28:
+        id: "RULE28"
+        summary: "The API server --authorization-mode argument includes Node"
+        severity: "MEDIUM"
+      RULE29:
+        id: "RULE29"
+        summary: "The API server --authorization-mode argument includes RBAC"
+        severity: "MEDIUM"
+      RULE30:
+        id: "RULE30"
+        summary: "The EventRateLimit admission control plugin is enabled"
+        severity: "MEDIUM"
+      RULE31:
+        id: "RULE31"
+        summary: "The AlwaysAdmit admission control plugin is not enabled"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "The AlwaysPullImages admission control plugin is enabled"
+        severity: "MEDIUM"
+      RULE33:
+        id: "RULE33"
+        summary: "The ServiceAccount admission control plugin is enabled"
+        severity: "MEDIUM"
+      RULE34:
+        id: "RULE34"
+        summary: "The NamespaceLifecycle admission control plugin is enabled"
+        severity: "MEDIUM"
+      RULE35:
+        id: "RULE35"
+        summary: "The NodeRestriction admission control plugin is enabled"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "The API server --profiling argument is set to false"
+        severity: "MEDIUM"
+      RULE37:
+        id: "RULE37"
+        summary: "The API server --audit-log-path argument is set"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "The API server --audit-log-maxage argument is set to 30 or an appropriate value"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "The API server --audit-log-maxbackup argument is set to 10 or an appropriate value"
+        severity: "LOW"
+      RULE40:
+        id: "RULE40"
+        summary: "The API server --audit-log-maxsize argument is set to 100 or an appropriate value"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "The API server --request-timeout argument is set appropriately"
+        severity: "LOW"
+      RULE42:
+        id: "RULE42"
+        summary: "The API server --service-account-lookup argument is set to true"
+        severity: "MEDIUM"
+      RULE43:
+        id: "RULE43"
+        summary: "The API server --service-account-key-file argument is set"
+        severity: "MEDIUM"
+      RULE44:
+        id: "RULE44"
+        summary: "The API server --etcd-certfile and --etcd-keyfile arguments are set"
+        severity: "MEDIUM"
+      RULE45:
+        id: "RULE45"
+        summary: "The API server --tls-cert-file and --tls-private-key-file arguments are set"
+        severity: "MEDIUM"
+      RULE46:
+        id: "RULE46"
+        summary: "The API server --client-ca-file argument is set"
+        severity: "HIGH"
+      RULE47:
+        id: "RULE47"
+        summary: "The API server --etcd-cafile argument is set"
+        severity: "HIGH"
+      RULE48:
+        id: "RULE48"
+        summary: "The API server --encryption-provider-config argument is set"
+        severity: "HIGH"
+      RULE49:
+        id: "RULE49"
+        summary: "Etcd encryption providers are configured appropriately"
+        severity: "HIGH"
+      RULE50:
+        id: "RULE50"
+        summary: "The API server uses only strong cryptographic ciphers"
+        severity: "HIGH"
+      RULE51:
+        id: "RULE51"
+        summary: "The controller manager --terminated-pod-gc-threshold argument is set appropriately"
+        severity: "LOW"
+      RULE52:
+        id: "RULE52"
+        summary: "The controller manager --profiling argument is set to false"
+        severity: "LOW"
+      RULE53:
+        id: "RULE53"
+        summary: "The controller manager --use-service-account-credentials argument is set to true"
+        severity: "MEDIUM"
+      RULE54:
+        id: "RULE54"
+        summary: "The controller manager --service-account-private-key-file argument is set"
+        severity: "MEDIUM"
+      RULE55:
+        id: "RULE55"
+        summary: "The controller manager --root-ca-file argument is set"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "The controller manager RotateKubeletServerCertificate argument is set to true"
+        severity: "MEDIUM"
+      RULE57:
+        id: "RULE57"
+        summary: "The controller manager --bind-address argument is set to 127.0.0.1"
+        severity: "HIGH"
+      RULE58:
+        id: "RULE58"
+        summary: "The scheduler --profiling argument is set to false"
+        severity: "LOW"
+      RULE59:
+        id: "RULE59"
+        summary: "The scheduler --bind-address argument is set to 127.0.0.1"
+        severity: "HIGH"
+      RULE60:
+        id: "RULE60"
+        summary: "The API server --anonymous-auth argument is set to false"
+        severity: "HIGH"
+      RULE61:
+        id: "RULE61"
+        summary: "The API server --token-auth-file argument is not set"
+        severity: "MEDIUM"
+      RULE62:
+        id: "RULE62"
+        summary: "The DenyServiceExternalIPs admission controller is enabled"
+        severity: "HIGH"
+      RULE63:
+        id: "RULE63"
+        summary: "The API server --kubelet-client-certificate and --kubelet-client-key arguments are set"
+        severity: "HIGH"
+      RULE64:
+        id: "RULE64"
+        summary: "The API server --kubelet-certificate-authority argument is set"
+        severity: "MEDIUM"
+      RULE65:
+        id: "RULE65"
+        summary: "The API server --authorization-mode argument is not set to AlwaysAllow"
+        severity: "MEDIUM"
+      RULE66:
+        id: "RULE66"
+        summary: "The API server --authorization-mode argument includes Node"
+        severity: "MEDIUM"
+      RULE67:
+        id: "RULE67"
+        summary: "Client certificate authentication is not used for end users"
+        severity: "MEDIUM"
+      RULE68:
+        id: "RULE68"
+        summary: "Service account token authentication is not used for end users"
+        severity: "MEDIUM"
+      RULE69:
+        id: "RULE69"
+        summary: "Bootstrap token authentication is not used for end users"
+        severity: "MEDIUM"
+      RULE70:
+        id: "RULE70"
+        summary: "A minimal audit policy is configured"
+        severity: "MEDIUM"
+      RULE71:
+        id: "RULE71"
+        summary: "The audit policy covers key security concerns"
+        severity: "MEDIUM"
+      RULE72:
+        id: "RULE72"
+        summary: "Permissions on the kubelet service file are set to 600 or more restrictive"
+        severity: "HIGH"
+      RULE73:
+        id: "RULE73"
+        summary: "Ownership of the kubelet service file is set to root:root"
+        severity: "HIGH"
+      RULE74:
+        id: "RULE74"
+        summary: "Permissions on the kube-proxy kubeconfig file are set to 600 or more restrictive if present"
+        severity: "MEDIUM"
+      RULE75:
+        id: "RULE75"
+        summary: "Ownership of the kube-proxy kubeconfig file is set to root:root if present"
+        severity: "MEDIUM"
+      RULE76:
+        id: "RULE76"
+        summary: "Permissions on the kubelet kubeconfig file are set to 600 or more restrictive"
+        severity: "HIGH"
+      RULE77:
+        id: "RULE77"
+        summary: "Ownership of the kubelet kubeconfig file is set to root:root"
+        severity: "HIGH"
+      RULE78:
+        id: "RULE78"
+        summary: "Permissions on the kubelet client CA file are set to 600 or more restrictive"
+        severity: "HIGH"
+      RULE79:
+        id: "RULE79"
+        summary: "Ownership of the kubelet client CA file is set to root:root"
+        severity: "HIGH"
+      RULE80:
+        id: "RULE80"
+        summary: "Permissions on the kubelet config.yaml file are set to 600 or more restrictive if used"
+        severity: "HIGH"
+      RULE81:
+        id: "RULE81"
+        summary: "Ownership of the kubelet config.yaml file is set to root:root if used"
+        severity: "HIGH"
+      RULE82:
+        id: "RULE82"
+        summary: "The kubelet --anonymous-auth argument is set to false"
+        severity: "HIGH"
+      RULE83:
+        id: "RULE83"
+        summary: "The kubelet --authorization-mode argument is not set to AlwaysAllow"
+        severity: "HIGH"
+      RULE84:
+        id: "RULE84"
+        summary: "The kubelet --client-ca-file argument is set"
+        severity: "HIGH"
+      RULE85:
+        id: "RULE85"
+        summary: "The kubelet --read-only-port argument is set to 0"
+        severity: "HIGH"
+      RULE86:
+        id: "RULE86"
+        summary: "The kubelet --streaming-connection-idle-timeout argument is not set to 0"
+        severity: "HIGH"
+      RULE87:
+        id: "RULE87"
+        summary: "The kubelet --make-iptables-util-chains argument is set to true"
+        severity: "HIGH"
+      RULE88:
+        id: "RULE88"
+        summary: "The kubelet --hostname-override argument is not set"
+        severity: "MEDIUM"
+      RULE89:
+        id: "RULE89"
+        summary: "The kubelet eventRecordQPS argument is set to provide appropriate event capture"
+        severity: "MEDIUM"
+      RULE90:
+        id: "RULE90"
+        summary: "The kubelet --tls-cert-file and --tls-private-key-file arguments are set"
+        severity: "HIGH"
+      RULE91:
+        id: "RULE91"
+        summary: "The kubelet --rotate-certificates argument is not set to false"
+        severity: "HIGH"
+      RULE92:
+        id: "RULE92"
+        summary: "The kubelet RotateKubeletServerCertificate argument is set to true"
+        severity: "HIGH"
+      RULE93:
+        id: "RULE93"
+        summary: "The kubelet uses only strong cryptographic ciphers"
+        severity: "HIGH"
+      RULE94:
+        id: "RULE94"
+        summary: "A limit is set for pod PIDs"
+        severity: "MEDIUM"
+      RULE95:
+        id: "RULE95"
+        summary: "The kube-proxy metrics service is bound to localhost"
+        severity: "HIGH"
+      RULE96:
+        id: "RULE96"
+        summary: "The cluster-admin role is used only where required"
+        severity: "HIGH"
+      RULE97:
+        id: "RULE97"
+        summary: "Minimize access to Secrets"
+        severity: "HIGH"
+      RULE98:
+        id: "RULE98"
+        summary: "Minimize use of wildcards in Roles and ClusterRoles"
+        severity: "HIGH"
+      RULE99:
+        id: "RULE99"
+        summary: "Minimize access to create pods"
+        severity: "HIGH"
+      RULE100:
+        id: "RULE100"
+        summary: "Default service accounts are not actively used"
+        severity: "HIGH"
+      RULE101:
+        id: "RULE101"
+        summary: "Service account tokens are mounted only where required"
+        severity: "HIGH"
+      RULE102:
+        id: "RULE102"
+        summary: "Avoid using the system:masters group"
+        severity: "HIGH"
+      RULE103:
+        id: "RULE103"
+        summary: "Restrict use of bind, impersonate, and escalate permissions"
+        severity: "HIGH"
+      RULE104:
+        id: "RULE104"
+        summary: "Minimize access to create PersistentVolumes"
+        severity: "HIGH"
+      RULE105:
+        id: "RULE105"
+        summary: "Minimize access to the nodes/proxy subresource"
+        severity: "HIGH"
+      RULE106:
+        id: "RULE106"
+        summary: "Minimize access to the certificatesigningrequests approval subresource"
+        severity: "HIGH"
+      RULE107:
+        id: "RULE107"
+        summary: "Minimize access to webhook configuration objects"
+        severity: "HIGH"
+      RULE108:
+        id: "RULE108"
+        summary: "Minimize access to service account token creation"
+        severity: "HIGH"
+      RULE109:
+        id: "RULE109"
+        summary: "The cluster has at least one active policy control mechanism"
+        severity: "HIGH"
+      RULE110:
+        id: "RULE110"
+        summary: "Minimize admission of privileged containers"
+        severity: "HIGH"
+      RULE111:
+        id: "RULE111"
+        summary: "Minimize admission of containers that share the host PID namespace"
+        severity: "HIGH"
+      RULE112:
+        id: "RULE112"
+        summary: "Minimize admission of containers that share the host IPC namespace"
+        severity: "HIGH"
+      RULE113:
+        id: "RULE113"
+        summary: "Minimize admission of containers that share the host network namespace"
+        severity: "HIGH"
+      RULE114:
+        id: "RULE114"
+        summary: "Minimize admission of containers with allowPrivilegeEscalation"
+        severity: "HIGH"
+      RULE115:
+        id: "RULE115"
+        summary: "Minimize admission of containers that run as root"
+        severity: "HIGH"
+      RULE116:
+        id: "RULE116"
+        summary: "Minimize admission of containers with the NET_RAW capability"
+        severity: "HIGH"
+      RULE117:
+        id: "RULE117"
+        summary: "Minimize admission of containers with capabilities beyond the default set"
+        severity: "HIGH"
+      RULE118:
+        id: "RULE118"
+        summary: "Minimize admission of containers with assigned capabilities"
+        severity: "HIGH"
+      RULE119:
+        id: "RULE119"
+        summary: "Minimize admission of Windows containers that share host processes"
+        severity: "HIGH"
+      RULE120:
+        id: "RULE120"
+        summary: "Minimize admission of containers that use HostPath volumes"
+        severity: "HIGH"
+      RULE121:
+        id: "RULE121"
+        summary: "Minimize admission of containers that use HostPorts"
+        severity: "HIGH"
+      RULE122:
+        id: "RULE122"
+        summary: "The CNI in use supports NetworkPolicies"
+        severity: "HIGH"
+      RULE123:
+        id: "RULE123"
+        summary: "NetworkPolicies are defined for all namespaces"
+        severity: "HIGH"
+      RULE124:
+        id: "RULE124"
+        summary: "Prefer Secrets as files over Secrets as environment variables"
+        severity: "HIGH"
+      RULE125:
+        id: "RULE125"
+        summary: "Consider using an external secrets store"
+        severity: "HIGH"
+      RULE126:
+        id: "RULE126"
+        summary: "Configure image provenance using the ImagePolicyWebhook admission controller"
+        severity: "HIGH"
+      RULE127:
+        id: "RULE127"
+        summary: "Create administrative boundaries between resources using namespaces"
+        severity: "HIGH"
+      RULE128:
+        id: "RULE128"
+        summary: "A seccomp profile is set in pod definitions"
+        severity: "HIGH"
+      RULE129:
+        id: "RULE129"
+        summary: "Apply a SecurityContext to pods and containers"
+        severity: "HIGH"
+      RULE130:
+        id: "RULE130"
+        summary: "Do not use the default namespace for workloads"
+        severity: "HIGH"
+
+  tasks:
+    - name: "Run Kubernetes CRE audit script (same checks as profile package)"
+      ansible.builtin.script: Kubernetes.sh
+      args:
+        executable: /bin/bash
+      register: kubernetes_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        kubernetes_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in kubernetes_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = kubernetes_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        kubernetes_pass_count: >-
+          {{ kubernetes_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        kubernetes_fail_count: >-
+          {{ kubernetes_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        kubernetes_total_count: "{{ kubernetes_compliance_lines | default([]) | length }}"
+
+    - name: "Kubernetes CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: Kubernetes_CRE_NUP(1.3.0)_AI
+          script: Kubernetes.sh
+          total: "{{ kubernetes_total_count }}"
+          passed: "{{ kubernetes_pass_count }}"
+          failed: "{{ kubernetes_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ kubernetes_compliance_lines | default([]) }}"
+          script_rc: "{{ kubernetes_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (kubernetes_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from Kubernetes.sh output.
+          rc={{ kubernetes_audit_raw.rc | default('n/a') }}
+          stderr={{ kubernetes_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (kubernetes_fail_count | int) == 0
+        fail_msg: >-
+          Kubernetes CRE audit found {{ kubernetes_fail_count }} failed check(s)
+          out of {{ kubernetes_total_count }}.
+        success_msg: >-
+          Kubernetes CRE audit passed {{ kubernetes_pass_count }}/{{ kubernetes_total_count }} checks.
+      when: kubernetes_fail_on_noncompliance | bool
+

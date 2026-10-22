@@ -1,0 +1,305 @@
+---
+- name: "Bind9 CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    bind9_fail_on_noncompliance: false
+    bind9_strict_os_check: false
+    bind9_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "The primary name server limits concurrent zone transfers to authorized secondary name servers"
+        severity: "HIGH"
+      RULE2:
+        id: "RULE2"
+        summary: "The secondary name server limits the number of zones requested from a single primary name server"
+        severity: "HIGH"
+      RULE3:
+        id: "RULE3"
+        summary: "The secondary name server limits the total number of zones requested at one time"
+        severity: "HIGH"
+      RULE4:
+        id: "RULE4"
+        summary: "The name server limits simultaneous client connections for allowed dynamic update clients"
+        severity: "HIGH"
+      RULE5:
+        id: "RULE5"
+        summary: "The print-severity logging option generates audit records that identify event types"
+        severity: "HIGH"
+      RULE6:
+        id: "RULE6"
+        summary: "The print-time logging option records the date and time of events"
+        severity: "HIGH"
+      RULE7:
+        id: "RULE7"
+        summary: "The print-category logging option records which process category generated events"
+        severity: "HIGH"
+      RULE8:
+        id: "RULE8"
+        summary: "The name server is configured to audit DNS components by selectable criteria and record security-relevant outcomes"
+        severity: "MEDIUM"
+      RULE9:
+        id: "RULE9"
+        summary: "The ZSK private key is the only DNSSEC private key stored on name servers that support dynamic updates"
+        severity: "HIGH"
+      RULE10:
+        id: "RULE10"
+        summary: "KSK signature generation is performed offline with the KSK private key stored offline"
+        severity: "HIGH"
+      RULE11:
+        id: "RULE11"
+        summary: "The key file used by the name server is owned by the account running the name server software"
+        severity: "HIGH"
+      RULE12:
+        id: "RULE12"
+        summary: "Read and write access to the TSIG key file is restricted to the account running the name server software"
+        severity: "HIGH"
+      RULE13:
+        id: "RULE13"
+        summary: "A unique TSIG key is generated for each pair of communicating hosts"
+        severity: "HIGH"
+      RULE14:
+        id: "RULE14"
+        summary: "TSIG keys used by the name server are owned by a privileged account"
+        severity: "HIGH"
+      RULE15:
+        id: "RULE15"
+        summary: "TSIG keys used by the name server are group-owned by a privileged account"
+        severity: "HIGH"
+      RULE16:
+        id: "RULE16"
+        summary: "Split-zone resource records for external and internal hosts are maintained in separate datasets"
+        severity: "HIGH"
+      RULE17:
+        id: "RULE17"
+        summary: "The internal name server in a split DNS configuration is unreachable by external resolvers"
+        severity: "HIGH"
+      RULE18:
+        id: "RULE18"
+        summary: "The external name server in a split DNS configuration is unreachable by internal resolvers"
+        severity: "HIGH"
+      RULE19:
+        id: "RULE19"
+        summary: "The hidden primary authoritative name server IP address does not appear in the zone NS set"
+        severity: "HIGH"
+      RULE20:
+        id: "RULE20"
+        summary: "NSEC3 is used for all internal DNSSEC-signed zones"
+        severity: "HIGH"
+      RULE21:
+        id: "RULE21"
+        summary: "ZSK and KSK private keys are not stored on DNSSEC primary servers that do not support dynamic updates"
+        severity: "MEDIUM"
+      RULE22:
+        id: "RULE22"
+        summary: "Dnssec-keygen output files are owned by root or deleted after installation into the name server key file"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "Dnssec-keygen output files are group-owned by the name server administrator account or deleted after installation"
+        severity: "HIGH"
+      RULE24:
+        id: "RULE24"
+        summary: "Dnssec-keygen key file permissions grant read-only access to the owner and deny access to all others"
+        severity: "HIGH"
+      RULE25:
+        id: "RULE25"
+        summary: "The ZSK private key on servers that accept dynamic updates is owned by root"
+        severity: "HIGH"
+      RULE26:
+        id: "RULE26"
+        summary: "The ZSK private key on servers that accept dynamic updates is group-owned by root"
+        severity: "HIGH"
+      RULE27:
+        id: "RULE27"
+        summary: "Secondary name servers initiate zone update notifications to other authoritative name servers"
+        severity: "HIGH"
+      RULE28:
+        id: "RULE28"
+        summary: "Recursion is disabled on authoritative name servers"
+        severity: "HIGH"
+      RULE29:
+        id: "RULE29"
+        summary: "Primary name servers notify authorized secondary name servers when zone files are updated"
+        severity: "HIGH"
+      RULE30:
+        id: "RULE30"
+        summary: "All root name servers listed in the local root hints file are valid"
+        severity: "MEDIUM"
+      RULE31:
+        id: "RULE31"
+        summary: "Root hints on authoritative name servers are empty or removed"
+        severity: "HIGH"
+      RULE32:
+        id: "RULE32"
+        summary: "Authoritative name servers accept zone transfer requests only from specified secondary name servers"
+        severity: "HIGH"
+      RULE33:
+        id: "RULE33"
+        summary: "The name server implementation separates internal and external DNS roles"
+        severity: "HIGH"
+      RULE34:
+        id: "RULE34"
+        summary: "Outbound DNS messages are sent from a random ephemeral port"
+        severity: "HIGH"
+      RULE35:
+        id: "RULE35"
+        summary: "The host running the name server uses a dedicated management interface"
+        severity: "HIGH"
+      RULE36:
+        id: "RULE36"
+        summary: "Primary name server configuration and zone files are group-owned by a DNS administration group"
+        severity: "HIGH"
+      RULE37:
+        id: "RULE37"
+        summary: "Name server core files are owned by root or the name server process account"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "Name server software is started with restricted privileges"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "TSIG and DNSSEC keys are not used for more than one year"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "Permissions on primary name server files follow least privilege"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "The host running the name server applies a firewall rule set that restricts DNS interface traffic"
+        severity: "MEDIUM"
+      RULE42:
+        id: "RULE42"
+        summary: "The name server protects DNS data integrity and authenticity with DNSSEC"
+        severity: "MEDIUM"
+      RULE43:
+        id: "RULE43"
+        summary: "Log records are generated for authentication failures, signed-transfer anomalies, service start and stop, and other name server events"
+        severity: "HIGH"
+      RULE44:
+        id: "RULE44"
+        summary: "The name server uses only approved ports and protocols"
+        severity: "HIGH"
+      RULE45:
+        id: "RULE45"
+        summary: "The name server uniquely authenticates peers before zone transfers or dynamic updates"
+        severity: "HIGH"
+      RULE46:
+        id: "RULE46"
+        summary: "Separate TSIG key pairs protect transactions between each pair of servers"
+        severity: "HIGH"
+      RULE47:
+        id: "RULE47"
+        summary: "The name server runs in a chroot directory structure"
+        severity: "MEDIUM"
+      RULE48:
+        id: "RULE48"
+        summary: "Caching name servers restrict recursive queries to known supported clients"
+        severity: "HIGH"
+      RULE49:
+        id: "RULE49"
+        summary: "The name server manages capacity and redundancy to limit denial-of-service impact from query flooding"
+        severity: "HIGH"
+      RULE50:
+        id: "RULE50"
+        summary: "DNSSEC key file permissions grant read-only access to the owner and deny access to all others"
+        severity: "HIGH"
+      RULE51:
+        id: "RULE51"
+        summary: "DNSSEC keys used by the implementation are owned by a privileged account"
+        severity: "MEDIUM"
+      RULE52:
+        id: "RULE52"
+        summary: "DNSSEC keys used by the implementation are group-owned by a privileged account"
+        severity: "HIGH"
+      RULE53:
+        id: "RULE53"
+        summary: "The name server retains at least three versions of the local log file"
+        severity: "HIGH"
+      RULE54:
+        id: "RULE54"
+        summary: "The name server is configured with a channel that writes audit records to a local file"
+        severity: "MEDIUM"
+      RULE55:
+        id: "RULE55"
+        summary: "The name server is configured with a channel that sends audit records to a remote syslog"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "Mutually authenticated sessions protect zone transfers and other server-to-server DNS transactions"
+        severity: "HIGH"
+
+  tasks:
+    - name: "Run Bind9 CRE audit script (same checks as profile package)"
+      ansible.builtin.script: Bind9.sh
+      args:
+        executable: /bin/bash
+      register: bind9_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        bind9_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in bind9_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = bind9_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        bind9_pass_count: >-
+          {{ bind9_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        bind9_fail_count: >-
+          {{ bind9_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        bind9_total_count: "{{ bind9_compliance_lines | default([]) | length }}"
+
+    - name: "Bind9 CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: Bind9_CRE_NUP(1.3.0)
+          script: Bind9.sh
+          total: "{{ bind9_total_count }}"
+          passed: "{{ bind9_pass_count }}"
+          failed: "{{ bind9_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ bind9_compliance_lines | default([]) }}"
+          script_rc: "{{ bind9_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (bind9_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from Bind9.sh output.
+          rc={{ bind9_audit_raw.rc | default('n/a') }}
+          stderr={{ bind9_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (bind9_fail_count | int) == 0
+        fail_msg: >-
+          Bind9 CRE audit found {{ bind9_fail_count }} failed check(s)
+          out of {{ bind9_total_count }}.
+        success_msg: >-
+          Bind9 CRE audit passed {{ bind9_pass_count }}/{{ bind9_total_count }} checks.
+      when: bind9_fail_on_noncompliance | bool
+

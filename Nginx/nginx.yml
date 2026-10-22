@@ -1,0 +1,346 @@
+---
+- name: "Nginx CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    nginx_fail_on_noncompliance: false
+    nginx_strict_os_check: false
+    nginx_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "The HTTP WebDAV module is not installed"
+        severity: "HIGH"
+      RULE2:
+        id: "RULE2"
+        summary: "Gzip feature modules are disabled"
+        severity: "MEDIUM"
+      RULE3:
+        id: "RULE3"
+        summary: "The autoindex module is disabled in nginx.conf"
+        severity: "MEDIUM"
+      RULE4:
+        id: "RULE4"
+        summary: "The autoindex module is disabled in included configurations"
+        severity: "MEDIUM"
+      RULE5:
+        id: "RULE5"
+        summary: "NGINX is started from a dedicated unprivileged service account without sudo privileges"
+        severity: "MEDIUM"
+      RULE6:
+        id: "RULE6"
+        summary: "The NGINX worker process account exists and is not root"
+        severity: "MEDIUM"
+      RULE7:
+        id: "RULE7"
+        summary: "The NGINX service account is locked"
+        severity: "HIGH"
+      RULE8:
+        id: "RULE8"
+        summary: "The NGINX service account has an invalid shell"
+        severity: "HIGH"
+      RULE9:
+        id: "RULE9"
+        summary: "NGINX directories and files are owned by root"
+        severity: "MEDIUM"
+      RULE10:
+        id: "RULE10"
+        summary: "Access to NGINX directories is restricted"
+        severity: "MEDIUM"
+      RULE11:
+        id: "RULE11"
+        summary: "Access to NGINX configuration files is restricted"
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "The NGINX PID file permissions are protected"
+        severity: "MEDIUM"
+      RULE13:
+        id: "RULE13"
+        summary: "The NGINX PID file is owned by root"
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "NGINX listens for network connections only on authorized ports"
+        severity: "HIGH"
+      RULE15:
+        id: "RULE15"
+        summary: "Requests for unknown hostnames are rejected at runtime"
+        severity: "HIGH"
+      RULE16:
+        id: "RULE16"
+        summary: "Requests for unknown hostnames are rejected in the catch-all configuration"
+        severity: "HIGH"
+      RULE17:
+        id: "RULE17"
+        summary: "Keepalive_timeout is 10 seconds or less and not zero"
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "Keepalive_timeout is greater than zero"
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "Send_timeout is 10 seconds or less and not zero"
+        severity: "MEDIUM"
+      RULE20:
+        id: "RULE20"
+        summary: "Send_timeout is greater than zero"
+        severity: "MEDIUM"
+      RULE21:
+        id: "RULE21"
+        summary: "The server_tokens directive is set to off"
+        severity: "MEDIUM"
+      RULE22:
+        id: "RULE22"
+        summary: "The default index.html page does not reference NGINX"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "The default 50x.html error page does not reference NGINX"
+        severity: "MEDIUM"
+      RULE24:
+        id: "RULE24"
+        summary: "Transfer of hidden files is disabled"
+        severity: "MEDIUM"
+      RULE25:
+        id: "RULE25"
+        summary: "The NGINX reverse proxy does not disclose the X-Powered-By header"
+        severity: "LOW"
+      RULE26:
+        id: "RULE26"
+        summary: "The NGINX reverse proxy does not disclose the upstream Server header"
+        severity: "LOW"
+      RULE27:
+        id: "RULE27"
+        summary: "Verbose access logging is enabled"
+        severity: "MEDIUM"
+      RULE28:
+        id: "RULE28"
+        summary: "Access logging is enabled"
+        severity: "HIGH"
+      RULE29:
+        id: "RULE29"
+        summary: "Error logging is enabled at the info level or higher"
+        severity: "HIGH"
+      RULE30:
+        id: "RULE30"
+        summary: "Log files are rotated on a defined schedule"
+        severity: "MEDIUM"
+      RULE31:
+        id: "RULE31"
+        summary: "Log rotation retains a defined number of archives"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "Error logs are sent to a remote syslog server"
+        severity: "HIGH"
+      RULE33:
+        id: "RULE33"
+        summary: "Access logs are sent to a remote syslog server"
+        severity: "HIGH"
+      RULE34:
+        id: "RULE34"
+        summary: "The NGINX reverse proxy is configured to forward client requests"
+        severity: "MEDIUM"
+      RULE35:
+        id: "RULE35"
+        summary: "Proxies forward the client address via X-Real-IP"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "Proxies forward the client address via X-Forwarded-For"
+        severity: "MEDIUM"
+      RULE37:
+        id: "RULE37"
+        summary: "A trusted certificate and trust chain are installed"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "Private key permissions are restricted"
+        severity: "HIGH"
+      RULE39:
+        id: "RULE39"
+        summary: "Only modern TLS protocols are enabled"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "Legacy TLS and SSL protocols are disabled"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "Weak ciphers are disabled in ssl_ciphers"
+        severity: "HIGH"
+      RULE42:
+        id: "RULE42"
+        summary: "Weak ciphers are disabled in proxy_ssl_ciphers"
+        severity: "HIGH"
+      RULE43:
+        id: "RULE43"
+        summary: "Custom Diffie-Hellman parameters are used"
+        severity: "HIGH"
+      RULE44:
+        id: "RULE44"
+        summary: "OCSP stapling is enabled"
+        severity: "MEDIUM"
+      RULE45:
+        id: "RULE45"
+        summary: "OCSP stapling verification is enabled"
+        severity: "MEDIUM"
+      RULE46:
+        id: "RULE46"
+        summary: "HTTP Strict Transport Security (HSTS) is enabled"
+        severity: "HIGH"
+      RULE47:
+        id: "RULE47"
+        summary: "Upstream server traffic is authenticated with a client certificate"
+        severity: "HIGH"
+      RULE48:
+        id: "RULE48"
+        summary: "The upstream server certificate is trusted via proxy_ssl_trusted_certificate"
+        severity: "MEDIUM"
+      RULE49:
+        id: "RULE49"
+        summary: "Upstream TLS certificate verification is enabled"
+        severity: "HIGH"
+      RULE50:
+        id: "RULE50"
+        summary: "TLS session tickets are disabled to preserve perfect forward secrecy"
+        severity: "MEDIUM"
+      RULE51:
+        id: "RULE51"
+        summary: "HTTP/2 is used"
+        severity: "MEDIUM"
+      RULE52:
+        id: "RULE52"
+        summary: "Only Perfect Forward Secrecy ciphers are used"
+        severity: "MEDIUM"
+      RULE53:
+        id: "RULE53"
+        summary: "Allow and deny filters restrict access to approved IP addresses"
+        severity: "MEDIUM"
+      RULE54:
+        id: "RULE54"
+        summary: "Deny filters block unauthorized IP addresses"
+        severity: "MEDIUM"
+      RULE55:
+        id: "RULE55"
+        summary: "Only approved HTTP methods are allowed"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "Client header and body read timeouts are set correctly"
+        severity: "MEDIUM"
+      RULE57:
+        id: "RULE57"
+        summary: "The maximum request body size is set correctly"
+        severity: "MEDIUM"
+      RULE58:
+        id: "RULE58"
+        summary: "The maximum URI buffer size is defined"
+        severity: "MEDIUM"
+      RULE59:
+        id: "RULE59"
+        summary: "Connections per IP address are limited with limit_conn_zone"
+        severity: "MEDIUM"
+      RULE60:
+        id: "RULE60"
+        summary: "Connections per IP address are limited with limit_conn"
+        severity: "MEDIUM"
+      RULE61:
+        id: "RULE61"
+        summary: "Per-IP rate limits are configured with limit_req_zone"
+        severity: "MEDIUM"
+      RULE62:
+        id: "RULE62"
+        summary: "Per-IP rate limits are configured with limit_req"
+        severity: "MEDIUM"
+      RULE63:
+        id: "RULE63"
+        summary: "The X-Frame-Options header is configured and enabled"
+        severity: "MEDIUM"
+      RULE64:
+        id: "RULE64"
+        summary: "The X-Content-Type-Options header is configured and enabled"
+        severity: "HIGH"
+      RULE65:
+        id: "RULE65"
+        summary: "Content-Security-Policy is enabled and configured correctly"
+        severity: "HIGH"
+      RULE66:
+        id: "RULE66"
+        summary: "Referrer-Policy is enabled and configured correctly"
+        severity: "MEDIUM"
+
+  tasks:
+    - name: "Run Nginx CRE audit script (same checks as profile package)"
+      ansible.builtin.script: nginx.sh
+      args:
+        executable: /bin/bash
+      register: nginx_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        nginx_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in nginx_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = nginx_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        nginx_pass_count: >-
+          {{ nginx_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        nginx_fail_count: >-
+          {{ nginx_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        nginx_total_count: "{{ nginx_lines | default([]) | length }}"
+
+    - name: "Nginx CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: Nginx_CRE_NUP_AI
+          script: nginx.sh
+          total: "{{ nginx_total_count }}"
+          passed: "{{ nginx_pass_count }}"
+          failed: "{{ nginx_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ nginx_lines | default([]) }}"
+          script_rc: "{{ nginx_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (nginx_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from nginx.sh output.
+          rc={{ nginx_audit_raw.rc | default('n/a') }}
+          stderr={{ nginx_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (nginx_fail_count | int) == 0
+        fail_msg: >-
+          Nginx CRE audit found {{ nginx_fail_count }} failed check(s)
+          out of {{ nginx_total_count }}.
+        success_msg: >-
+          Nginx CRE audit passed {{ nginx_pass_count }}/{{ nginx_total_count }} checks.
+      when: nginx_fail_on_noncompliance | bool
+

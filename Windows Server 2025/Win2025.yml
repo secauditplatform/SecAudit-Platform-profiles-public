@@ -1,0 +1,1515 @@
+---
+- name: "Microsoft Windows Server 2025 Standard CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  vars:
+    win2025_fail_on_noncompliance: false
+    win2025_strict_os_check: true
+    win2025_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "Password history size is configured"
+        severity: "HIGH"
+      RULE2:
+        id: "RULE2"
+        summary: "Maximum password age is configured"
+        severity: "HIGH"
+      RULE3:
+        id: "RULE3"
+        summary: "Minimum password age is configured"
+        severity: "LOW"
+      RULE4:
+        id: "RULE4"
+        summary: "Minimum password length is configured"
+        severity: "MEDIUM"
+      RULE5:
+        id: "RULE5"
+        summary: "Password complexity requirements are enabled"
+        severity: "HIGH"
+      RULE7:
+        id: "RULE7"
+        summary: "Account lockout duration is configured"
+        severity: "MEDIUM"
+      RULE8:
+        id: "RULE8"
+        summary: "Account lockout threshold is configured"
+        severity: "HIGH"
+      RULE9:
+        id: "RULE9"
+        summary: "Reset account lockout counter is configured"
+        severity: "LOW"
+      RULE10:
+        id: "RULE10"
+        summary: "Access Credential Manager as a trusted caller is restricted"
+        severity: "LOW"
+      RULE11:
+        id: "RULE11"
+        summary: "Access this computer from the network is restricted"
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "Act as part of the operating system is restricted"
+        severity: "HIGH"
+      RULE13:
+        id: "RULE13"
+        summary: "Adjust memory quotas for a process is restricted"
+        severity: "HIGH"
+      RULE14:
+        id: "RULE14"
+        summary: "Allow log on locally is restricted"
+        severity: "MEDIUM"
+      RULE15:
+        id: "RULE15"
+        summary: "Allow log on through Remote Desktop Services is restricted"
+        severity: "HIGH"
+      RULE16:
+        id: "RULE16"
+        summary: "Back up files and directories is restricted"
+        severity: "LOW"
+      RULE17:
+        id: "RULE17"
+        summary: "Change the system time is restricted"
+        severity: "HIGH"
+      RULE18:
+        id: "RULE18"
+        summary: "Change the time zone is restricted"
+        severity: "HIGH"
+      RULE19:
+        id: "RULE19"
+        summary: "Create a pagefile is restricted"
+        severity: "HIGH"
+      RULE20:
+        id: "RULE20"
+        summary: "Create a token object is restricted"
+        severity: "HIGH"
+      RULE21:
+        id: "RULE21"
+        summary: "Create global objects is restricted"
+        severity: "HIGH"
+      RULE22:
+        id: "RULE22"
+        summary: "Create permanent shared objects is restricted"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "Create symbolic links is restricted"
+        severity: "HIGH"
+      RULE24:
+        id: "RULE24"
+        summary: "Debug programs is restricted"
+        severity: "HIGH"
+      RULE25:
+        id: "RULE25"
+        summary: "Deny access to this computer from the network is configured"
+        severity: "HIGH"
+      RULE26:
+        id: "RULE26"
+        summary: "Deny log on as a batch job is configured"
+        severity: "HIGH"
+      RULE27:
+        id: "RULE27"
+        summary: "Deny log on as a service is configured"
+        severity: "HIGH"
+      RULE28:
+        id: "RULE28"
+        summary: "Deny log on locally is configured"
+        severity: "HIGH"
+      RULE30:
+        id: "RULE30"
+        summary: "Enable computer and user accounts to be trusted for delegation is restricted"
+        severity: "HIGH"
+      RULE31:
+        id: "RULE31"
+        summary: "Force shutdown from a remote system is restricted"
+        severity: "HIGH"
+      RULE32:
+        id: "RULE32"
+        summary: "Generate security audits is restricted"
+        severity: "MEDIUM"
+      RULE33:
+        id: "RULE33"
+        summary: "Impersonate a client after authentication is restricted"
+        severity: "HIGH"
+      RULE34:
+        id: "RULE34"
+        summary: "Increase scheduling priority is restricted"
+        severity: "HIGH"
+      RULE35:
+        id: "RULE35"
+        summary: "Load and unload device drivers is restricted"
+        severity: "HIGH"
+      RULE36:
+        id: "RULE36"
+        summary: "Lock pages in memory is restricted"
+        severity: "HIGH"
+      RULE37:
+        id: "RULE37"
+        summary: "Log on as a batch job is restricted"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "Manage auditing and security log is restricted"
+        severity: "HIGH"
+      RULE40:
+        id: "RULE40"
+        summary: "Modify an object label is restricted"
+        severity: "HIGH"
+      RULE41:
+        id: "RULE41"
+        summary: "Modify firmware environment values is restricted"
+        severity: "HIGH"
+      RULE42:
+        id: "RULE42"
+        summary: "Perform volume maintenance tasks is restricted"
+        severity: "HIGH"
+      RULE43:
+        id: "RULE43"
+        summary: "Profile single process is restricted"
+        severity: "HIGH"
+      RULE45:
+        id: "RULE45"
+        summary: "Replace a process level token is restricted"
+        severity: "HIGH"
+      RULE46:
+        id: "RULE46"
+        summary: "Restore files and directories is restricted"
+        severity: "HIGH"
+      RULE47:
+        id: "RULE47"
+        summary: "Shut down the system is restricted"
+        severity: "HIGH"
+      RULE48:
+        id: "RULE48"
+        summary: "Take ownership of files or other objects is restricted"
+        severity: "HIGH"
+      RULE49:
+        id: "RULE49"
+        summary: "Administrator account status is disabled"
+        severity: "MEDIUM"
+      RULE50:
+        id: "RULE50"
+        summary: "Microsoft accounts are blocked"
+        severity: "HIGH"
+      RULE51:
+        id: "RULE51"
+        summary: "Guest account status is disabled"
+        severity: "HIGH"
+      RULE52:
+        id: "RULE52"
+        summary: "Blank passwords are limited to console logon only"
+        severity: "HIGH"
+      RULE53:
+        id: "RULE53"
+        summary: "Administrator account is renamed"
+        severity: "HIGH"
+      RULE54:
+        id: "RULE54"
+        summary: "Guest account is renamed"
+        severity: "MEDIUM"
+      RULE56:
+        id: "RULE56"
+        summary: "Audit: Shut down system immediately if unable to log security audits is disabled"
+        severity: "HIGH"
+      RULE57:
+        id: "RULE57"
+        summary: "Devices: Allowed to format and eject removable media is restricted"
+        severity: "HIGH"
+      RULE58:
+        id: "RULE58"
+        summary: "Devices: Prevent users from installing printer drivers is enabled"
+        severity: "MEDIUM"
+      RULE59:
+        id: "RULE59"
+        summary: "Domain member: Digitally encrypt or sign secure channel data (always) is enabled"
+        severity: "HIGH"
+      RULE60:
+        id: "RULE60"
+        summary: "Domain member: Digitally encrypt secure channel data (when possible) is enabled"
+        severity: "MEDIUM"
+      RULE62:
+        id: "RULE62"
+        summary: "Domain member: Disable machine account password changes is disabled"
+        severity: "HIGH"
+      RULE63:
+        id: "RULE63"
+        summary: "Domain member: Maximum machine account password age is configured"
+        severity: "HIGH"
+      RULE64:
+        id: "RULE64"
+        summary: "Domain member: Require strong (Windows 2000 or later) session key is enabled"
+        severity: "MEDIUM"
+      RULE65:
+        id: "RULE65"
+        summary: "Interactive logon: Do not display last user name is enabled"
+        severity: "LOW"
+      RULE66:
+        id: "RULE66"
+        summary: "Interactive logon: Do not require CTRL+ALT+DEL is disabled"
+        severity: "HIGH"
+      RULE68:
+        id: "RULE68"
+        summary: "Interactive logon: Machine inactivity limit is configured"
+        severity: "HIGH"
+      RULE71:
+        id: "RULE71"
+        summary: "Interactive logon: Number of previous logons to cache is limited"
+        severity: "MEDIUM"
+      RULE72:
+        id: "RULE72"
+        summary: "Interactive logon: Prompt user to change password before expiration is configured"
+        severity: "HIGH"
+      RULE73:
+        id: "RULE73"
+        summary: "Interactive logon: Smart card removal behavior is configured"
+        severity: "MEDIUM"
+      RULE74:
+        id: "RULE74"
+        summary: "Microsoft network client: Digitally sign communications (always) is enabled"
+        severity: "HIGH"
+      RULE75:
+        id: "RULE75"
+        summary: "Microsoft network client: Digitally sign communications (if server agrees) is enabled"
+        severity: "MEDIUM"
+      RULE76:
+        id: "RULE76"
+        summary: "Microsoft network client: Send unencrypted password to third-party SMB servers is disabled"
+        severity: "HIGH"
+      RULE78:
+        id: "RULE78"
+        summary: "Microsoft network server: Digitally sign communications (always) is enabled"
+        severity: "HIGH"
+      RULE79:
+        id: "RULE79"
+        summary: "Microsoft network server: Digitally sign communications (if client agrees) is enabled"
+        severity: "MEDIUM"
+      RULE80:
+        id: "RULE80"
+        summary: "Microsoft network server: Disconnect clients when logon hours expire is enabled"
+        severity: "HIGH"
+      RULE81:
+        id: "RULE81"
+        summary: "SMB server SPN target name validation level"
+        severity: "HIGH"
+      RULE83:
+        id: "RULE83"
+        summary: "Do not allow anonymous enumeration of SAM accounts"
+        severity: "HIGH"
+      RULE84:
+        id: "RULE84"
+        summary: "Do not allow anonymous enumeration of SAM accounts and shares"
+        severity: "HIGH"
+      RULE86:
+        id: "RULE86"
+        summary: "Do not let Everyone permissions apply to anonymous users"
+        severity: "HIGH"
+      RULE87:
+        id: "RULE87"
+        summary: "Named pipes that can be accessed anonymously"
+        severity: "HIGH"
+      RULE90:
+        id: "RULE90"
+        summary: "Restrict anonymous access to named pipes and shares"
+        severity: "HIGH"
+      RULE91:
+        id: "RULE91"
+        summary: "Restrict clients allowed to make remote calls to SAM"
+        severity: "HIGH"
+      RULE92:
+        id: "RULE92"
+        summary: "Shares that can be accessed anonymously"
+        severity: "HIGH"
+      RULE94:
+        id: "RULE94"
+        summary: "Allow Local System to use computer identity for NTLM"
+        severity: "HIGH"
+      RULE95:
+        id: "RULE95"
+        summary: "Do not allow LocalSystem NULL session fallback"
+        severity: "HIGH"
+      RULE96:
+        id: "RULE96"
+        summary: "Do not allow PKU2U authentication requests to use online identities"
+        severity: "HIGH"
+      RULE97:
+        id: "RULE97"
+        summary: "Configure encryption types allowed for Kerberos"
+        severity: "HIGH"
+      RULE98:
+        id: "RULE98"
+        summary: "Do not store LAN Manager hash value on next password change"
+        severity: "HIGH"
+      RULE99:
+        id: "RULE99"
+        summary: "Disconnect clients when logon hours expire"
+        severity: "HIGH"
+      RULE100:
+        id: "RULE100"
+        summary: "LAN Manager authentication level"
+        severity: "HIGH"
+      RULE101:
+        id: "RULE101"
+        summary: "LDAP client signing requirements"
+        severity: "HIGH"
+      RULE102:
+        id: "RULE102"
+        summary: "Minimum session security for NTLM SSP-based clients"
+        severity: "HIGH"
+      RULE106:
+        id: "RULE106"
+        summary: "Strengthen default permissions of internal system objects"
+        severity: "HIGH"
+      RULE107:
+        id: "RULE107"
+        summary: "Admin Approval Mode for the built-in Administrator account"
+        severity: "HIGH"
+      RULE109:
+        id: "RULE109"
+        summary: "Elevation prompt for administrators in Admin Approval Mode"
+        severity: "HIGH"
+      RULE110:
+        id: "RULE110"
+        summary: "Elevation prompt for standard users"
+        severity: "HIGH"
+      RULE111:
+        id: "RULE111"
+        summary: "Detect application installations and prompt for elevation"
+        severity: "HIGH"
+      RULE113:
+        id: "RULE113"
+        summary: "Run all administrators in Admin Approval Mode"
+        severity: "HIGH"
+      RULE114:
+        id: "RULE114"
+        summary: "Switch to the secure desktop when prompting for elevation"
+        severity: "HIGH"
+      RULE115:
+        id: "RULE115"
+        summary: "Virtualize file and registry write failures to per-user locations"
+        severity: "HIGH"
+      RULE158:
+        id: "RULE158"
+        summary: "Windows Firewall Domain profile enabled"
+        severity: "HIGH"
+      RULE160:
+        id: "RULE160"
+        summary: "Windows Firewall Domain profile default outbound action"
+        severity: "HIGH"
+      RULE161:
+        id: "RULE161"
+        summary: "Windows Firewall Domain profile notifications disabled"
+        severity: "LOW"
+      RULE164:
+        id: "RULE164"
+        summary: "Windows Firewall Domain profile log file path"
+        severity: "LOW"
+      RULE165:
+        id: "RULE165"
+        summary: "Windows Firewall Domain profile log file size"
+        severity: "MEDIUM"
+      RULE166:
+        id: "RULE166"
+        summary: "Windows Firewall Domain profile log dropped packets"
+        severity: "MEDIUM"
+      RULE167:
+        id: "RULE167"
+        summary: "Windows Firewall Domain profile log successful connections"
+        severity: "MEDIUM"
+      RULE168:
+        id: "RULE168"
+        summary: "Windows Firewall Private profile enabled"
+        severity: "HIGH"
+      RULE169:
+        id: "RULE169"
+        summary: "Windows Firewall Private profile default inbound action"
+        severity: "HIGH"
+      RULE170:
+        id: "RULE170"
+        summary: "Windows Firewall Private profile default outbound action"
+        severity: "HIGH"
+      RULE171:
+        id: "RULE171"
+        summary: "Windows Firewall Private profile notifications disabled"
+        severity: "LOW"
+      RULE174:
+        id: "RULE174"
+        summary: "Windows Firewall Private profile log file path"
+        severity: "LOW"
+      RULE175:
+        id: "RULE175"
+        summary: "Windows Firewall Private profile log file size"
+        severity: "MEDIUM"
+      RULE176:
+        id: "RULE176"
+        summary: "Windows Firewall Private profile log dropped packets"
+        severity: "MEDIUM"
+      RULE177:
+        id: "RULE177"
+        summary: "Windows Firewall Private profile log successful connections"
+        severity: "MEDIUM"
+      RULE178:
+        id: "RULE178"
+        summary: "Windows Firewall Public profile enabled"
+        severity: "HIGH"
+      RULE179:
+        id: "RULE179"
+        summary: "Windows Firewall Public profile default inbound action"
+        severity: "HIGH"
+      RULE180:
+        id: "RULE180"
+        summary: "Windows Firewall Public profile default outbound action"
+        severity: "HIGH"
+      RULE181:
+        id: "RULE181"
+        summary: "Windows Firewall Public profile notifications disabled"
+        severity: "LOW"
+      RULE182:
+        id: "RULE182"
+        summary: "Windows Firewall Public profile local rule merge disabled"
+        severity: "MEDIUM"
+      RULE183:
+        id: "RULE183"
+        summary: "Windows Firewall Public profile local IPsec rule merge disabled"
+        severity: "MEDIUM"
+      RULE184:
+        id: "RULE184"
+        summary: "Windows Firewall Public profile log file path"
+        severity: "LOW"
+      RULE185:
+        id: "RULE185"
+        summary: "Windows Firewall Public profile log file size"
+        severity: "HIGH"
+      RULE186:
+        id: "RULE186"
+        summary: "Windows Firewall Public profile log dropped packets"
+        severity: "MEDIUM"
+      RULE187:
+        id: "RULE187"
+        summary: "Windows Firewall Public profile log successful connections"
+        severity: "MEDIUM"
+      RULE188:
+        id: "RULE188"
+        summary: "Audit account management"
+        severity: "LOW"
+      RULE189:
+        id: "RULE189"
+        summary: "Audit application group management"
+        severity: "LOW"
+      RULE192:
+        id: "RULE192"
+        summary: "Audit security group management"
+        severity: "LOW"
+      RULE193:
+        id: "RULE193"
+        summary: "Audit user account management"
+        severity: "HIGH"
+      RULE195:
+        id: "RULE195"
+        summary: "Audit process creation"
+        severity: "LOW"
+      RULE196:
+        id: "RULE196"
+        summary: "Audit account lockout"
+        severity: "HIGH"
+      RULE197:
+        id: "RULE197"
+        summary: "Audit group membership"
+        severity: "MEDIUM"
+      RULE198:
+        id: "RULE198"
+        summary: "Audit logoff"
+        severity: "HIGH"
+      RULE199:
+        id: "RULE199"
+        summary: "Audit logon"
+        severity: "HIGH"
+      RULE200:
+        id: "RULE200"
+        summary: "Audit other logon/logoff events"
+        severity: "MEDIUM"
+      RULE201:
+        id: "RULE201"
+        summary: "Audit special logon"
+        severity: "HIGH"
+      RULE202:
+        id: "RULE202"
+        summary: "Audit removable storage"
+        severity: "LOW"
+      RULE203:
+        id: "RULE203"
+        summary: "Audit audit policy change"
+        severity: "MEDIUM"
+      RULE204:
+        id: "RULE204"
+        summary: "Audit authentication policy change"
+        severity: "MEDIUM"
+      RULE205:
+        id: "RULE205"
+        summary: "Audit authorization policy change"
+        severity: "MEDIUM"
+      RULE206:
+        id: "RULE206"
+        summary: "Audit sensitive privilege use"
+        severity: "HIGH"
+      RULE207:
+        id: "RULE207"
+        summary: "Audit IPsec driver"
+        severity: "LOW"
+      RULE208:
+        id: "RULE208"
+        summary: "Audit other system events"
+        severity: "MEDIUM"
+      RULE209:
+        id: "RULE209"
+        summary: "Audit security state change"
+        severity: "MEDIUM"
+      RULE210:
+        id: "RULE210"
+        summary: "Audit security system extension"
+        severity: "LOW"
+      RULE211:
+        id: "RULE211"
+        summary: "System integrity auditing enabled"
+        severity: "MEDIUM"
+      RULE212:
+        id: "RULE212"
+        summary: "Lock screen camera disabled"
+        severity: "LOW"
+      RULE213:
+        id: "RULE213"
+        summary: "Lock screen slideshow disabled"
+        severity: "LOW"
+      RULE216:
+        id: "RULE216"
+        summary: "LAPS password expiration protection enabled"
+        severity: "HIGH"
+      RULE217:
+        id: "RULE217"
+        summary: "LAPS local administrator password management enabled"
+        severity: "HIGH"
+      RULE218:
+        id: "RULE218"
+        summary: "LAPS password complexity configured"
+        severity: "HIGH"
+      RULE220:
+        id: "RULE220"
+        summary: "LAPS password age configured"
+        severity: "HIGH"
+      RULE221:
+        id: "RULE221"
+        summary: "Automatic administrator logon disabled"
+        severity: "HIGH"
+      RULE223:
+        id: "RULE223"
+        summary: "IPv4 source routing protection level configured"
+        severity: "MEDIUM"
+      RULE225:
+        id: "RULE225"
+        summary: "ICMP redirects disabled"
+        severity: "MEDIUM"
+      RULE226:
+        id: "RULE226"
+        summary: "TCP keep-alive time configured"
+        severity: "MEDIUM"
+      RULE227:
+        id: "RULE227"
+        summary: "NetBIOS name-release requests ignored except from WINS"
+        severity: "HIGH"
+      RULE228:
+        id: "RULE228"
+        summary: "IRDP router discovery disabled"
+        severity: "MEDIUM"
+      RULE229:
+        id: "RULE229"
+        summary: "Safe DLL search mode enabled"
+        severity: "HIGH"
+      RULE230:
+        id: "RULE230"
+        summary: "Screen saver grace period configured"
+        severity: "MEDIUM"
+      RULE232:
+        id: "RULE232"
+        summary: "TCP maximum data retransmissions configured"
+        severity: "HIGH"
+      RULE233:
+        id: "RULE233"
+        summary: "Security event log warning level configured"
+        severity: "HIGH"
+      RULE235:
+        id: "RULE235"
+        summary: "LLMNR multicast name resolution disabled"
+        severity: "MEDIUM"
+      RULE236:
+        id: "RULE236"
+        summary: "Third-party font providers disabled"
+        severity: "LOW"
+      RULE237:
+        id: "RULE237"
+        summary: "Insecure guest logons to SMB shares disabled"
+        severity: "HIGH"
+      RULE238:
+        id: "RULE238"
+        summary: "LLTDIO mapper I/O disabled on domain networks"
+        severity: "MEDIUM"
+      RULE239:
+        id: "RULE239"
+        summary: "LLTD Responder (RSPNDR) disabled on domain networks"
+        severity: "MEDIUM"
+      RULE240:
+        id: "RULE240"
+        summary: "Peer-to-peer networking disabled"
+        severity: "MEDIUM"
+      RULE241:
+        id: "RULE241"
+        summary: "Network bridge creation disabled on domain networks"
+        severity: "HIGH"
+      RULE242:
+        id: "RULE242"
+        summary: "Internet Connection Sharing UI disabled"
+        severity: "HIGH"
+      RULE243:
+        id: "RULE243"
+        summary: "Standard domain users prohibited from setting network location"
+        severity: "MEDIUM"
+      RULE246:
+        id: "RULE246"
+        summary: "Windows Connect Now registrars disabled"
+        severity: "HIGH"
+      RULE248:
+        id: "RULE248"
+        summary: "Simultaneous Internet or domain connections minimized"
+        severity: "HIGH"
+      RULE249:
+        id: "RULE249"
+        summary: "Simultaneous domain and non-domain connections blocked"
+        severity: "HIGH"
+      RULE251:
+        id: "RULE251"
+        summary: "UAC token filtering for remote local accounts enabled"
+        severity: "HIGH"
+      RULE252:
+        id: "RULE252"
+        summary: "WDigest credential caching disabled"
+        severity: "MEDIUM"
+      RULE253:
+        id: "RULE253"
+        summary: "Process creation command-line auditing excluded"
+        severity: "HIGH"
+      RULE260:
+        id: "RULE260"
+        summary: "Early Launch Anti-Malware driver load policy configured"
+        severity: "HIGH"
+      RULE261:
+        id: "RULE261"
+        summary: "Background Group Policy processing enabled"
+        severity: "MEDIUM"
+      RULE262:
+        id: "RULE262"
+        summary: "Group Policy processing forced even when GPOs are unchanged"
+        severity: "MEDIUM"
+      RULE263:
+        id: "RULE263"
+        summary: "Cross-device experience (CDP) disabled"
+        severity: "LOW"
+      RULE266:
+        id: "RULE266"
+        summary: "HTTP-based print driver downloads disabled"
+        severity: "MEDIUM"
+      RULE268:
+        id: "RULE268"
+        summary: "Handwriting recognition error reports disabled"
+        severity: "LOW"
+      RULE269:
+        id: "RULE269"
+        summary: "Internet Connection Wizard Microsoft ISP download disabled"
+        severity: "LOW"
+      RULE272:
+        id: "RULE272"
+        summary: "Online Windows Registration Wizard disabled"
+        severity: "LOW"
+      RULE273:
+        id: "RULE273"
+        summary: "Search Companion content file updates disabled"
+        severity: "LOW"
+      RULE274:
+        id: "RULE274"
+        summary: "Online photo printing wizard disabled"
+        severity: "LOW"
+      RULE275:
+        id: "RULE275"
+        summary: "Web publishing wizard tasks disabled"
+        severity: "HIGH"
+      RULE276:
+        id: "RULE276"
+        summary: "Windows Messenger Customer Experience Improvement Program disabled"
+        severity: "MEDIUM"
+      RULE277:
+        id: "RULE277"
+        summary: "Windows Customer Experience Improvement Program disabled"
+        severity: "LOW"
+      RULE278:
+        id: "RULE278"
+        summary: "Windows Error Reporting disabled"
+        severity: "LOW"
+      RULE279:
+        id: "RULE279"
+        summary: "Kerberos device certificate authentication configured"
+        severity: "MEDIUM"
+      RULE280:
+        id: "RULE280"
+        summary: "User input methods not copied to system logon account"
+        severity: "MEDIUM"
+      RULE382:
+        id: "RULE382"
+        summary: "Camera access prohibited"
+        severity: "LOW"
+      RULE383:
+        id: "RULE383"
+        summary: "Microsoft consumer experiences disabled"
+        severity: "HIGH"
+      RULE384:
+        id: "RULE384"
+        summary: "PIN required for wireless display pairing"
+        severity: "HIGH"
+      RULE387:
+        id: "RULE387"
+        summary: "Diagnostic data (telemetry) level configured"
+        severity: "HIGH"
+      RULE389:
+        id: "RULE389"
+        summary: "Feedback notifications disabled"
+        severity: "LOW"
+      RULE390:
+        id: "RULE390"
+        summary: "Windows Insider preview builds disabled"
+        severity: "LOW"
+      RULE392:
+        id: "RULE392"
+        summary: "Application log overwrite retention configured"
+        severity: "MEDIUM"
+      RULE393:
+        id: "RULE393"
+        summary: "Application log maximum size configured"
+        severity: "LOW"
+      RULE394:
+        id: "RULE394"
+        summary: "Security log overwrite retention configured"
+        severity: "MEDIUM"
+      RULE395:
+        id: "RULE395"
+        summary: "Security log maximum size configured"
+        severity: "LOW"
+      RULE396:
+        id: "RULE396"
+        summary: "Setup log overwrite retention configured"
+        severity: "MEDIUM"
+      RULE397:
+        id: "RULE397"
+        summary: "Setup log maximum size configured"
+        severity: "LOW"
+      RULE398:
+        id: "RULE398"
+        summary: "System log overwrite retention configured"
+        severity: "MEDIUM"
+      RULE399:
+        id: "RULE399"
+        summary: "System log maximum size configured"
+        severity: "LOW"
+      RULE401:
+        id: "RULE401"
+        summary: "Data Execution Prevention for Explorer enabled"
+        severity: "MEDIUM"
+      RULE402:
+        id: "RULE402"
+        summary: "Heap termination on corruption for Explorer enabled"
+        severity: "LOW"
+      RULE403:
+        id: "RULE403"
+        summary: "Shell protocol protected mode enabled"
+        severity: "LOW"
+      RULE405:
+        id: "RULE405"
+        summary: "Windows Location Provider disabled"
+        severity: "LOW"
+      RULE417:
+        id: "RULE417"
+        summary: "OneDrive file sync disabled"
+        severity: "MEDIUM"
+      RULE418:
+        id: "RULE418"
+        summary: "Remote Desktop password saving disabled"
+        severity: "MEDIUM"
+      RULE420:
+        id: "RULE420"
+        summary: "Remote Desktop COM port redirection disabled"
+        severity: "LOW"
+      RULE421:
+        id: "RULE421"
+        summary: "Remote Desktop drive redirection disabled"
+        severity: "MEDIUM"
+      RULE422:
+        id: "RULE422"
+        summary: "Disable LPT port redirection for Remote Desktop Services"
+        severity: "LOW"
+      RULE423:
+        id: "RULE423"
+        summary: "Disable Plug and Play device redirection for Remote Desktop Services"
+        severity: "LOW"
+      RULE424:
+        id: "RULE424"
+        summary: "Require password prompt for Remote Desktop connections"
+        severity: "HIGH"
+      RULE425:
+        id: "RULE425"
+        summary: "Require secure RPC communication for Remote Desktop Services"
+        severity: "HIGH"
+      RULE426:
+        id: "RULE426"
+        summary: "Set high encryption level for Remote Desktop connections"
+        severity: "HIGH"
+      RULE427:
+        id: "RULE427"
+        summary: "Set time limit for active but idle Remote Desktop sessions"
+        severity: "HIGH"
+      RULE428:
+        id: "RULE428"
+        summary: "Set time limit for disconnected Remote Desktop sessions"
+        severity: "LOW"
+      RULE429:
+        id: "RULE429"
+        summary: "Delete temporary folders on Remote Desktop logoff"
+        severity: "MEDIUM"
+      RULE430:
+        id: "RULE430"
+        summary: "Use per-session temporary folders for Remote Desktop Services"
+        severity: "MEDIUM"
+      RULE431:
+        id: "RULE431"
+        summary: "Prohibit downloading of RSS feed attachments"
+        severity: "LOW"
+      RULE434:
+        id: "RULE434"
+        summary: "Disable indexing of encrypted files"
+        severity: "LOW"
+      RULE436:
+        id: "RULE436"
+        summary: "Disable KMS client AVS online validation"
+        severity: "LOW"
+      RULE441:
+        id: "RULE441"
+        summary: "Disable Microsoft MAPS"
+        severity: "LOW"
+      RULE442:
+        id: "RULE442"
+        summary: "Disable Windows Defender Watson generic report submission"
+        severity: "LOW"
+      RULE444:
+        id: "RULE444"
+        summary: "Disable suggested apps in Windows Ink Workspace"
+        severity: "HIGH"
+      RULE446:
+        id: "RULE446"
+        summary: "Prohibit user control over Windows Installer"
+        severity: "LOW"
+      RULE447:
+        id: "RULE447"
+        summary: "Prohibit always installing with elevated privileges"
+        severity: "MEDIUM"
+      RULE448:
+        id: "RULE448"
+        summary: "Require security prompt for Windows Installer scripts from Internet Explorer"
+        severity: "HIGH"
+      RULE449:
+        id: "RULE449"
+        summary: "Disable automatic restart sign-on"
+        severity: "HIGH"
+      RULE450:
+        id: "RULE450"
+        summary: "Enable PowerShell script block logging"
+        severity: "HIGH"
+      RULE451:
+        id: "RULE451"
+        summary: "Disable PowerShell transcription"
+        severity: "MEDIUM"
+      RULE452:
+        id: "RULE452"
+        summary: "Disable Basic authentication for the WinRM client"
+        severity: "HIGH"
+      RULE453:
+        id: "RULE453"
+        summary: "Disallow unencrypted traffic for the WinRM client"
+        severity: "HIGH"
+      RULE454:
+        id: "RULE454"
+        summary: "Disable Digest authentication for the WinRM client"
+        severity: "HIGH"
+      RULE455:
+        id: "RULE455"
+        summary: "Disable Basic authentication for the WinRM service"
+        severity: "HIGH"
+      RULE456:
+        id: "RULE456"
+        summary: "Disable WinRM service automatic configuration"
+        severity: "HIGH"
+      RULE457:
+        id: "RULE457"
+        summary: "Disallow unencrypted traffic for the WinRM service"
+        severity: "HIGH"
+      RULE458:
+        id: "RULE458"
+        summary: "Prohibit WinRM service from storing RunAs credentials"
+        severity: "HIGH"
+      RULE459:
+        id: "RULE459"
+        summary: "Disable WinRM remote shell access"
+        severity: "HIGH"
+      RULE461:
+        id: "RULE461"
+        summary: "Configure Windows Update quality update deferral"
+        severity: "HIGH"
+      RULE462:
+        id: "RULE462"
+        summary: "Enable automatic updates"
+        severity: "MEDIUM"
+      RULE463:
+        id: "RULE463"
+        summary: "Configure automatic update installation schedule"
+        severity: "MEDIUM"
+      RULE464:
+        id: "RULE464"
+        summary: "Configure automatic restart after update installation"
+        severity: "LOW"
+      RULE465:
+        id: "RULE465"
+        summary: "Enable screen saver"
+        severity: "LOW"
+      RULE466:
+        id: "RULE466"
+        summary: "Configure screen saver executable"
+        severity: "LOW"
+      RULE467:
+        id: "RULE467"
+        summary: "Require password on screen saver resume"
+        severity: "MEDIUM"
+      RULE468:
+        id: "RULE468"
+        summary: "Configure screen saver timeout"
+        severity: "MEDIUM"
+      RULE469:
+        id: "RULE469"
+        summary: "Disable toast notifications on the lock screen"
+        severity: "LOW"
+      RULE470:
+        id: "RULE470"
+        summary: "Disable Microsoft Customer Experience Improvement Program implicit feedback"
+        severity: "LOW"
+      RULE471:
+        id: "RULE471"
+        summary: "Preserve zone information in file attachments"
+        severity: "LOW"
+      RULE472:
+        id: "RULE472"
+        summary: "Notify antivirus when opening attachments"
+        severity: "LOW"
+      RULE473:
+        id: "RULE473"
+        summary: "Disable Windows Spotlight on the lock screen"
+        severity: "LOW"
+      RULE474:
+        id: "RULE474"
+        summary: "Disable third-party suggestions in Windows Spotlight"
+        severity: "LOW"
+      RULE475:
+        id: "RULE475"
+        summary: "Disable Windows Spotlight features"
+        severity: "LOW"
+      RULE476:
+        id: "RULE476"
+        summary: "Disable in-place file sharing"
+        severity: "LOW"
+      RULE478:
+        id: "RULE478"
+        summary: "Prohibit Windows Media Player codec download"
+        severity: "LOW"
+      RULE479:
+        id: "RULE479"
+        summary: "Disable cross-device clipboard synchronization"
+        severity: "LOW"
+      RULE480:
+        id: "RULE480"
+        summary: "Configure Kernel DMA Protection device enumeration policy"
+        severity: "LOW"
+      RULE485:
+        id: "RULE485"
+        summary: "Set SMB session idle disconnect time"
+        severity: "MEDIUM"
+      RULE486:
+        id: "RULE486"
+        summary: "Prohibit storing passwords and credentials for network authentication"
+        severity: "MEDIUM"
+      RULE487:
+        id: "RULE487"
+        summary: "Restrict remotely accessible registry paths"
+        severity: "MEDIUM"
+      RULE488:
+        id: "RULE488"
+        summary: "Configure sharing and security model for local accounts"
+        severity: "MEDIUM"
+      RULE489:
+        id: "RULE489"
+        summary: "Prohibit shutting down the system without logging on"
+        severity: "LOW"
+      RULE490:
+        id: "RULE490"
+        summary: "Require case insensitivity for non-Windows subsystems"
+        severity: "MEDIUM"
+      RULE491:
+        id: "RULE491"
+        summary: "Require secure UIAccess application paths for UAC elevation"
+        severity: "MEDIUM"
+      RULE497:
+        id: "RULE497"
+        summary: "Disable input personalization"
+        severity: "MEDIUM"
+      RULE498:
+        id: "RULE498"
+        summary: "Disable online tips in Settings"
+        severity: "LOW"
+      RULE499:
+        id: "RULE499"
+        summary: "Configure LAPS password length"
+        severity: "HIGH"
+      RULE500:
+        id: "RULE500"
+        summary: "Configure SMBv1 client driver startup"
+        severity: "HIGH"
+      RULE501:
+        id: "RULE501"
+        summary: "Configure SMBv1 server support"
+        severity: "HIGH"
+      RULE502:
+        id: "RULE502"
+        summary: "Enable Structured Exception Handling Overwrite Protection (SEHOP)"
+        severity: "MEDIUM"
+      RULE503:
+        id: "RULE503"
+        summary: "Configure IPv6 source routing protection level"
+        severity: "MEDIUM"
+      RULE504:
+        id: "RULE504"
+        summary: "Configure hardened UNC path security for NETLOGON"
+        severity: "MEDIUM"
+      RULE505:
+        id: "RULE505"
+        summary: "Disable Windows Connect Now wizard"
+        severity: "LOW"
+      RULE506:
+        id: "RULE506"
+        summary: "Enable remote host delegation of non-exportable credentials"
+        severity: "MEDIUM"
+      RULE507:
+        id: "RULE507"
+        summary: "Enable virtualization-based security"
+        severity: "MEDIUM"
+      RULE508:
+        id: "RULE508"
+        summary: "Configure Virtualization Based Security platform security features"
+        severity: "MEDIUM"
+      RULE509:
+        id: "RULE509"
+        summary: "Enable Hypervisor-protected Code Integrity (HVCI)"
+        severity: "MEDIUM"
+      RULE511:
+        id: "RULE511"
+        summary: "Configure Credential Guard"
+        severity: "MEDIUM"
+      RULE513:
+        id: "RULE513"
+        summary: "Disable handwriting personalization data sharing"
+        severity: "MEDIUM"
+      RULE514:
+        id: "RULE514"
+        summary: "Disable Internet downloads for publishing and ordering wizards"
+        severity: "MEDIUM"
+      RULE515:
+        id: "RULE515"
+        summary: "Disable HTTP printing"
+        severity: "HIGH"
+      RULE516:
+        id: "RULE516"
+        summary: "Prevent display of account details on the sign-in screen"
+        severity: "MEDIUM"
+      RULE517:
+        id: "RULE517"
+        summary: "Disable enumeration of connected users"
+        severity: "MEDIUM"
+      RULE518:
+        id: "RULE518"
+        summary: "Disable picture password sign-in for domain users"
+        severity: "LOW"
+      RULE519:
+        id: "RULE519"
+        summary: "Disable network connectivity during standby on battery"
+        severity: "MEDIUM"
+      RULE520:
+        id: "RULE520"
+        summary: "Disable network connectivity during standby when plugged in"
+        severity: "MEDIUM"
+      RULE521:
+        id: "RULE521"
+        summary: "Disable advertising ID"
+        severity: "LOW"
+      RULE522:
+        id: "RULE522"
+        summary: "Enable Windows NTP client"
+        severity: "MEDIUM"
+      RULE523:
+        id: "RULE523"
+        summary: "Disable Windows NTP server"
+        severity: "MEDIUM"
+      RULE525:
+        id: "RULE525"
+        summary: "Disable the password reveal button"
+        severity: "MEDIUM"
+      RULE526:
+        id: "RULE526"
+        summary: "Disable enumeration of administrator accounts during elevation"
+        severity: "MEDIUM"
+      RULE527:
+        id: "RULE527"
+        summary: "Require authenticated proxy for Connected User Experiences and Telemetry"
+        severity: "MEDIUM"
+      RULE528:
+        id: "RULE528"
+        summary: "Disable messaging cloud synchronization"
+        severity: "LOW"
+      RULE529:
+        id: "RULE529"
+        summary: "Block Microsoft account authentication"
+        severity: "LOW"
+      RULE530:
+        id: "RULE530"
+        summary: "Restrict Remote Desktop users to a single session"
+        severity: "MEDIUM"
+      RULE531:
+        id: "RULE531"
+        summary: "Disable Cloud Search"
+        severity: "LOW"
+      RULE532:
+        id: "RULE532"
+        summary: "Disable Microsoft MAPS reporting override"
+        severity: "LOW"
+      RULE533:
+        id: "RULE533"
+        summary: "Enable Windows Defender behavior monitoring"
+        severity: "LOW"
+      RULE534:
+        id: "RULE534"
+        summary: "Enable scanning of removable drives"
+        severity: "LOW"
+      RULE535:
+        id: "RULE535"
+        summary: "Enable email scanning"
+        severity: "LOW"
+      RULE536:
+        id: "RULE536"
+        summary: "Enable Microsoft Defender Network Protection"
+        severity: "MEDIUM"
+      RULE537:
+        id: "RULE537"
+        summary: "Enable Microsoft Defender Antivirus"
+        severity: "MEDIUM"
+      RULE538:
+        id: "RULE538"
+        summary: "Prevent users from modifying Exploit Protection settings"
+        severity: "MEDIUM"
+      RULE540:
+        id: "RULE540"
+        summary: "Manage Windows Insider preview builds"
+        severity: "LOW"
+      RULE543:
+        id: "RULE543"
+        summary: "Hide network selection UI on the sign-in screen"
+        severity: "MEDIUM"
+      RULE544:
+        id: "RULE544"
+        summary: "Disable enumeration of local users on domain-joined computers"
+        severity: "LOW"
+      RULE545:
+        id: "RULE545"
+        summary: "Disable application notifications on the lock screen"
+        severity: "MEDIUM"
+      RULE546:
+        id: "RULE546"
+        summary: "Disable PIN sign-in for domain users"
+        severity: "LOW"
+      RULE548:
+        id: "RULE548"
+        summary: "Require password on wake from sleep on battery"
+        severity: "MEDIUM"
+      RULE549:
+        id: "RULE549"
+        summary: "Require password on wake from sleep when plugged in"
+        severity: "MEDIUM"
+      RULE550:
+        id: "RULE550"
+        summary: "Disable unsolicited Remote Assistance"
+        severity: "HIGH"
+      RULE551:
+        id: "RULE551"
+        summary: "Disable solicited Remote Assistance"
+        severity: "HIGH"
+      RULE552:
+        id: "RULE552"
+        summary: "Enable RPC endpoint mapper client authentication"
+        severity: "MEDIUM"
+      RULE553:
+        id: "RULE553"
+        summary: "Restrict unauthenticated remote RPC clients"
+        severity: "MEDIUM"
+      RULE554:
+        id: "RULE554"
+        summary: "Disable MSDT remote support provider queries"
+        severity: "LOW"
+      RULE555:
+        id: "RULE555"
+        summary: "Disable Windows Performance PerfTrack"
+        severity: "MEDIUM"
+      RULE556:
+        id: "RULE556"
+        summary: "Restrict shared local app data between users"
+        severity: "LOW"
+      RULE557:
+        id: "RULE557"
+        summary: "Allow Microsoft accounts to be optional for Store apps"
+        severity: "HIGH"
+      RULE558:
+        id: "RULE558"
+        summary: "Disable AutoPlay for non-volume devices"
+        severity: "HIGH"
+      RULE559:
+        id: "RULE559"
+        summary: "Disable AutoRun from autorun.inf"
+        severity: "HIGH"
+      RULE560:
+        id: "RULE560"
+        summary: "Disable AutoPlay for all drives"
+        severity: "HIGH"
+      RULE562:
+        id: "RULE562"
+        summary: "Deny Server Operators the right to schedule jobs"
+        severity: "MEDIUM"
+      RULE564:
+        id: "RULE564"
+        summary: "Domain controller refuse machine account password changes"
+        severity: "MEDIUM"
+      RULE565:
+        id: "RULE565"
+        summary: "Configure interactive logon legal notice text"
+        severity: "MEDIUM"
+      RULE566:
+        id: "RULE566"
+        summary: "Require domain controller authentication to unlock the workstation"
+        severity: "MEDIUM"
+      RULE567:
+        id: "RULE567"
+        summary: "Configure remotely accessible registry paths and sub-paths"
+        severity: "MEDIUM"
+      RULE569:
+        id: "RULE569"
+        summary: "Digitally sign secure channel data when possible"
+        severity: "MEDIUM"
+      RULE889:
+        id: "RULE889"
+        summary: "Manage Windows Insider preview builds policy value"
+        severity: "LOW"
+      RULE890:
+        id: "RULE890"
+        summary: "Configure feature update deferral period"
+        severity: "LOW"
+      RULE891:
+        id: "RULE891"
+        summary: "Configure print spooler Redirection Guard"
+        severity: "MEDIUM"
+      RULE892:
+        id: "RULE892"
+        summary: "Restrict printer driver installation to administrators"
+        severity: "MEDIUM"
+      RULE893:
+        id: "RULE893"
+        summary: "Disallow custom SSPs and APs in LSASS"
+        severity: "MEDIUM"
+      RULE974:
+        id: "RULE974"
+        summary: "Disable legacy PC Health error reporting"
+        severity: "LOW"
+      RULE975:
+        id: "RULE975"
+        summary: "Configure print spooler RPC to use TCP"
+        severity: "MEDIUM"
+      RULE977:
+        id: "RULE977"
+        summary: "Configure SMB authentication rate limiting"
+        severity: "MEDIUM"
+      RULE978:
+        id: "RULE978"
+        summary: "Configure SmartScreen level to block bypass"
+        severity: "HIGH"
+      RULE979:
+        id: "RULE979"
+        summary: "Enable LSASS as a protected process (RunAsPPL)"
+        severity: "HIGH"
+      RULE980:
+        id: "RULE980"
+        summary: "Disable IPv6 components"
+        severity: "MEDIUM"
+      RULE981:
+        id: "RULE981"
+        summary: "Disable Windows Error Reporting"
+        severity: "LOW"
+      RULE984:
+        id: "RULE984"
+        summary: "Do not disable background Group Policy refresh"
+        severity: "MEDIUM"
+      RULE985:
+        id: "RULE985"
+        summary: "Enable device authentication using certificates (PKINIT)"
+        severity: "LOW"
+      RULE989:
+        id: "RULE989"
+        summary: "Block NetBIOS-based domain controller discovery"
+        severity: "MEDIUM"
+      RULE990:
+        id: "RULE990"
+        summary: "Audit SMB clients that do not support encryption"
+        severity: "MEDIUM"
+      RULE991:
+        id: "RULE991"
+        summary: "Disable remote mailslots"
+        severity: "HIGH"
+      RULE996:
+        id: "RULE996"
+        summary: "Configure Netlogon authentication dial-up delay"
+        severity: "MEDIUM"
+      RULE997:
+        id: "RULE997"
+        summary: "Enable Wintrust certificate padding check"
+        severity: "HIGH"
+      RULE998:
+        id: "RULE998"
+        summary: "Configure Windows Defender SmartScreen to warn and prevent bypass"
+        severity: "HIGH"
+      RULE999:
+        id: "RULE999"
+        summary: "Enable Virtualization-Based Security"
+        severity: "HIGH"
+      RULE5041:
+        id: "RULE5041"
+        summary: "Configure hardened UNC paths for SYSVOL"
+        severity: "MEDIUM"
+
+  tasks:
+    - name: Confirm Windows OS family
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == 'Windows'
+        fail_msg: >-
+          Host OS family is {{ ansible_os_family }}, expected Windows
+          for Microsoft Windows Server 2025 Standard CRE checks.
+        success_msg: "OS family {{ ansible_os_family }} is supported"
+      when: win2025_strict_os_check | bool
+
+    - name: "Warn when Windows edition is not Microsoft Windows Server 2025 Standard 10"
+      ansible.builtin.debug:
+        msg: >-
+          Profile targets Microsoft Windows Server 2025 Standard; detected
+          {{ ansible_os_name | default(ansible_distribution) }}
+          {{ ansible_os_version | default(ansible_distribution_version) }}.
+          Continuing audit with the same CRE PowerShell checks.
+      when: >-
+        ('Microsoft Windows Server 2025 Standard' not in (ansible_os_name | default(ansible_distribution) | string))
+
+    - name: Prepare remote SecAudit work directory
+      ansible.windows.win_file:
+        path: "{{ win2025_remote_dir | default('C:\\Windows\\Temp\\secaudit_win2025') }}"
+        state: directory
+
+    - name: Copy Windows Server 2025 audit script
+      ansible.windows.win_copy:
+        src: Win2025.ps1
+        dest: "{{ win2025_remote_dir | default('C:\\Windows\\Temp\\secaudit_win2025') }}\\Win2025.ps1"
+
+    - name: Copy Windows Server 2025 rules payload
+      ansible.windows.win_copy:
+        src: Win2025.rules.json
+        dest: "{{ win2025_remote_dir | default('C:\\Windows\\Temp\\secaudit_win2025') }}\\Win2025.rules.json"
+
+    - name: "Run Microsoft Windows Server 2025 Standard CRE audit script (same checks as profile package)"
+      ansible.windows.win_shell: |
+        & "{{ win2025_remote_dir | default('C:\\Windows\\Temp\\secaudit_win2025') }}\\Win2025.ps1"
+      register: win2025_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        win2025_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in win2025_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = win2025_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        win2025_pass_count: >-
+          {{ win2025_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        win2025_fail_count: >-
+          {{ win2025_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        win2025_total_count: "{{ win2025_compliance_lines | default([]) | length }}"
+
+    - name: "Microsoft Windows Server 2025 Standard CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_os_name | default(ansible_distribution) }} {{ ansible_os_version | default(ansible_distribution_version) }}"
+          kernel: "{{ ansible_kernel | default('') }}"
+          profile: Microsoft Windows Server 2025
+          script: Win2025.ps1
+          total: "{{ win2025_total_count }}"
+          passed: "{{ win2025_pass_count }}"
+          failed: "{{ win2025_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ win2025_compliance_lines | default([]) }}"
+          script_rc: "{{ win2025_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (win2025_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from Win2025.ps1 output.
+          rc={{ win2025_audit_raw.rc | default('n/a') }}
+          stderr={{ win2025_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (win2025_fail_count | int) == 0
+        fail_msg: >-
+          Microsoft Windows Server 2025 Standard CRE audit found {{ win2025_fail_count }} failed check(s)
+          out of {{ win2025_total_count }}.
+        success_msg: >-
+          Microsoft Windows Server 2025 Standard CRE audit passed {{ win2025_pass_count }}/{{ win2025_total_count }} checks.
+      when: win2025_fail_on_noncompliance | bool
+
