@@ -10,7 +10,7 @@
       "impact": "Event correlation and incident response are hindered.",
       "scope": "system.@system[0].hostname / web interface → System",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE1=(.*)"
     },
     {
@@ -21,7 +21,7 @@
       "impact": "Exploitation of known CVEs (for example, CVE-2024-45348) when firmware is outdated.",
       "scope": "System → Update / /etc/openwrt_release / nvram",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE2=(.*)"
     },
     {
@@ -32,7 +32,7 @@
       "impact": "Unauthorized access to WLAN and MITM.",
       "scope": "wireless.*.encryption / Wireless network → Encryption",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE3=(.*)"
     },
     {
@@ -43,7 +43,7 @@
       "impact": "Wi-Fi compromise without knowledge of the PSK.",
       "scope": "wireless.*.wps_* / Wi‑Fi Settings → WPS",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE4=(.*)"
     },
     {
@@ -54,7 +54,7 @@
       "impact": "Unauthorized inbound access to the LAN.",
       "scope": "upnpd.config.enabled / Advanced → UPnP",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE5=(.*)"
     },
     {
@@ -65,7 +65,7 @@
       "impact": "Router compromise from the Internet, RCE after authentication.",
       "scope": "firewall / xiaoqiang remote / Advanced → Remote Management",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE6=(.*)"
     },
     {
@@ -76,7 +76,7 @@
       "impact": "Direct access to router services and LAN hosts from the outside.",
       "scope": "firewall.@defaults / Advanced → Security → Firewall",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE7=(.*)"
     },
     {
@@ -87,7 +87,7 @@
       "impact": "Interception of administrative credentials.",
       "scope": "nvram/bdata telnet_en / management services",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE8=(.*)"
     },
     {
@@ -98,7 +98,7 @@
       "impact": "Brute force and remote root takeover.",
       "scope": "dropbear / nvram ssh_en / firewall",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE9=(.*)"
     },
     {
@@ -109,7 +109,7 @@
       "impact": "Reconnaissance and fingerprinting of the device by an attacker.",
       "scope": "wireless.*.ssid",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE10=(.*)"
     },
     {
@@ -120,7 +120,7 @@
       "impact": "Guests and IoT devices gain access to primary LAN hosts.",
       "scope": "wireless guest / network.guest / Guest network",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE11=(.*)"
     },
     {
@@ -131,7 +131,7 @@
       "impact": "Compromise of neighboring guest devices.",
       "scope": "wireless.*.isolate",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE12=(.*)"
     },
     {
@@ -142,7 +142,7 @@
       "impact": "Redirection of traffic to malicious resources.",
       "scope": "dhcp.@dnsmasq / network.wan.dns / Advanced → DNS",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE13=(.*)"
     },
     {
@@ -153,7 +153,7 @@
       "impact": "Incorrect logs and TLS/schedule failures.",
       "scope": "system.ntp / System → Time",
       "criticality": "LOW",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE14=(.*)"
     },
     {
@@ -164,7 +164,7 @@
       "impact": "Direct compromise of a host in the DMZ.",
       "scope": "firewall dmz / Advanced → DMZ",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE15=(.*)"
     },
     {
@@ -175,7 +175,7 @@
       "impact": "Device discovery by scanners and DoS.",
       "scope": "firewall rules Allow-Ping / Security",
       "criticality": "LOW",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE16=(.*)"
     },
     {
@@ -186,7 +186,7 @@
       "impact": "Data leakage and RCE via network shares.",
       "scope": "samba / vsftpd / USB Sharing",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE17=(.*)"
     },
     {
@@ -197,7 +197,7 @@
       "impact": "Direct access to internal services from the Internet.",
       "scope": "firewall.@redirect / Advanced → Port Forwarding",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE18=(.*)"
     },
     {
@@ -208,7 +208,7 @@
       "impact": "Simplified attack automation and conflicts with VPN/mesh.",
       "scope": "network.lan.ipaddr",
       "criticality": "LOW",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE19=(.*)"
     },
     {
@@ -219,7 +219,7 @@
       "impact": "Cryptanalysis and WLAN session hijacking.",
       "scope": "wireless.*.encryption",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE20=(.*)"
     },
     {
@@ -230,7 +230,7 @@
       "impact": "DoS and forced disconnect of clients.",
       "scope": "wireless.*.ieee80211w",
       "criticality": "LOW",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE21=(.*)"
     },
     {
@@ -241,7 +241,7 @@
       "impact": "Compromise of the cloud account equals control of the router.",
       "scope": "xiaoqiang / MiWiFi App remote / cloud bind",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE22=(.*)"
     },
     {
@@ -252,7 +252,7 @@
       "impact": "Local capture via UART and boot bypass.",
       "scope": "nvram/bdata uart_en, boot_wait",
       "criticality": "MEDIUM",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE23=(.*)"
     },
     {
@@ -263,7 +263,7 @@
       "impact": "Exposure of local router services to the Internet.",
       "scope": "firewall.@zone[wan].input",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE24=(.*)"
     },
     {
@@ -274,7 +274,7 @@
       "impact": "Full control over the device and network.",
       "scope": "Accounts / /etc/shadow / web admin",
       "criticality": "HIGH",
-      "check_script": "XIAOMI_MIWIFI",
+      "check_script": "XiaomiMiWiFi",
       "match_pattern": "RULE25=(.*)"
     }
   ]

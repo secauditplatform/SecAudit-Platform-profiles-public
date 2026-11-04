@@ -1,11 +1,11 @@
 ---
-- name: "Microsoft Windows 10 Enterprise for workstations CRE security baseline audit"
+- name: "Microsoft Windows 11 Enterprise for workstations CRE security baseline audit"
   hosts: all
   gather_facts: true
   vars:
-    win10_fail_on_noncompliance: false
-    win10_strict_os_check: true
-    win10_rule_meta:
+    win11_fail_on_noncompliance: false
+    win11_strict_os_check: true
+    win11_rule_meta:
       RULE1:
         id: "RULE1"
         summary: "Password history size is configured"
@@ -252,7 +252,7 @@
         severity: "MEDIUM"
       RULE65:
         id: "RULE65"
-        summary: "Last user name display on logon screen disabled"
+        summary: "Interactive logon: Do not display last user name is enabled"
         severity: "LOW"
       RULE66:
         id: "RULE66"
@@ -300,7 +300,7 @@
         severity: "MEDIUM"
       RULE80:
         id: "RULE80"
-        summary: "Clients forcibly disconnected when logon hours expire"
+        summary: "Disconnect clients when logon hours expire"
         severity: "HIGH"
       RULE81:
         id: "RULE81"
@@ -336,7 +336,7 @@
         severity: "HIGH"
       RULE91:
         id: "RULE91"
-        summary: "Remote SAM RPC connections restricted"
+        summary: "Restrict clients allowed to make remote calls to SAM"
         severity: "HIGH"
       RULE92:
         id: "RULE92"
@@ -401,6 +401,10 @@
       RULE107:
         id: "RULE107"
         summary: "Admin Approval Mode for the built-in Administrator account"
+        severity: "HIGH"
+      RULE108:
+        id: "RULE108"
+        summary: "UIAccess applications denied elevation prompts without secure desktop"
         severity: "HIGH"
       RULE109:
         id: "RULE109"
@@ -580,43 +584,43 @@
         severity: "LOW"
       RULE158:
         id: "RULE158"
-        summary: "Windows Firewall Domain profile enabled"
+        summary: "Windows Firewall Private profile enabled"
         severity: "HIGH"
       RULE159:
         id: "RULE159"
-        summary: "Windows Firewall Domain profile default inbound action configured"
+        summary: "Windows Firewall Private profile default inbound action"
         severity: "HIGH"
       RULE160:
         id: "RULE160"
-        summary: "Windows Firewall Domain profile default outbound action"
+        summary: "Windows Firewall Private profile default outbound action"
         severity: "HIGH"
       RULE161:
         id: "RULE161"
-        summary: "Windows Firewall Domain profile notifications disabled"
+        summary: "Windows Firewall Private profile notifications disabled"
         severity: "LOW"
       RULE162:
         id: "RULE162"
-        summary: "Windows Firewall Domain profile local firewall rule merge disabled"
+        summary: "Windows Firewall Public profile local rule merge disabled"
         severity: "MEDIUM"
       RULE163:
         id: "RULE163"
-        summary: "Windows Firewall Domain profile local connection security rule merge disabled"
+        summary: "Windows Firewall Public profile local IPsec rule merge disabled"
         severity: "MEDIUM"
       RULE164:
         id: "RULE164"
-        summary: "Windows Firewall Domain profile log file path"
+        summary: "Windows Firewall Public profile log file path"
         severity: "LOW"
       RULE165:
         id: "RULE165"
-        summary: "Windows Firewall Domain profile log file size"
+        summary: "Windows Firewall Public profile log file size"
         severity: "HIGH"
       RULE166:
         id: "RULE166"
-        summary: "Windows Firewall Domain profile log dropped packets"
+        summary: "Windows Firewall Public profile log dropped packets"
         severity: "MEDIUM"
       RULE167:
         id: "RULE167"
-        summary: "Windows Firewall Domain profile log successful connections"
+        summary: "Windows Firewall Public profile log successful connections"
         severity: "MEDIUM"
       RULE168:
         id: "RULE168"
@@ -836,7 +840,7 @@
         severity: "HIGH"
       RULE222:
         id: "RULE222"
-        summary: "Configure IPv6 source routing protection level"
+        summary: "IPv4 source routing protection level configured"
         severity: "MEDIUM"
       RULE223:
         id: "RULE223"
@@ -872,7 +876,7 @@
         severity: "MEDIUM"
       RULE231:
         id: "RULE231"
-        summary: "TCP max data retransmissions (IPv6) configured"
+        summary: "TCP maximum data retransmissions configured"
         severity: "HIGH"
       RULE232:
         id: "RULE232"
@@ -1230,6 +1234,22 @@
         id: "RULE405"
         summary: "Location services disabled"
         severity: "LOW"
+      RULE409:
+        id: "RULE409"
+        summary: "Microsoft Edge password form suggestions disabled"
+        severity: "MEDIUM"
+      RULE410:
+        id: "RULE410"
+        summary: "Microsoft Edge pop-up blocker enabled"
+        severity: "LOW"
+      RULE411:
+        id: "RULE411"
+        summary: "Microsoft Edge address bar search suggestions disabled"
+        severity: "MEDIUM"
+      RULE412:
+        id: "RULE412"
+        summary: "Microsoft Edge SmartScreen enabled"
+        severity: "MEDIUM"
       RULE417:
         id: "RULE417"
         summary: "OneDrive file sync disabled"
@@ -1281,6 +1301,10 @@
       RULE429:
         id: "RULE429"
         summary: "Delete temporary folders on Remote Desktop logoff"
+        severity: "MEDIUM"
+      RULE430:
+        id: "RULE430"
+        summary: "Use per-session temporary folders for Remote Desktop Services"
         severity: "MEDIUM"
       RULE431:
         id: "RULE431"
@@ -1516,8 +1540,16 @@
         severity: "MEDIUM"
       RULE495:
         id: "RULE495"
-        summary: "Disable legacy PC Health error reporting"
+        summary: "DNS over HTTPS (DoH) configured"
+        severity: "MEDIUM"
+      RULE496:
+        id: "RULE496"
+        summary: "Microsoft Defender SmartScreen password reuse notifications enabled"
         severity: "LOW"
+      RULE497:
+        id: "RULE497"
+        summary: "Microsoft Defender SmartScreen unsafe application password notifications enabled"
+        severity: "HIGH"
 
   tasks:
     - name: Confirm Windows OS family
@@ -1526,54 +1558,49 @@
           - ansible_os_family == 'Windows'
         fail_msg: >-
           Host OS family is {{ ansible_os_family }}, expected Windows
-          for Microsoft Windows 10 Enterprise for workstations CRE checks.
+          for Microsoft Windows 11 Enterprise for workstations CRE checks.
         success_msg: "OS family {{ ansible_os_family }} is supported"
-      when: win10_strict_os_check | bool
+      when: win11_strict_os_check | bool
 
-    - name: "Warn when Windows edition is not Microsoft Windows 10 Enterprise for workstations 22H2"
+    - name: "Warn when Windows edition is not Windows 11 22H2"
       ansible.builtin.debug:
         msg: >-
-          Profile targets Microsoft Windows 10 Enterprise for workstations; detected
+          Profile targets Microsoft Windows 11 Enterprise for workstations; detected
           {{ ansible_os_name | default(ansible_distribution) }}
           {{ ansible_os_version | default(ansible_distribution_version) }}.
           Continuing audit with the same CRE PowerShell checks.
       when: >-
-        ('Microsoft Windows 10 Enterprise for workstations' not in (ansible_os_name | default(ansible_distribution) | string))
+        ('Windows 11' not in (ansible_os_name | default(ansible_distribution) | string))
 
     - name: Prepare remote SecAudit work directory
       ansible.windows.win_file:
-        path: "{{ win10_remote_dir | default('C:\\Windows\\Temp\\secaudit_win10') }}"
+        path: "{{ win11_remote_dir | default('C:\\Windows\\Temp\\secaudit_win11') }}"
         state: directory
 
-    - name: Copy Windows 10 audit script
+    - name: Copy Windows 11 audit script
       ansible.windows.win_copy:
-        src: Win10.ps1
-        dest: "{{ win10_remote_dir | default('C:\\Windows\\Temp\\secaudit_win10') }}\\Win10.ps1"
+        src: Win11.ps1
+        dest: "{{ win11_remote_dir | default('C:\\Windows\\Temp\\secaudit_win11') }}\\Win11.ps1"
 
-    - name: Copy Windows 10 rules payload
-      ansible.windows.win_copy:
-        src: Win10.rules.json
-        dest: "{{ win10_remote_dir | default('C:\\Windows\\Temp\\secaudit_win10') }}\\Win10.rules.json"
-
-    - name: "Run Microsoft Windows 10 Enterprise for workstations CRE audit script (same checks as profile package)"
+    - name: "Run Microsoft Windows 11 Enterprise for workstations CRE audit script (same checks as profile package)"
       ansible.windows.win_shell: |
-        & "{{ win10_remote_dir | default('C:\\Windows\\Temp\\secaudit_win10') }}\\Win10.ps1"
-      register: win10_audit_raw
+        & "{{ win11_remote_dir | default('C:\\Windows\\Temp\\secaudit_win11') }}\\Win11.ps1"
+      register: win11_audit_raw
       changed_when: false
       failed_when: false
 
     - name: Parse RULE results into STATUS|id|summary|detail lines
       ansible.builtin.set_fact:
-        win10_compliance_lines: >-
+        win11_compliance_lines: >-
           {%- set rows = [] -%}
-          {%- for line in win10_audit_raw.stdout_lines | default([]) -%}
+          {%- for line in win11_audit_raw.stdout_lines | default([]) -%}
           {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
           {%- if matched | length > 0 -%}
           {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
           {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
           {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
           {%- set detail = matched[0][2] -%}
-          {%- set meta = win10_rule_meta[rule_key] | default({}) -%}
+          {%- set meta = win11_rule_meta[rule_key] | default({}) -%}
           {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
           {%- set _ = rows.append(row) -%}
           {%- endif -%}
@@ -1582,46 +1609,46 @@
 
     - name: Count PASS and FAIL results
       ansible.builtin.set_fact:
-        win10_pass_count: >-
-          {{ win10_compliance_lines | default([])
+        win11_pass_count: >-
+          {{ win11_compliance_lines | default([])
              | select('match', '^PASS\|') | list | length }}
-        win10_fail_count: >-
-          {{ win10_compliance_lines | default([])
+        win11_fail_count: >-
+          {{ win11_compliance_lines | default([])
              | select('match', '^FAIL\|') | list | length }}
-        win10_total_count: "{{ win10_compliance_lines | default([]) | length }}"
+        win11_total_count: "{{ win11_compliance_lines | default([]) | length }}"
 
-    - name: "Microsoft Windows 10 Enterprise for workstations CRE compliance summary"
+    - name: "Microsoft Windows 11 Enterprise for workstations CRE compliance summary"
       ansible.builtin.debug:
         msg:
           target: "{{ inventory_hostname }}"
           os: "{{ ansible_os_name | default(ansible_distribution) }} {{ ansible_os_version | default(ansible_distribution_version) }}"
           kernel: "{{ ansible_kernel | default('') }}"
-          profile: Microsoft Windows 10 Enterprise Release 22H2
-          script: Win10.ps1
-          total: "{{ win10_total_count }}"
-          passed: "{{ win10_pass_count }}"
-          failed: "{{ win10_fail_count }}"
+          profile: Windows11
+          script: Win11.ps1
+          total: "{{ win11_total_count }}"
+          passed: "{{ win11_pass_count }}"
+          failed: "{{ win11_fail_count }}"
           format: STATUS|rule_id|summary|detail
-          checks: "{{ win10_compliance_lines | default([]) }}"
-          script_rc: "{{ win10_audit_raw.rc | default('n/a') }}"
+          checks: "{{ win11_compliance_lines | default([]) }}"
+          script_rc: "{{ win11_audit_raw.rc | default('n/a') }}"
 
     - name: Ensure audit script produced parseable RULE results
       ansible.builtin.assert:
         that:
-          - (win10_total_count | int) > 0
+          - (win11_total_count | int) > 0
         fail_msg: >-
-          No RULE*= PASS/FAIL lines parsed from Win10.ps1 output.
-          rc={{ win10_audit_raw.rc | default('n/a') }}
-          stderr={{ win10_audit_raw.stderr | default('') }}
+          No RULE*= PASS/FAIL lines parsed from Win11.ps1 output.
+          rc={{ win11_audit_raw.rc | default('n/a') }}
+          stderr={{ win11_audit_raw.stderr | default('') }}
 
     - name: Fail when non-compliant checks exist
       ansible.builtin.assert:
         that:
-          - (win10_fail_count | int) == 0
+          - (win11_fail_count | int) == 0
         fail_msg: >-
-          Microsoft Windows 10 Enterprise for workstations CRE audit found {{ win10_fail_count }} failed check(s)
-          out of {{ win10_total_count }}.
+          Microsoft Windows 11 Enterprise for workstations CRE audit found {{ win11_fail_count }} failed check(s)
+          out of {{ win11_total_count }}.
         success_msg: >-
-          Microsoft Windows 10 Enterprise for workstations CRE audit passed {{ win10_pass_count }}/{{ win10_total_count }} checks.
-      when: win10_fail_on_noncompliance | bool
+          Microsoft Windows 11 Enterprise for workstations CRE audit passed {{ win11_pass_count }}/{{ win11_total_count }} checks.
+      when: win11_fail_on_noncompliance | bool
 

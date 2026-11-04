@@ -109,7 +109,7 @@
 
   tasks:
     - name: "Run Xiaomi MiWiFi network audit collector"
-      ansible.builtin.script: XIAOMI_MIWIFI.py
+      ansible.builtin.script: XiaomiMiWiFi.py
       args:
         executable: python3
       environment:

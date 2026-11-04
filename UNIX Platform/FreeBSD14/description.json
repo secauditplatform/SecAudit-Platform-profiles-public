@@ -1,0 +1,18 @@
+{
+  "profile_name": "FreeBSD 14",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for FreeBSD 14 hosts, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence—loader and sysctl settings, services, SSH, sudo, audit, and file permissions—and evaluate FreeBSD 14 systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "os": {
+    "name": "FreeBSD",
+    "vendor": "FreeBSD",
+    "version": "14"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "FreeBSD14.yml",
+  "compliance_playbook_version": "1.0",
+  "category_slug": "unix-platform"
+}

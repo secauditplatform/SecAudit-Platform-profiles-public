@@ -10,7 +10,7 @@ A profile is a versioned check package for one target type. The platform imports
 |------|------|---------|
 | Metadata | `description.json` | Identity, version, target (`os` or `software`), rules file, optional playbook |
 | Rules | `profile_rules.json` | One record per check: id, title, severity, script, and the pattern that reads its result |
-| Runtime rules | `<Name>.rules.json` | Optional data-driven payload for the audit script (used by the Windows packages) |
+| Runtime rules | `<Name>.rules.json` | Optional data-driven payload for the audit script; no package in this catalog uses it now |
 | Audit | `*.sh`, `*.ps1`, `*.py` | Collects evidence and prints one result line per rule |
 | Remediation | `*_remediation.*` | Optional fix script, run as a separate remediation job |
 | Playbook | `*.yml` | Optional Ansible compliance template; not an audit script |
@@ -35,7 +35,7 @@ Profiles are content, not targets or schedules:
 
 | Dimension | Values | Meaning |
 |-----------|--------|---------|
-| `category_slug` | `linux-platform`, `windows-platform`, `network-platform`, `services` | Catalog grouping; inferred from `os`/`software`, can be set explicitly |
+| `category_slug` | `linux-platform`, `windows-platform`, `unix-platform`, `network-platform`, `services` | Catalog grouping; inferred from `os`/`software`, can be set explicitly |
 | `profile_family` | `custom` | The only supported value. It is not a provenance or certification marker |
 | `source_format` | `custom`, `xccdf`, `oval` | Package origin; SCAP uploads are materialized into the same layout |
 | Executor | SSH, WinRM, Python | Chosen by script extension: `.sh`, `.ps1`, `.py` |
@@ -69,7 +69,7 @@ Import validates the package before copying it. A ZIP or SCAP/XCCDF/OVAL upload 
 
 ### 3. Run checks
 
-- **Manual job** — select the profile, hosts, and a credential. Linux and services run over SSH, Windows over WinRM, network devices over the Python executor.
+- **Manual job** — select the profile, hosts, and a credential. Linux, UNIX, and services run over SSH, Windows over WinRM, network devices over the Python executor.
 - **AuditFlow** — scan a range, let the platform fingerprint the OS and suggest profiles, then select the hosts to check. Hosts without a matching profile are skipped, not guessed. Every package here has the compliance playbook AuditFlow needs.
 - **Applicability** — OS profiles target a specific distribution and version; service profiles expect the service installed on the host. Check `description.json` before running a profile outside its target.
 
@@ -149,14 +149,16 @@ Keep `requirement_id` values stable across versions so results stay comparable. 
 ## Notes and limits
 
 - **Credentials** — OS profiles use the host login. Service and network profiles also use the service-layer username/password on the host record (database/middleware account or device login).
-- **Privileges** — Linux profiles read `/etc`, kernel, audit, and service state; run them with root-level access, directly or via sudo. Windows profiles need administrative WinRM. Review scripts before running them in production.
+- **Privileges** — Linux and UNIX profiles read `/etc`, kernel, audit, and service state; run them with root-level access, directly or via sudo. Windows profiles need administrative WinRM. Review scripts before running them in production.
 - **Remediation changes systems** — test in a lab first, then re-audit to verify.
 - **Scope** — these are configuration baselines, not vulnerability scanners. SecAudit does not scan package versions or maintain a CVE database; a customer CVE feed can be shown beside failed checks.
 - **Versions** — a profile version is the package revision, not the SecAudit Platform release.
 
 ## License
 
-Platform code [SecAudit Platform](https://github.com/secauditplatform/SecAudit-Platform-public) is licensed under [PolyForm Noncommercial 1.0.0](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/LICENSE). Profile content is licensed separately and is not covered by that license — see the platform [NOTICE](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/NOTICE).
+Profile content in this repository is licensed under the [Functional Source License, Version 1.1, ALv2 Future License](LICENSE) (`FSL-1.1-ALv2`). Each version converts to Apache 2.0 two years after it is published; until then, commercial use that competes with the platform is not permitted.
+
+Platform code [SecAudit Platform](https://github.com/secauditplatform/SecAudit-Platform-public) is licensed under [PolyForm Noncommercial 1.0.0](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/LICENSE), which does not extend to the profile content — see the platform [NOTICE](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/NOTICE).
 
 ## See also
 

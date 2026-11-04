@@ -722,7 +722,7 @@ def secaudit_main() -> None:
     secaudit_run_perimeter_and_lan()
     secaudit_run_crypto_cloud_admin()
     secaudit_flush_commands()
-    secaudit_log("remediation complete (XIAOMI_MIWIFI_remediation.py)")
+    secaudit_log("remediation complete (XiaomiMiWiFi_remediation.py)")
     sys.exit(0)
 
 
