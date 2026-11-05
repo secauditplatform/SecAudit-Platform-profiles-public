@@ -158,7 +158,7 @@ Keep `requirement_id` values stable across versions so results stay comparable. 
 
 Profile content in this repository is licensed under the [Functional Source License, Version 1.1, ALv2 Future License](LICENSE) (`FSL-1.1-ALv2`). Each version converts to Apache 2.0 two years after it is published; until then, commercial use that competes with the platform is not permitted.
 
-Platform code [SecAudit Platform](https://github.com/secauditplatform/SecAudit-Platform-public) is licensed under [PolyForm Noncommercial 1.0.0](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/LICENSE), which does not extend to the profile content — see the platform [NOTICE](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/NOTICE).
+Platform code [SecAudit Platform](https://github.com/secauditplatform/SecAudit-Platform-public) is licensed under the [same Functional Source License](https://github.com/secauditplatform/SecAudit-Platform-public/blob/main/LICENSE) (`FSL-1.1-ALv2`); each repository's license covers its own content.
 
 ## See also
 
