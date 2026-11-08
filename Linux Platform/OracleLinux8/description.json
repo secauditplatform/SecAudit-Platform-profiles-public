@@ -1,0 +1,17 @@
+{
+  "profile_name": "OracleLinux 8",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for OracleLinux 8 hosts, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence and evaluate OracleLinux 8 systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "os": {
+    "name": "Oracle Linux",
+    "vendor": "Oracle",
+    "version": "8"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Oracle8.yml",
+  "compliance_playbook_version": "1.0"
+}

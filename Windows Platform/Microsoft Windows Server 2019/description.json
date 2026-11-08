@@ -1,0 +1,17 @@
+{
+  "profile_name": "Windows Server 2019 Standard",
+  "is_active": true,
+  "version": "1.1",
+  "overview": "Security configuration baseline for Microsoft Windows Server 2019 Standard hosts, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence via WinRM/PowerShell—including secedit, auditpol, built-in accounts, and HKLM/HKU registry settings—and evaluate Windows Server 2019 Standard systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "os": {
+    "name": "Windows Server 2019 Standard",
+    "vendor": "Microsoft Corporation",
+    "version": "10"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Win2019.yml",
+  "compliance_playbook_version": "1.1"
+}
