@@ -1317,7 +1317,7 @@
         severity: "HIGH"
       RULE328:
         id: "RULE328"
-        summary: "Access to local interactive user dotfiles is configured"dot files\" is configured"
+        summary: "Access to local interactive user dotfiles is configured"
         severity: "HIGH"
 
   tasks:

@@ -97,7 +97,7 @@
         severity: "MEDIUM"
       RULE23:
         id: "RULE23"
-        summary: "The logging level is set to info"INFO\""
+        summary: "The logging level is set to info"
         severity: "LOW"
       RULE24:
         id: "RULE24"
@@ -321,7 +321,7 @@
         severity: "MEDIUM"
       RULE79:
         id: "RULE79"
-        summary: "The default docker0 bridge is not used"docker0\" is not used."
+        summary: "The default docker0 bridge is not used"
         severity: "MEDIUM"
       RULE80:
         id: "RULE80"

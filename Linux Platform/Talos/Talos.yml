@@ -1,0 +1,174 @@
+---
+- name: "Talos Linux CRE security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    talos_fail_on_noncompliance: false
+    talos_strict_os_check: false
+    talos_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "Talos is installed with SecureBoot enabled"
+        severity: "HIGH"
+      RULE2:
+        id: "RULE2"
+        summary: "System disks are encrypted using KMS or TPM methods"
+        severity: "HIGH"
+      RULE3:
+        id: "RULE3"
+        summary: "Updated software is installed"
+        severity: "HIGH"
+      RULE4:
+        id: "RULE4"
+        summary: "NTP is configured"
+        severity: "MEDIUM"
+      RULE5:
+        id: "RULE5"
+        summary: "Scheduling on the control plane is disabled"
+        severity: "HIGH"
+      RULE6:
+        id: "RULE6"
+        summary: "The Pod Security Standards policy is set to restricted"
+        severity: "HIGH"
+      RULE7:
+        id: "RULE7"
+        summary: "RBAC is enabled"
+        severity: "HIGH"
+      RULE8:
+        id: "RULE8"
+        summary: "Sending ICMP redirects is disabled"
+        severity: "MEDIUM"
+      RULE9:
+        id: "RULE9"
+        summary: "Source-routed packets are not accepted"
+        severity: "MEDIUM"
+      RULE10:
+        id: "RULE10"
+        summary: "ICMP redirects are not accepted"
+        severity: "MEDIUM"
+      RULE11:
+        id: "RULE11"
+        summary: "Secure ICMP redirects are not accepted"
+        severity: "MEDIUM"
+      RULE12:
+        id: "RULE12"
+        summary: "Suspicious (martian) packets are logged"
+        severity: "MEDIUM"
+      RULE13:
+        id: "RULE13"
+        summary: "ICMP broadcast requests are ignored"
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "Bogus ICMP responses are ignored"
+        severity: "MEDIUM"
+      RULE15:
+        id: "RULE15"
+        summary: "TCP SYN Cookies are enabled"
+        severity: "MEDIUM"
+      RULE16:
+        id: "RULE16"
+        summary: "Reverse path filtering is enabled when only symmetric routes are used"
+        severity: "MEDIUM"
+      RULE17:
+        id: "RULE17"
+        summary: "An appropriate firewall policy is applied to the control plane"
+        severity: "MEDIUM"
+      RULE18:
+        id: "RULE18"
+        summary: "An appropriate firewall policy is applied to worker nodes"
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "KubeSpan is enabled where network-layer encryption is required"
+        severity: "MEDIUM"
+      RULE20:
+        id: "RULE20"
+        summary: "Kernel logging is configured to send logs to a remote service"
+        severity: "LOW"
+      RULE21:
+        id: "RULE21"
+        summary: "Service logging is configured"
+        severity: "LOW"
+
+  tasks:
+    - name: "Warn when distribution is not Talos"
+      ansible.builtin.debug:
+        msg: >-
+          Profile targets Talos Linux; detected
+          {{ ansible_distribution }} {{ ansible_distribution_version }}.
+          Continuing audit with the same CRE script checks.
+      when: >-
+        ansible_distribution != 'Talos'
+
+    - name: "Run Talos Linux CRE audit script (same checks as profile package)"
+      ansible.builtin.script: Talos.sh
+      args:
+        executable: /bin/bash
+      register: talos_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        talos_compliance_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in talos_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = talos_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        talos_pass_count: >-
+          {{ talos_compliance_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        talos_fail_count: >-
+          {{ talos_compliance_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        talos_total_count: "{{ talos_compliance_lines | default([]) | length }}"
+
+    - name: "Talos Linux CRE compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: Talos_CRE_NUP(1.3.0)
+          script: Talos.sh
+          total: "{{ talos_total_count }}"
+          passed: "{{ talos_pass_count }}"
+          failed: "{{ talos_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ talos_compliance_lines | default([]) }}"
+          script_rc: "{{ talos_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (talos_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from Talos.sh output.
+          rc={{ talos_audit_raw.rc | default('n/a') }}
+          stderr={{ talos_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (talos_fail_count | int) == 0
+        fail_msg: >-
+          Talos Linux CRE audit found {{ talos_fail_count }} failed check(s)
+          out of {{ talos_total_count }}.
+        success_msg: >-
+          Talos Linux CRE audit passed {{ talos_pass_count }}/{{ talos_total_count }} checks.
+      when: talos_fail_on_noncompliance | bool
+

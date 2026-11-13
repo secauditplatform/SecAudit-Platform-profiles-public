@@ -128,8 +128,7 @@ function secaudit_collect_auditpol {
         }
 
         $markers = @(
-            'Success and Failure', 'No Auditing', 'Success', 'Failure',
-            'Успех и отказ', 'Успех и сбой', 'Нет аудита', 'Без аудита', 'Успех', 'Сбой', 'Отказ'
+            'Success and Failure', 'No Auditing', 'Success', 'Failure'
         )
         $entries = @()
         foreach ($line in Get-Content -LiteralPath $path -Encoding Oem -ErrorAction Stop) {
@@ -283,8 +282,7 @@ function secaudit_collect_auditpol {
         }
 
         $markers = @(
-            'Success and Failure', 'No Auditing', 'Success', 'Failure',
-            'Успех и отказ', 'Успех и сбой', 'Нет аудита', 'Без аудита', 'Успех', 'Сбой', 'Отказ'
+            'Success and Failure', 'No Auditing', 'Success', 'Failure'
         )
         $entries = @()
         foreach ($line in Get-Content -LiteralPath $path -Encoding Oem -ErrorAction Stop) {
@@ -1403,36 +1401,36 @@ check_rule RULE047 (priv 'SeShutdownPrivilege') EQUAL 'Administrators,Users' 'Ad
 check_rule RULE048 (priv 'SeTakeOwnershipPrivilege') EQUAL 'Administrators' 'Administrators' COLLECTION
 
 # ================= Audit policy (auditpol) =================
-check_rule RULE188 (auditpol 'Credential Validation' 'Проверка учетных данных') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE189 (auditpol 'Application Group Management' 'Управление группой приложений') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE190 (auditpol 'Computer Account Management' 'Управление учетной записью компьютера') IN 'Success and Failure,Успех и сбой' 'Success,Успех' COLLECTION
-check_rule RULE191 (auditpol 'Other Account Management Events' 'Другие события управления учетной записью') IN 'Success,Успех' 'No Auditing' COLLECTION
-check_rule RULE192 (auditpol 'Security Group Management' 'Управление группой безопасности') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE193 (auditpol 'User Account Management' 'Управление учетными записями') IN 'Success and Failure,Успех и сбой' 'Success,Успех' COLLECTION
-check_rule RULE194 (auditpol 'Самонастраиваемые события') IN 'Success,Успех' 'No Auditing' COLLECTION
-check_rule RULE195 (auditpol 'Process Creation' 'Создание процесса') IN 'Success,Успех' 'No Auditing' COLLECTION
-check_rule RULE196 (auditpol 'Account Lockout' 'Блокировка учетной записи') IN 'Failure,Сбой' 'Success,Успех' COLLECTION
-check_rule RULE197 (auditpol 'Group Membership' 'Членство в группа') IN 'Success,Успех' 'No Auditing' COLLECTION
-check_rule RULE198 (auditpol 'Logoff' 'Выход из системы') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE199 (auditpol 'Logon' 'Вход в систему') IN 'Success and Failure,Успех и сбой' 'Success,Успех' COLLECTION
-check_rule RULE200 (auditpol 'Other Logon/Logoff Events' 'Другие события входа и выхода') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE201 (auditpol 'Special Logon' 'Специальный вход') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE202 (auditpol 'Removable Storage' 'Съемные носители') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE203 (auditpol 'Audit Policy Change' 'Аудит изменения политики') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE204 (auditpol 'Authentication Policy Change' 'Изменение политики проверки подлинности') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE205 (auditpol 'Authorization Policy Change' 'Изменение политики авторизации') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE206 (auditpol 'Sensitive Privilege Use' 'Использование прав, затрагивающее конфиденциальные данные') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE207 (auditpol 'IPsec Driver' 'Драйвер IPSEC') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE208 (auditpol 'Other System Events' 'Другие системные события') IN 'Success and Failure,Успех и сбой' 'Success and Failure' COLLECTION
-check_rule RULE209 (auditpol 'Security State Change' 'Изменение состояния безопасности') IN 'Success,Успех' 'Success,Успех' COLLECTION
-check_rule RULE210 (auditpol 'Security System Extension' 'Расширение системы безопасности') IN 'Success,Успех' 'No Auditing' COLLECTION
-check_rule RULE211 (auditpol 'System Integrity' 'Целостность системы') IN 'Success and Failure,Успех и сбой' 'Success and Failure,Успех и сбой' COLLECTION
+check_rule RULE188 (auditpol 'Credential Validation') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE189 (auditpol 'Application Group Management') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE190 (auditpol 'Computer Account Management') IN 'Success and Failure' 'Success' COLLECTION
+check_rule RULE191 (auditpol 'Other Account Management Events') IN 'Success' 'No Auditing' COLLECTION
+check_rule RULE192 (auditpol 'Security Group Management') IN 'Success' 'Success' COLLECTION
+check_rule RULE193 (auditpol 'User Account Management') IN 'Success and Failure' 'Success' COLLECTION
+check_rule RULE194 (auditpol 'Plug and Play Events') IN 'Success' 'No Auditing' COLLECTION
+check_rule RULE195 (auditpol 'Process Creation') IN 'Success' 'No Auditing' COLLECTION
+check_rule RULE196 (auditpol 'Account Lockout') IN 'Failure' 'Success' COLLECTION
+check_rule RULE197 (auditpol 'Group Membership') IN 'Success' 'No Auditing' COLLECTION
+check_rule RULE198 (auditpol 'Logoff') IN 'Success' 'Success' COLLECTION
+check_rule RULE199 (auditpol 'Logon') IN 'Success and Failure' 'Success' COLLECTION
+check_rule RULE200 (auditpol 'Other Logon/Logoff Events') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE201 (auditpol 'Special Logon') IN 'Success' 'Success' COLLECTION
+check_rule RULE202 (auditpol 'Removable Storage') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE203 (auditpol 'Audit Policy Change') IN 'Success' 'Success' COLLECTION
+check_rule RULE204 (auditpol 'Authentication Policy Change') IN 'Success' 'Success' COLLECTION
+check_rule RULE205 (auditpol 'Authorization Policy Change') IN 'Success' 'Success' COLLECTION
+check_rule RULE206 (auditpol 'Sensitive Privilege Use') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE207 (auditpol 'IPsec Driver') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE208 (auditpol 'Other System Events') IN 'Success and Failure' 'Success and Failure' COLLECTION
+check_rule RULE209 (auditpol 'Security State Change') IN 'Success' 'Success' COLLECTION
+check_rule RULE210 (auditpol 'Security System Extension') IN 'Success' 'No Auditing' COLLECTION
+check_rule RULE211 (auditpol 'System Integrity') IN 'Success and Failure' 'Success and Failure' COLLECTION
 
 # ================= Built-in accounts =================
 check_rule RULE049 (acct 'LocalAdministrator' 'Disabled') EQUAL 'True' 'False' BOOLEAN
 check_rule RULE051 (acct 'LocalGuest' 'Disabled') EQUAL 'True' 'False' BOOLEAN
-check_rule RULE053 (acct 'LocalAdministrator' 'Name') NOT_IN 'Administrator,Администратор' 'Administrator,Администратор' COLLECTION
-check_rule RULE054 (acct 'LocalGuest' 'Name') NOT_IN 'Guest,Гость' 'Guest,Гость' COLLECTION
+check_rule RULE053 (acct 'LocalAdministrator' 'Name') NOT_IN 'Administrator' 'Administrator' COLLECTION
+check_rule RULE054 (acct 'LocalGuest' 'Name') NOT_IN 'Guest' 'Guest' COLLECTION
 
 # ================= Per-user policy (HKU) =================
 check_rule RULE465 (hku 'ScreenSaveActive') EQUAL '0' '...Count Of all SIDs[0]' INTEGER

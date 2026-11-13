@@ -1,0 +1,17 @@
+{
+  "profile_name": "Talos Linux",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Secure configuration baseline for Talos Linux",
+  "purpose": "Collect system data to assess the security configuration of Talos Linux",
+  "os": {
+    "name": "Talos Linux",
+    "vendor": "siderolabs",
+    "version": "*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Talos.yml",
+  "compliance_playbook_version": "1.0"
+}

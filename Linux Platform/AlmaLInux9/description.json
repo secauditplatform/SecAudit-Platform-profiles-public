@@ -1,0 +1,17 @@
+{
+  "profile_name": "AlmaLinux 9",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Secure configuration baseline for AlmaLinux 9",
+  "purpose": "Collect system data to assess the security configuration of AlmaLinux 9",
+  "os": {
+    "name": "AlmaLinux",
+    "vendor": "AlmaLinux OS Foundation",
+    "version": "9"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Alma9.yml",
+  "compliance_playbook_version": "1.0"
+}

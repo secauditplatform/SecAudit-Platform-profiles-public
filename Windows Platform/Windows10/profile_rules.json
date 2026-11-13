@@ -2929,7 +2929,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Credential Validation' || @.Policy=='Проверка учетных данных' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Credential Validation' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2946,7 +2946,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Application Group Management' || @.Policy=='Управление группой приложений' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Application Group Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2963,7 +2963,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Computer Account Management' || @.Policy=='Управление учетной записью компьютера' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Computer Account Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2980,7 +2980,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Other Account Management Events' || @.Policy=='Другие события управления учетной записью' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Other Account Management Events' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2997,7 +2997,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Security Group Management' || @.Policy=='Управление группой безопасности' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Security Group Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3014,7 +3014,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='User Account Management' || @.Policy=='Управление учетными записями' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='User Account Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3031,7 +3031,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy==\"Plug and Play Events\" || @.Policy=='Самонастраиваемые события' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy==\"Plug and Play Events\" )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3048,7 +3048,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Process Creation' || @.Policy=='Создание процесса' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Process Creation' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3065,7 +3065,7 @@
       "operator": "IN",
       "target": "Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Account Lockout' || @.Policy=='Блокировка учетной записи' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Account Lockout' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3082,7 +3082,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Group Membership' || @.Policy=='Членство в группа' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Group Membership' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3099,7 +3099,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Logoff' || @.Policy=='Выход из системы' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Logoff' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3116,7 +3116,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Logon' || @.Policy=='Вход в систему' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Logon' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3133,7 +3133,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Other Logon/Logoff Events' || @.Policy=='Другие события входа и выхода' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Other Logon/Logoff Events' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3150,7 +3150,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Special Logon' || @.Policy=='Специальный вход' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Special Logon' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3167,7 +3167,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Removable Storage' || @.Policy=='Съемные носители' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Removable Storage' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3184,7 +3184,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Audit Policy Change' || @.Policy=='Аудит изменения политики' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Audit Policy Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3201,7 +3201,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Authentication Policy Change' || @.Policy=='Изменение политики проверки подлинности' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Authentication Policy Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3218,7 +3218,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Authorization Policy Change' || @.Policy=='Изменение политики авторизации' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Authorization Policy Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3235,7 +3235,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Sensitive Privilege Use' || @.Policy=='Использование прав, затрагивающее конфиденциальные данные' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Sensitive Privilege Use' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3252,7 +3252,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='IPsec Driver' || @.Policy=='Драйвер IPSEC' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='IPsec Driver' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3269,7 +3269,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success and Failure",
-      "parser": "$.Auditpol.[?(@.Policy=='Other System Events' || @.Policy=='Другие системные события' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Other System Events' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3286,7 +3286,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Security State Change' || @.Policy=='Изменение состояния безопасности' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Security State Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3303,7 +3303,7 @@
       "operator": "IN",
       "target": "Success",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Security System Extension' || @.Policy=='Расширение системы безопасности' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Security System Extension' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -3320,7 +3320,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success and Failure",
-      "parser": "$.Auditpol.[?(@.Policy=='System Integrity' || @.Policy=='Целостность системы' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='System Integrity' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },

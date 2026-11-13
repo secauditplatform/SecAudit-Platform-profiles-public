@@ -2314,7 +2314,7 @@ fi
 if grep -Psi '^\h*WaylandEnable=false' /etc/gdm/custom.conf 2>/dev/null; then
 sec_audit_report_pass 75 "Xwayland is configured"
 else
-sec_audit_report_fail 75 "WaylandEnable=false (or equivalent) is not set in GDM custom.conf вЂ” Xwayland may remain enabled"
+sec_audit_report_fail 75 "WaylandEnable=false (or equivalent) is not set in GDM custom.conf - Xwayland may remain enabled"
 fi
 }
 
@@ -2736,7 +2736,7 @@ PORTS_P=$(firewall-cmd --permanent --list-ports 2>/dev/null | wc -w)
 if [ "$SERVICES" -gt 0 ] || [ "$PORTS" -gt 0 ]; then
     sec_audit_report_pass 144 "firewalld exposes $SERVICES service(s) and $PORTS port(s) at runtime (permanent: $SERVICES_P / $PORTS_P)"
 elif [ "$SERVICES_P" -gt 0 ] || [ "$PORTS_P" -gt 0 ]; then
-    sec_audit_report_fail 144 "permanent firewalld rules exist ($SERVICES_P services, $PORTS_P ports) but runtime lists none вЂ” run firewall-cmd --reload"
+    sec_audit_report_fail 144 "permanent firewalld rules exist ($SERVICES_P services, $PORTS_P ports) but runtime lists none - run firewall-cmd --reload"
 else
     sec_audit_report_fail 144 "firewalld services and ports are not configured"
 fi

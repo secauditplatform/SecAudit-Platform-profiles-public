@@ -2029,7 +2029,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Credential Validation' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Credential Validation' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2046,7 +2046,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Application Group Management' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Application Group Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2063,7 +2063,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Security Group Management' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Security Group Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2080,7 +2080,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='User Account Management' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='User Account Management' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2097,7 +2097,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Process Creation' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Process Creation' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2114,7 +2114,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Account Lockout' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Account Lockout' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2131,7 +2131,7 @@
       "operator": "IN",
       "target": "Success and Failure, Success",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Group Membership' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Group Membership' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2148,7 +2148,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Logoff' || @.Policy=='пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Logoff' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2165,7 +2165,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success and Failure",
-      "parser": "$.Auditpol.[?(@.Policy=='Logon' || @.Policy=='пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Logon' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2182,7 +2182,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Other Logon/Logoff Events' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Other Logon/Logoff Events' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2199,7 +2199,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Special Logon' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Special Logon' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2216,7 +2216,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Removable Storage' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Removable Storage' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2233,7 +2233,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Audit Policy Change' || @.Policy=='пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Audit Policy Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2250,7 +2250,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Authentication Policy Change' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Authentication Policy Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2267,7 +2267,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Authorization Policy Change' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Authorization Policy Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2284,7 +2284,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Sensitive Privilege Use' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Sensitive Privilege Use' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2301,7 +2301,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='IPsec Driver' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅ IPSEC' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='IPsec Driver' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2318,7 +2318,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success and Failure",
-      "parser": "$.Auditpol.[?(@.Policy=='Other System Events' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Other System Events' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2335,7 +2335,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "Success",
-      "parser": "$.Auditpol.[?(@.Policy=='Security State Change' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Security State Change' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2352,7 +2352,7 @@
       "operator": "IN",
       "target": "Success and Failure, Failure, Failure, Success and Failure",
       "default": "No Auditing",
-      "parser": "$.Auditpol.[?(@.Policy=='Security System Extension' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='Security System Extension' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },
@@ -2369,7 +2369,7 @@
       "operator": "IN",
       "target": "Success and Failure",
       "default": "Success and Failure",
-      "parser": "$.Auditpol.[?(@.Policy=='System Integrity' || @.Policy=='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' )].Setting",
+      "parser": "$.Auditpol.[?(@.Policy=='System Integrity' )].Setting",
       "value_type": "COLLECTION",
       "collector": "secedit"
     },

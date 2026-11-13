@@ -137,8 +137,7 @@ function secaudit_collect_auditpol {
         }
 
         $markers = @(
-            'Success and Failure', 'No Auditing', 'Success', 'Failure',
-            'Успех и отказ', 'Успех и сбой', 'Нет аудита', 'Без аудита', 'Успех', 'Сбой', 'Отказ'
+            'Success and Failure', 'No Auditing', 'Success', 'Failure'
         )
         $entries = @()
         foreach ($line in Get-Content -LiteralPath $path -Encoding Oem -ErrorAction Stop) {
@@ -898,33 +897,33 @@ check_rule RULE047 (priv 'SeShutdownPrivilege') IN 'Administrators' 'Administrat
 check_rule RULE048 (priv 'SeTakeOwnershipPrivilege') EQUAL 'Administrators' 'Administrators' COLLECTION
 
 # ================= Audit policy (auditpol) =================
-check_rule RULE188 (auditpol 'Credential Validation') IN 'Success and Failure,Успех и сбой' 'Success,Успех' COLLECTION
-check_rule RULE189 (auditpol 'Application Group Management') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE192 (auditpol 'Security Group Management') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Succes,Успех' COLLECTION
-check_rule RULE193 (auditpol 'User Account Management') IN 'Success and Failure,Успех и сбой' 'Success,Успех' COLLECTION
-check_rule RULE195 (auditpol 'Process Creation') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'No Auditing' COLLECTION
-check_rule RULE196 (auditpol 'Account Lockout') IN 'Success and Failure, Failure' 'Success,Успех' COLLECTION
+check_rule RULE188 (auditpol 'Credential Validation') IN 'Success and Failure' 'Success' COLLECTION
+check_rule RULE189 (auditpol 'Application Group Management') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE192 (auditpol 'Security Group Management') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE193 (auditpol 'User Account Management') IN 'Success and Failure' 'Success' COLLECTION
+check_rule RULE195 (auditpol 'Process Creation') IN 'Success and Failure, Failure' 'No Auditing' COLLECTION
+check_rule RULE196 (auditpol 'Account Lockout') IN 'Success and Failure, Failure' 'Success' COLLECTION
 check_rule RULE197 (auditpol 'Group Membership') IN 'Success and Failure, Success' 'No Auditing' COLLECTION
-check_rule RULE198 (auditpol 'Logoff') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Success,Успех' COLLECTION
-check_rule RULE199 (auditpol 'Logon') IN 'Success and Failure,Успех и сбой' 'Success and Failure,Успех и сбой' COLLECTION
-check_rule RULE200 (auditpol 'Other Logon/Logoff Events') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE201 (auditpol 'Special Logon') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Success,Успех' COLLECTION
-check_rule RULE202 (auditpol 'Removable Storage') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE203 (auditpol 'Audit Policy Change') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Success,Успех' COLLECTION
-check_rule RULE204 (auditpol 'Authentication Policy Change') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Success,Успех' COLLECTION
-check_rule RULE205 (auditpol 'Authorization Policy Change') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Success,Успех' COLLECTION
-check_rule RULE206 (auditpol 'Sensitive Privilege Use') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE207 (auditpol 'IPsec Driver') IN 'Success and Failure,Успех и сбой' 'No Auditing' COLLECTION
-check_rule RULE208 (auditpol 'Other System Events') IN 'Success and Failure,Успех и сбой' 'Success and Failure,Успех и сбой' COLLECTION
-check_rule RULE209 (auditpol 'Security State Change') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'Success,Успех' COLLECTION
-check_rule RULE210 (auditpol 'Security System Extension') IN 'Success and Failure, Failure, Сбой, Успех и Сбой' 'No Auditing' COLLECTION
-check_rule RULE211 (auditpol 'System Integrity') IN 'Success and Failure,Успех и сбой' 'Success and Failure,Успех и сбой' COLLECTION
+check_rule RULE198 (auditpol 'Logoff') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE199 (auditpol 'Logon') IN 'Success and Failure' 'Success and Failure' COLLECTION
+check_rule RULE200 (auditpol 'Other Logon/Logoff Events') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE201 (auditpol 'Special Logon') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE202 (auditpol 'Removable Storage') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE203 (auditpol 'Audit Policy Change') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE204 (auditpol 'Authentication Policy Change') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE205 (auditpol 'Authorization Policy Change') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE206 (auditpol 'Sensitive Privilege Use') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE207 (auditpol 'IPsec Driver') IN 'Success and Failure' 'No Auditing' COLLECTION
+check_rule RULE208 (auditpol 'Other System Events') IN 'Success and Failure' 'Success and Failure' COLLECTION
+check_rule RULE209 (auditpol 'Security State Change') IN 'Success and Failure, Failure' 'Success' COLLECTION
+check_rule RULE210 (auditpol 'Security System Extension') IN 'Success and Failure, Failure' 'No Auditing' COLLECTION
+check_rule RULE211 (auditpol 'System Integrity') IN 'Success and Failure' 'Success and Failure' COLLECTION
 
 # ================= Built-in accounts =================
 check_rule RULE049 (acct 'LocalAdministrator' 'Disabled') EQUAL 'True' 'False' BOOLEAN
 check_rule RULE051 (acct 'LocalGuest' 'Disabled') EQUAL 'True' 'False' BOOLEAN
-check_rule RULE053 (acct 'LocalAdministrator' 'Name') NOT_IN 'Administrator,Администратор' 'Administrator,Администратор' COLLECTION
-check_rule RULE054 (acct 'LocalGuest' 'Name') NOT_IN 'Guest,Гость' 'Guest,Гость' COLLECTION
+check_rule RULE053 (acct 'LocalAdministrator' 'Name') NOT_IN 'Administrator' 'Administrator' COLLECTION
+check_rule RULE054 (acct 'LocalGuest' 'Name') NOT_IN 'Guest' 'Guest' COLLECTION
 
 # ================= Per-user policy (HKU) =================
 check_rule RULE465 (hku 'ScreenSaveActive') EQUAL '0' '...Count Of all SIDs[0]' INTEGER

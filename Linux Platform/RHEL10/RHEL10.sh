@@ -1120,6 +1120,196 @@ sec_audit_assert_package_absent() {
 }
 
 # --- compatibility aliases used by preserved RHEL rule bodies ---
+sec_audit_dnf_main_last_value() { sec_audit_dnf_main_option "$@"; }
+sec_audit_dnf_val_is_false() { sec_audit_truthy_false "$@"; }
+sec_audit_dnf_val_is_true() { sec_audit_truthy_true "$@"; }
+sec_audit_rpm_gpg_pubkey_pkg_count() { sec_audit_rpm_gpg_pubkey_count "$@"; }
+sec_audit__yum_repo_list_explicit_gpgcheck0() { sec_audit_list_repos_gpgcheck_disabled; }
+sec_audit__yum_repo_list_explicit_repo_gpgcheck0() { sec_audit_list_repos_repogpg_disabled; }
+sec_audit_grub_cfg_paths() { sec_audit_list_grub_cfg_paths; }
+sec_audit_grub_cfg_grep() { sec_audit_grub_cfg_matches "$@"; }
+sec_audit_sysctl_key_runtime() { sec_audit_sysctl_runtime "$@"; }
+sec_audit_sshd_effective_dump() { sec_audit_sshd_effective_config; }
+sec_audit_sshd_t_grep() { sec_audit_sshd_config_grep "$@"; }
+sec_audit_sshd_t_awk() { sec_audit_sshd_config_awk "$@"; }
+sec_audit_sshd_effective_usable() {
+    sec_audit_cache_sshd_config
+    [ -n "${_SSHD_DUMP:-}" ]
+}
+sec_audit_auditctl_rules_grep() { sec_audit_auditctl_list_grep "$@"; }
+sec_audit_audit_rules_files_grep() { sec_audit_audit_rules_file_grep "$@"; }
+sec_audit_audit_rule_loaded_and_on_disk() { sec_audit_audit_rule_on_disk_and_loaded "$@"; }
+sec_audit_soft_find_timed_out() { sec_audit_find_hit_timeout "$@"; }
+sec_audit_pkg_any_installed() { sec_audit_rpm_any_installed "$@"; }
+sec_audit_limits_core_zero_and_systemd_ok() {
+    if ! grep -Psi '^\*\s+hard\s+core\s+0\b' /etc/security/limits.conf /etc/security/limits.d/* 2>/dev/null | grep -q .; then
+        return 1
+    fi
+    if grep -rPi '^\h*DefaultLimitCORE\h*=\h*(infinity|unlimited|[1-9])' \
+        /etc/systemd/system.conf /etc/systemd/user.conf \
+        /etc/systemd/system.conf.d/*.conf /etc/systemd/user.conf.d/*.conf 2>/dev/null | grep -q .; then
+        return 1
+    fi
+    return 0
+}
+sec_audit_pam_stack_paths_password_system() {
+    local f p
+    for f in /etc/pam.d/password-auth /etc/pam.d/system-auth /etc/pam.d/common-password; do
+        [[ -e $f ]] || continue
+        if sec_audit_have_bin readlink; then
+            p=$(readlink -f "$f" 2>/dev/null || echo "$f")
+        else
+            p=$f
+        fi
+        printf '%s\n' "$p"
+    done | sort -u
+}
+sec_audit_pam_password_line_has_module() {
+    local mod="$1" p stacks
+    stacks="$(sec_audit_pam_stack_paths_password_system)"
+    [ -n "$stacks" ] || stacks="$(sec_audit_pam_password_stack_paths)"
+    while IFS= read -r p; do
+        [[ -f $p ]] || continue
+        if awk -v m="$mod" '
+            BEGIN { found = 0 }
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*password[[:space:]]+/ {
+                buf = $0
+                while (getline > 0) {
+                    if ($0 ~ /^[[:space:]]*(account|auth|session|password)[[:space:]]/) break
+                    buf = buf " " $0
+                }
+                if (index(buf, m) > 0) found = 1
+            }
+            END { exit(found ? 0 : 1) }
+        ' "$p"; then
+            return 0
+        fi
+    done <<< "$stacks"
+    return 1
+}
+sec_audit_pam_password_pwquality_before_unix_all_stacks() {
+    local p any=0 stacks
+    stacks="$(sec_audit_pam_stack_paths_password_system)"
+    [ -n "$stacks" ] || stacks="$(sec_audit_pam_password_stack_paths)"
+    while IFS= read -r p; do
+        [[ -f $p ]] || continue
+        grep -qE '^[[:space:]]*password[[:space:]]' "$p" 2>/dev/null || continue
+        any=1
+        awk '
+            function bad_order(buf) {
+                if (buf !~ /pam_pwquality\.so/) return 1
+                ipw = index(buf, "pam_pwquality.so")
+                iun = index(buf, "pam_unix.so")
+                if (iun > 0 && ipw > iun) return 1
+                return 0
+            }
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*password[[:space:]]+/ {
+                buf = $0
+                while (getline > 0) {
+                    if ($0 ~ /^[[:space:]]*(account|auth|session|password)[[:space:]]/) break
+                    buf = buf " " $0
+                }
+                if (bad_order(buf)) exit 1
+            }
+            END { exit 0 }
+        ' "$p" || return 1
+    done <<< "$stacks"
+    [[ $any -eq 1 ]]
+}
+sec_audit_pam_stacks_grep_P() {
+    local pattern="$1" p stacks
+    stacks="$(sec_audit_pam_stack_paths_password_system)"
+    while IFS= read -r p; do
+        [[ -f $p ]] || continue
+        if grep -P "$pattern" "$p" 2>/dev/null; then
+            return 0
+        fi
+    done <<< "$stacks"
+    return 1
+}
+sec_audit_pam_stacks_grep_Pi() {
+    local pattern="$1" p stacks
+    stacks="$(sec_audit_pam_stack_paths_password_system)"
+    while IFS= read -r p; do
+        [[ -f $p ]] || continue
+        if grep -Pi "$pattern" "$p" 2>/dev/null; then
+            return 0
+        fi
+    done <<< "$stacks"
+    return 1
+}
+sec_audit_pam_auth_stacks_grep_Pi() {
+    local pattern="$1" f p paths=""
+    for f in /etc/pam.d/password-auth /etc/pam.d/system-auth /etc/pam.d/su; do
+        [[ -e $f ]] || continue
+        if sec_audit_have_bin readlink; then
+            p=$(readlink -f "$f" 2>/dev/null || echo "$f")
+        else
+            p=$f
+        fi
+        paths+="${paths:+$'\n'}$p"
+    done
+    while IFS= read -r p; do
+        [[ -f $p ]] || continue
+        if grep -Pi "$pattern" "$p" 2>/dev/null; then
+            return 0
+        fi
+    done <<< "$(sort -u <<< "$paths")"
+    return 1
+}
+sec_audit__yum_repo_any_enabled_has_uris() {
+    local f
+    [[ -d /etc/yum.repos.d ]] || return 1
+    shopt -s nullglob
+    for f in /etc/yum.repos.d/*.repo; do
+        [[ -f $f ]] || continue
+        awk '
+            function trim(s) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", s); return s }
+            BEGIN { sec = ""; enabled = 1; has_uri = 0; found = 0 }
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*;/ { next }
+            /^[[:space:]]*\[/ {
+                if (sec != "" && enabled && has_uri) found = 1
+                line = $0; sub(/#.*/, "", line); gsub(/^\[|\]$/, "", line)
+                sec = trim(line); enabled = 1; has_uri = 0; next
+            }
+            {
+                line = $0; sub(/#.*/, "", line)
+                if (line !~ /=/) next
+                eq = index(line, "=")
+                k = tolower(trim(substr(line, 1, eq - 1)))
+                v = trim(substr(line, eq + 1))
+                if (k == "enabled") {
+                    vv = tolower(v)
+                    if (vv == "0" || vv == "false" || vv == "no" || vv == "off") enabled = 0
+                    else enabled = 1
+                    next
+                }
+                if (k == "baseurl" || k == "mirrorlist" || k == "metalink") {
+                    if (v != "") has_uri = 1
+                }
+            }
+            END { if (sec != "" && enabled && has_uri) found = 1; exit(found ? 0 : 1) }
+        ' "$f" 2>/dev/null && { shopt -u nullglob; return 0; }
+    done
+    shopt -u nullglob
+    return 1
+}
+sec_audit_dnf_repolist_enabled_count() {
+    local n
+    if ! sec_audit_have_bin dnf; then
+        printf '%s\n' 0
+        return 0
+    fi
+    n=$(dnf -q repolist enabled 2>/dev/null | awk '
+        /^repo[[:space:]]+id[[:space:]]/ { hdr = 1; next }
+        hdr && NF >= 1 && $1 != "" && $1 !~ /^repolist:/ && $1 !~ /^Repo/ { c++ }
+        END { print c + 0 }
+    ')
+    printf '%s\n' "${n:-0}"
+}
 sec_audit_low_impact_find() { sec_audit_soft_find "$@"; }
 sec_audit_low_impact_find_timed_out() { sec_audit_find_hit_timeout "$@"; }
 sec_audit_safe_find_roots() { sec_audit_local_fs_roots; }

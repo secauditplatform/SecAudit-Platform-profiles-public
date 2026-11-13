@@ -1,0 +1,237 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_rules",
+  "rules": [
+    {
+      "num": "1",
+      "requirement_id": "RULE1",
+      "title": "Talos is installed with SecureBoot enabled",
+      "explanation": "Secure Boot is a standard that ensures systems boot only into a trusted operating system. Talos supports booting UEFI systems in Secure Boot mode. Combined with TPM-based disk encryption, this provides a trusted-boot experience. Note: Secure Boot is not supported on x86 platforms in BIOS mode. The implementation uses systemd-boot as the bootloader, while the Talos kernel, initramfs, and command-line arguments are combined into Unified Kernel Image (UKI) format. UEFI firmware loads the systemd-boot bootloader, which then loads the UKI image. Both systemd-boot and the Talos UKI image are signed with a key that is enrolled in UEFI firmware. Because Talos Linux is fully contained in the UKI image, the entire operating system is verified and loaded by UEFI firmware.",
+      "impact": "Enabling Secure Boot ensures that only signed and verified Talos images can be loaded, and in combination with a TPM2 module allows disk decryption.",
+      "scope": "Settings in talosctl get securitystate NODE NAMESPACE TYPE ID VERSION SECUREBOOT",
+      "criticality": "HIGH",
+      "check_script": "Talos",
+      "match_pattern": "RULE1=(.*)"
+    },
+    {
+      "num": "2",
+      "requirement_id": "RULE2",
+      "title": "System disks are encrypted using KMS or TPM methods",
+      "explanation": "It is possible to enable encryption for the STATE and EPHEMERAL partitions of system disks at the OS level. The STATE partition contains the node's most sensitive data: cluster secrets and certificates. The EPHEMERAL partition may contain sensitive working data. Data is encrypted with LUKS2, which is provided by Linux kernel modules and the cryptsetup utility. Talos Linux supports four encryption methods that can be combined for a single partition: static (static passphrase), nodeID (key based on the node UUID), kms (key sealed by a network KMS), and tpm (key derived from a hardware TPM). It is recommended to use the KMS or TPM methods if they are available.",
+      "impact": "Encrypting partitions can prevent an attacker with physical access to the machine or the ability to remotely boot an alternative operating system from obtaining data such as cluster certificates and other information that could be used to compromise the cluster.",
+      "scope": "Settings in talosctl read systemstateconfig.yaml yq.machine.systemDiskEncryption",
+      "criticality": "HIGH",
+      "check_script": "Talos",
+      "match_pattern": "RULE2=(.*)"
+    },
+    {
+      "num": "3",
+      "requirement_id": "RULE3",
+      "title": "Updated software is installed",
+      "explanation": "Software updates for included software are released periodically, either because of discovered vulnerabilities or to add new features or fix bugs.",
+      "impact": "Talos Linux is regularly updated to include the latest Linux kernel versions, Kubernetes, Talos bug fixes, and other improvements. It is recommended to always run and upgrade to the latest stable release of Talos Linux. Similarly, it is recommended to run and upgrade to the latest stable Kubernetes release on all clusters.",
+      "scope": "Settings in talosctl version",
+      "criticality": "HIGH",
+      "check_script": "Talos",
+      "match_pattern": "RULE3=(.*)"
+    },
+    {
+      "num": "4",
+      "requirement_id": "RULE4",
+      "title": "NTP is configured",
+      "explanation": "The Talos Linux machined daemon implements the Network Time Protocol (NTP). NTP is designed to synchronize system clocks across systems using a high-precision source.",
+      "impact": "Correct NTP configuration is critical to ensure time synchronization operates properly. By default, Talos Linux is installed with a single time server, which is currently time.cloudflare.com.",
+      "scope": "Settings in talosctl get TimeServer -o yaml and talosctl get timestatus -o yaml",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE4=(.*)"
+    },
+    {
+      "num": "5",
+      "requirement_id": "RULE5",
+      "title": "Scheduling on the control plane is disabled",
+      "explanation": "Scheduling on the control plane allows workloads to run on control plane nodes.",
+      "impact": "Restricting access to control plane nodes is necessary to ensure that sensitive data (for example, encryption secrets, PKI, etc.) is not exposed. Allowing workloads to be scheduled on control plane nodes may allow those workloads to access sensitive data present on those nodes, and may also negatively affect control plane node stability (if workloads consume excessive CPU or memory resources).",
+      "scope": "Settings in talosctl read systemstateconfig.yaml yq.cluster.allowSchedulingOnControlPlanes",
+      "criticality": "HIGH",
+      "check_script": "Talos",
+      "match_pattern": "RULE5=(.*)"
+    },
+    {
+      "num": "6",
+      "requirement_id": "RULE6",
+      "title": "The Pod Security Standards policy is set to restricted",
+      "explanation": "Pod Security Standards in Kubernetes define various isolation levels for Pods. These standards allow consistent and clear definition of how to constrain Pod behavior.",
+      "impact": "Restricting workloads is necessary to ensure they follow the principle of least privilege. The Restricted policy is intended to enforce current Pod security hardening best practices, even at the cost of some compatibility. It is intended for operators and developers of security-critical applications, as well as for low-trust users.",
+      "scope": "Settings in talosctl read systemstateconfig.yaml yq.spec.config0.configuration.defaults.enforce",
+      "criticality": "HIGH",
+      "check_script": "Talos",
+      "match_pattern": "RULE6=(.*)"
+    },
+    {
+      "num": "7",
+      "requirement_id": "RULE7",
+      "title": "RBAC is enabled",
+      "explanation": "RBAC (role-based access control) allows fine-grained control of user permissions.",
+      "impact": "RBAC is required to enforce the principle of least privilege.",
+      "scope": "Settings in talosctl get admissioncontrolconfigs.kubernetes.talos.dev admission-control",
+      "criticality": "HIGH",
+      "check_script": "Talos",
+      "match_pattern": "RULE7=(.*)"
+    },
+    {
+      "num": "8",
+      "requirement_id": "RULE8",
+      "title": "Sending ICMP redirects is disabled",
+      "explanation": "ICMP Redirects are used to send routing information to other hosts. Because the host itself is not acting as a router (in a host-only configuration), there is no need to send redirects.",
+      "impact": "An attacker can use a compromised host to send invalid ICMP redirects to other routing devices in an attempt to disrupt routing and cause users to access a system configured by the attacker rather than a legitimate system.",
+      "scope": "Settings in talosctl read procsysnetipv4confallsendredirects and talosctl read procsysnetipv4confdefaultsendredirects",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE8=(.*)"
+    },
+    {
+      "num": "9",
+      "requirement_id": "RULE9",
+      "title": "Source-routed packets are not accepted",
+      "explanation": "In networks, source routing allows the sender to partially or fully specify the route that packets will take through the network. In contrast, packets without source routing follow a path determined by the routers in the network.",
+      "impact": "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route, and net.ipv6.conf.default.accept_source_route to 0 disables the system's ability to accept source-routed packets. If this feature were enabled, an attacker on the Internet could use the system as a gateway to access private networks by specifying a desired route that is not normally supported by routing protocols.",
+      "scope": "Settings in talosctl read procsysnetipv4confallacceptsourceroute / talosctl read procsysnetipv4confdefaultacceptsourceroute / talosctl read procsysnetipv6confallacceptsourceroute / talosctl read procsysnetipv6confdefaultacceptsourceroute",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE9=(.*)"
+    },
+    {
+      "num": "10",
+      "requirement_id": "RULE10",
+      "title": "ICMP redirects are not accepted",
+      "explanation": "ICMP redirect messages are packets that convey routing information and instruct your host (acting as a router) to send packets via an alternate path. This is a way to allow an external routing device to update your system's routing tables. Setting accept_redirects to 0 means the system will not accept any ICMP redirect messages and therefore will not allow external devices to update the system's routing tables.",
+      "impact": "Attackers can use spoofed ICMP redirect messages to maliciously alter the system's routing tables and cause it to send packets to the wrong networks, allowing packets from your system to be captured.",
+      "scope": "Settings in talosctl read procsysnetipv4confallacceptredirects / talosctl read procsysnetipv4confdefaultacceptredirects / talosctl read procsysnetipv6confallacceptredirects / talosctl read procsysnetipv6confdefaultacceptredirects",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE10=(.*)"
+    },
+    {
+      "num": "11",
+      "requirement_id": "RULE11",
+      "title": "Secure ICMP redirects are not accepted",
+      "explanation": "Secure ICMP redirects are the same ICMP redirects, but they come from gateways listed in the default gateway list. These gateways are assumed to be known to your system and are likely to be trusted.",
+      "impact": "Even known gateways can be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing-table updates from potentially compromised known gateways.",
+      "scope": "Settings in talosctl read procsysnetipv4confallsecureredirects and talosctl read procsysnetipv4confdefaultsecureredirects",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE11=(.*)"
+    },
+    {
+      "num": "12",
+      "requirement_id": "RULE12",
+      "title": "Suspicious (martian) packets are logged",
+      "explanation": "When this feature is enabled, packets with non-routable source addresses (so-called \"martian packets\") are logged in the kernel log.",
+      "impact": "Enabling this feature and logging such packets allows the administrator to investigate the possibility that an attacker is sending spoofed packets to the system.",
+      "scope": "Settings in talosctl read procsysnetipv4confalllogmartians and talosctl read procsysnetipv4confdefaultlogmartians",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE12=(.*)"
+    },
+    {
+      "num": "13",
+      "requirement_id": "RULE13",
+      "title": "ICMP broadcast requests are ignored",
+      "explanation": "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 causes the system to ignore all ICMP echo requests and timestamp requests sent to broadcast and multicast addresses.",
+      "impact": "Accepting ICMP echo requests and timestamps with broadcast or multicast addresses on your network can be used to involve your host in a Smurf attack. A Smurf attack is based on an attacker sending a large number of ICMP broadcast messages with a spoofed source address.",
+      "scope": "Settings in talosctl read procsysnetipv4icmpechoignorebroadcasts",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE13=(.*)"
+    },
+    {
+      "num": "14",
+      "requirement_id": "RULE14",
+      "title": "Bogus ICMP responses are ignored",
+      "explanation": "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging invalid responses (not conforming to RFC-1122) from broadcast frames, preventing the filesystem from filling with useless log messages.",
+      "impact": "Some routers (and some attackers) will send replies that violate RFC-1122 and attempt to fill the log filesystem with a large number of useless error messages.",
+      "scope": "Settings in talosctl read procsysnetipv4icmpignoreboguserrorresponses",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE14=(.*)"
+    },
+    {
+      "num": "15",
+      "requirement_id": "RULE15",
+      "title": "TCP SYN Cookies are enabled",
+      "explanation": "When tcp_syncookies is enabled, the kernel processes TCP SYN packets normally until the incomplete-connection queue is full. After that, the SYN cookies mechanism takes effect. SYN cookies allow the system to continue accepting legitimate connections even while under a DoS attack, without using the SYN queue for new connections.",
+      "impact": "Attackers use SYN flood attacks to conduct DoS attacks against a system by sending many SYN packets without completing the three-way handshake. This quickly fills slots in the kernel's incomplete-connection queue and prevents legitimate connections from being established. SYN cookies allow the system to continue accepting legitimate connections even during a DoS attack.",
+      "scope": "Settings in talosctl read procsysnetipv4tcpsyncookies",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE15=(.*)"
+    },
+    {
+      "num": "16",
+      "requirement_id": "RULE16",
+      "title": "Reverse path filtering is enabled when only symmetric routes are used",
+      "explanation": "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 causes the Linux kernel to use reverse path filtering for a received packet to determine whether the packet is valid. Essentially, with reverse path filtering, if the reply packet is not sent out the same interface from which the original packet arrived, the packet is dropped.",
+      "impact": "Setting these flags is a good way to prevent attackers from sending your system spoofed packets that cannot be answered.",
+      "scope": "Settings in talosctl read procsysnetipv4confdefaultrpfilter",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE16=(.*)"
+    },
+    {
+      "num": "17",
+      "requirement_id": "RULE17",
+      "title": "An appropriate firewall policy is applied to the control plane",
+      "explanation": "A default deny-all policy for connections to control plane nodes ensures that any unconfigured network use is rejected.",
+      "impact": "Only trusted networks should have access to Kubernetes and other APIs.",
+      "scope": "Settings in talosctl read systemstateconfig.yaml yq select.kind NetworkDefaultActionConfig,select.kind NetworkRuleConfig",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE17=(.*)"
+    },
+    {
+      "num": "18",
+      "requirement_id": "RULE18",
+      "title": "An appropriate firewall policy is applied to worker nodes",
+      "explanation": "A default deny-all policy for worker node connections ensures that any unconfigured network use is rejected.",
+      "impact": "Only trusted networks should have access to Kubernetes and other APIs.",
+      "scope": "Settings in talosctl read systemstateconfig.yaml yq select.kind NetworkDefaultActionConfig,select.kind NetworkRuleConfig",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE18=(.*)"
+    },
+    {
+      "num": "19",
+      "requirement_id": "RULE19",
+      "title": "KubeSpan is enabled where network-layer encryption is required",
+      "explanation": "KubeSpan securely and transparently establishes full encryption between all cluster members, even if they operate on completely different networks and behind firewalls. All cluster members discover each other and automatically update reachability information. KubeSpan operates outside Kubernetes. It is compatible with any CNI and works even if Kubernetes is unavailable or broken. KubeSpan automatically provides full WireGuard-based encryption for all traffic inside the Kubernetes cluster.",
+      "impact": "Encrypting network traffic provides protection against untrusted networks or attackers with access to the physical network infrastructure. Ensuring that traffic is encrypted prevents such parties from obtaining sensitive information such as security tokens, certificates, or passwords.",
+      "scope": "Settings in talosctl get kubespanidentities and talosctl get kubespanpeerstatuses",
+      "criticality": "MEDIUM",
+      "check_script": "Talos",
+      "match_pattern": "RULE19=(.*)"
+    },
+    {
+      "num": "20",
+      "requirement_id": "RULE20",
+      "title": "Kernel logging is configured to send logs to a remote service",
+      "explanation": "Kernel logs are sent to a remote server for better forensic correlation and protection against local loss.",
+      "impact": "Kernel logs can be used for auditing and detecting security events.",
+      "scope": "Settings in talosctl read proccmdline grep talos.logging.kernel and talosctl read systemstateconfig.yaml",
+      "criticality": "LOW",
+      "check_script": "Talos",
+      "match_pattern": "RULE20=(.*)"
+    },
+    {
+      "num": "21",
+      "requirement_id": "RULE21",
+      "title": "Service logging is configured",
+      "explanation": "Service logging ensures that service logs are sent to a remote server.",
+      "impact": "Service logs can be used to audit and detect security events. Sending logs to a remote server provides forensic recovery of events that may have affected system operation or security, even after a system failure or reboot.",
+      "scope": "Settings in talosctl read systemstateconfig.yaml yq select.kind....machine.logging.destinations",
+      "criticality": "LOW",
+      "check_script": "Talos",
+      "match_pattern": "RULE21=(.*)"
+    }
+  ]
+}

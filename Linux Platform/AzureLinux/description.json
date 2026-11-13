@@ -1,0 +1,17 @@
+{
+  "profile_name": "AKS Optimized Azure Linux 2",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Secure configuration baseline for AKS Optimized Azure Linux 2",
+  "purpose": "Collect system data to assess the security configuration of AKS Optimized Azure Linux 2",
+  "os": {
+    "name": "AKS Optimized Azure Linux",
+    "vendor": "Microsoft",
+    "version": "2"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "Azure_linux.yml",
+  "compliance_playbook_version": "1.0"
+}
