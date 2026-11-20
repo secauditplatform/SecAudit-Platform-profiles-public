@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# SecAudit rule allowlist — source or paste into audit/remediation shell scripts.
+# Unset/empty SECAUDIT_RULES and SECAUDIT_REMEDIATE_RULES => all rules enabled.
+secaudit_rule_enabled() {
+    local raw="${SECAUDIT_RULES:-${SECAUDIT_REMEDIATE_RULES:-}}" id="$1" token n want
+    [ -z "$raw" ] && return 0
+    n="${id#RULE}"; n="${n#rule}"; n="${n#Rule}"
+    case "$n" in (*[!0-9]*|"") want=$(printf '%s' "$id" | tr '[:lower:]' '[:upper:]') ;;
+        *) want="RULE$((10#$n))" ;;
+    esac
+    local IFS=','
+    for token in $raw; do
+        token=$(printf '%s' "$token" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+        [ -z "$token" ] && continue
+        local tn="${token#RULE}"
+        case "$tn" in (*[!0-9]*|"") ;;
+            *) token="RULE$((10#$tn))" ;;
+        esac
+        [ "$token" = "$want" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -129,393 +151,626 @@ rem_done() { sec_audit_log "REMEDIATE RULE${1}= applied: ${2}"; }
 
 sec_audit_log "starting remediation (sec_Debian_Linux_11_v2.0.0)"
 
-# RULE1:
+# RULE1:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 1; then
 rem_skip 1 "review remediation: The cramfs kernel module is not available"
 
-# RULE2:
+fi
+# RULE2:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 2; then
 rem_skip 2 "review remediation: The squashfs kernel module is not available"
 
-# RULE3:
+fi
+# RULE3:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 3; then
 rem_skip 3 "review remediation: The udf kernel module is not available"
 
-# RULE4:
+fi
+# RULE4:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 4; then
 rem_skip 4 "review remediation: A separate partition exists for /tmp"
 
-# RULE5:
+fi
+# RULE5:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 5; then
 rem_skip 5 "review remediation: The nodev option is set on the /tmp partition"
 
-# RULE6:
+fi
+# RULE6:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 6; then
 rem_skip 6 "review remediation: The squashfs kernel module is not available"
 
-# RULE7:
+fi
+# RULE7:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 7; then
 rem_skip 7 "review remediation: The udf kernel module is not available"
 
-# RULE8:
+fi
+# RULE8:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 8; then
 rem_skip 8 "review remediation: A separate partition exists for /tmp is configured"
 
-# RULE9:
+fi
+# RULE9:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 9; then
 rem_skip 9 "review remediation: The nodev option is set on the /tmp partition is configured"
 
-# RULE10:
+fi
+# RULE10:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 10; then
 rem_skip 10 "review remediation: The nosuid option is set on the /tmp partition is configured"
 
-# RULE11:
+fi
+# RULE11:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 11; then
 rem_skip 11 "review remediation: The noexec option is set on the /tmp partition is configured"
 
-# RULE12:
+fi
+# RULE12:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 12; then
 rem_skip 12 "review remediation: The nodev option is set on the /dev/shm partition is configured"
 
-# RULE13:
+fi
+# RULE13:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 13; then
 rem_skip 13 "review remediation: The nosuid option is set on the /dev/shm partition is configured"
 
-# RULE14:
+fi
+# RULE14:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 14; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 14 "auditd running"
 
-# RULE15:
+fi
+# RULE15:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 15; then
 rem_skip 15 "review remediation: A separate partition exists for /var is configured"
 
-# RULE16:
+fi
+# RULE16:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 16; then
 rem_skip 16 "review remediation: A separate partition exists for /var /tmp is configured"
 
-# RULE17:
+fi
+# RULE17:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 17; then
 ensure_mount_option /dev/shm noexec
 rem_done 17 "set noexec on /dev/shm"
 
-# RULE18:
+fi
+# RULE18:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 18; then
 ensure_mount_option /dev/shm nodev
 rem_done 18 "set nodev on /dev/shm"
 
-# RULE19:
+fi
+# RULE19:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 19; then
 rem_skip 19 "Ensure nosuid option set on /dev/shm partition"
 
-# RULE20:
+fi
+# RULE20:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 20; then
 rem_skip 20 "review remediation: A separate partition exists for /var/log is configured"
 
-# RULE21:
+fi
+# RULE21:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 21; then
 rem_skip 21 "review remediation: GPG keys are configured"
 
-# RULE22:
+fi
+# RULE22:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 22; then
 rem_skip 22 "review remediation: A separate partition exists for /var"
 
-# RULE23:
+fi
+# RULE23:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 23; then
 rem_skip 23 "review remediation: The nodev mount option is set on /var"
 
-# RULE24:
+fi
+# RULE24:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 24; then
 rem_skip 24 "review remediation: Filesystem integrity is regularly checked"
 
-# RULE25:
+fi
+# RULE25:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 25; then
 harden_file /boot/grub2/grub.cfg 600 root:root
 harden_file /boot/grub2/user.cfg 600 root:root
 rem_done 25 "hardened grub permissions"
 
-# RULE26:
+fi
+# RULE26:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 26; then
 rem_skip 26 "review remediation: GPG keys are configured"
 
-# RULE27:
+fi
+# RULE27:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 27; then
 rem_skip 27 "review remediation: AIDE is installed is configured"
 
-# RULE28:
+fi
+# RULE28:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 28; then
 rem_skip 28 "review remediation: File system integrity is checked regularly is configured"
 
-# RULE29:
+fi
+# RULE29:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 29; then
 rem_skip 29 "review remediation: File system integrity is checked regularly is configured"
 
-# RULE30:
+fi
+# RULE30:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 30; then
 rem_skip 30 "review remediation: Bootloader configuration permissions are configured"
 
-# RULE31:
+fi
+# RULE31:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 31; then
 rem_skip 31 "review remediation: The bootloader password is set is configured"
 
-# RULE32:
+fi
+# RULE32:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 32; then
 rem_skip 32 "review remediation: The bootloader password is set is configured"
 
-# RULE33:
+fi
+# RULE33:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 33; then
 rem_skip 33 "review remediation: SELinux is enabled at boot"
 
-# RULE34:
+fi
+# RULE34:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 34; then
 rem_skip 34 "review remediation: SELinux is set to enforcing mode"
 
-# RULE35:
+fi
+# RULE35:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 35; then
 rem_skip 35 "review remediation: Address space layout randomization (ASLR) is enabled"
 
-# RULE36:
+fi
+# RULE36:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 36; then
 rem_skip 36 "review remediation: The message of the day is configured correctly"
 
-# RULE37:
+fi
+# RULE37:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 37; then
 rem_skip 37 "review remediation: Single-user mode requires authentication is configured"
 
-# RULE38:
+fi
+# RULE38:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 38; then
 rem_skip 38 "review remediation: Prelinking is disabled"
 
-# RULE39:
+fi
+# RULE39:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 39; then
 rem_skip 39 "review remediation: Core dumps are restricted is configured"
 
-# RULE40:
+fi
+# RULE40:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 40; then
 rem_skip 40 "review remediation: SELinux is not disabled in the bootloader configuration is configured"
 
-# RULE41:
+fi
+# RULE41:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 41; then
 rem_skip 41 "review remediation: The SELinux state is enforcing is configured"
 
-# RULE42:
+fi
+# RULE42:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 42; then
 rem_skip 42 "review remediation: Updates, patches, and additional security software are installed is configured"
 
-# RULE43:
+fi
+# RULE43:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 43; then
 rem_skip 43 "review remediation: The message of the day is configured correctly"
 
-# RULE44:
+fi
+# RULE44:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 44; then
 rem_skip 44 "review remediation: The local login warning banner is configured correctly"
 
-# RULE45:
+fi
+# RULE45:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 45; then
 rem_skip 45 "review remediation: The remote login warning banner is configured correctly"
 
-# RULE46:
+fi
+# RULE46:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 46; then
 rem_skip 46 "review remediation: Permissions for /etc/motd are configured"
 
-# RULE47:
+fi
+# RULE47:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 47; then
 rem_skip 47 "review remediation: Permissions for /etc/issue are configured"
 
-# RULE48:
+fi
+# RULE48:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 48; then
 rem_skip 48 "review remediation: Permissions on /etc/issue.net are configured"
 
-# RULE49:
+fi
+# RULE49:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 49; then
 rem_skip 49 "review remediation: Updates, patches, and additional security software are installed is configured"
 
-# RULE50:
+fi
+# RULE50:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 50; then
 rem_skip 50 "review remediation: Time synchronization is used is configured"
 
-# RULE51:
+fi
+# RULE51:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 51; then
 rem_skip 51 "review remediation: Time synchronization is used is configured"
 
-# RULE52:
+fi
+# RULE52:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 52; then
 rem_skip 52 "review remediation: Chrony is configured"
 
-# RULE53:
+fi
+# RULE53:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 53; then
 rem_skip 53 "review remediation: NTP is configured"
 
-# RULE54:
+fi
+# RULE54:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 54; then
 rem_skip 54 "review remediation: The X Window System is not installed is configured"
 
-# RULE55:
+fi
+# RULE55:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 55; then
 rem_skip 55 "review remediation: The Avahi server is not enabled is configured"
 
-# RULE56:
+fi
+# RULE56:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 56; then
 rem_skip 56 "review remediation: CUPS is not enabled is configured"
 
-# RULE57:
+fi
+# RULE57:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 57; then
 rem_skip 57 "review remediation: The DHCP server is not enabled is configured"
 
-# RULE58:
+fi
+# RULE58:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 58; then
 rem_skip 58 "review remediation: The LDAP server is not enabled is configured"
 
-# RULE59:
+fi
+# RULE59:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 59; then
 rem_skip 59 "review remediation: NFS and RPC are not enabled is configured"
 
-# RULE60:
+fi
+# RULE60:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 60; then
 rem_skip 60 "review remediation: The FTP server is not enabled is configured"
 
-# RULE61:
+fi
+# RULE61:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 61; then
 rem_skip 61 "review remediation: The HTTP server is not enabled is configured"
 
-# RULE62:
+fi
+# RULE62:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 62; then
 rem_skip 62 "review remediation: Unless the system is specifically intended to operate as a DNS server, it is recommended to remove the package to reduce the potential attack likelihood"
 
-# RULE63:
+fi
+# RULE63:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 63; then
 rem_skip 63 "review remediation: Samba is not enabled is configured"
 
-# RULE64:
+fi
+# RULE64:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 64; then
 rem_skip 64 "review remediation: The HTTP proxy server is not enabled is configured"
 
-# RULE65:
+fi
+# RULE65:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 65; then
 rem_skip 65 "review remediation: The SNMP server is not enabled is configured"
 
-# RULE66:
+fi
+# RULE66:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 66; then
 rem_skip 66 "review remediation: The mail transfer agent is configured for local-only mode"
 
-# RULE67:
+fi
+# RULE67:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 67; then
 rem_skip 67 "review remediation: The rsync service is not enabled is configured"
 
-# RULE68:
+fi
+# RULE68:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 68; then
 set_sysctl net.ipv4.ip_forward 0
 rem_done 68 "set net.ipv4.ip_forward=0"
 
-# RULE69:
+fi
+# RULE69:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 69; then
 rem_skip 69 "review remediation: The NIS client is not installed is configured"
 
-# RULE70:
+fi
+# RULE70:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 70; then
 rem_skip 70 "review remediation: The rsh client is not installed is configured"
 
-# RULE71:
+fi
+# RULE71:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 71; then
 set_sysctl net.ipv4.conf.all.accept_redirects 0
 rem_done 71 "set net.ipv4.conf.all.accept_redirects=0"
 
-# RULE72:
+fi
+# RULE72:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 72; then
 rem_skip 72 "review remediation: The telnet client is not installed is configured"
 
-# RULE73:
+fi
+# RULE73:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 73; then
 rem_skip 73 "review remediation: The LDAP client is not installed is configured"
 
-# RULE74:
+fi
+# RULE74:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 74; then
 rem_skip 74 "review remediation: IP forwarding is disabled"
 
-# RULE75:
+fi
+# RULE75:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 75; then
 set_sysctl net.ipv4.icmp_ignore_bogus_error_responses 1
 rem_done 75 "set net.ipv4.icmp_ignore_bogus_error_responses=1"
 
-# RULE76:
+fi
+# RULE76:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 76; then
 set_sysctl net.ipv4.conf.all.rp_filter 1
 rem_done 76 "set net.ipv4.conf.all.rp_filter=1"
 
-# RULE77:
+fi
+# RULE77:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 77; then
 set_sysctl net.ipv4.tcp_syncookies 1
 rem_done 77 "set net.ipv4.tcp_syncookies=1"
 
-# RULE78:
+fi
+# RULE78:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 78; then
 rem_skip 78 "review remediation: Secure ICMP redirects are not accepted is configured"
 
-# RULE79:
+fi
+# RULE79:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 79; then
 rem_skip 79 "review remediation: Suspicious packets are logged is configured"
 
-# RULE80:
+fi
+# RULE80:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 80; then
 rem_skip 80 "review remediation: ICMP broadcast requests are ignored is configured"
 
-# RULE81:
+fi
+# RULE81:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 81; then
 rem_skip 81 "review remediation: Logging of bogus responses by the kernel is prevented is configured"
 
-# RULE82:
+fi
+# RULE82:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 82; then
 rem_skip 82 "review remediation: Reverse path filtering is enabled"
 
-# RULE83:
+fi
+# RULE83:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 83; then
 sec_audit_pkg_install nftables
 systemctl enable --now nftables >/dev/null 2>&1 || true
 rem_done 83 "nftables baseline"
 
-# RULE84:
+fi
+# RULE84:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 84; then
 rem_skip 84 "review remediation: IPv6 router advertisements are not accepted is configured"
 
-# RULE85:
+fi
+# RULE85:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 85; then
 rem_skip 85 "review remediation: DCCP is disabled"
 
-# RULE86:
+fi
+# RULE86:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 86; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 86 "auditd running"
 
-# RULE87:
+fi
+# RULE87:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 87; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 87 "auditd running"
 
-# RULE88:
+fi
+# RULE88:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 88; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 88 "auditd running"
 
-# RULE89:
+fi
+# RULE89:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 89; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 89 "auditd running"
 
-# RULE90:
+fi
+# RULE90:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 90; then
 sec_audit_pkg_install rsyslog
 sec_audit_start_svc rsyslog
 rem_done 90 "rsyslog installed"
 
-# RULE91:
+fi
+# RULE91:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 91; then
 rem_skip 91 "review remediation: The audit log storage size is configured"
 
-# RULE92:
+fi
+# RULE92:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 92; then
 sec_audit_pkg_install rsyslog
 sec_audit_start_svc rsyslog
 rem_done 92 "rsyslog installed"
 
-# RULE93:
+fi
+# RULE93:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 93; then
 sec_audit_pkg_install rsyslog
 sec_audit_start_svc rsyslog
 rem_done 93 "rsyslog installed"
 
-# RULE94:
+fi
+# RULE94:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 94; then
 rem_skip 94 "review remediation: The system is shut down when audit logs are full is configured"
 
-# RULE95:
+fi
+# RULE95:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 95; then
 chmod 600 /etc/crontab 2>/dev/null || true
 chown root:root /etc/crontab 2>/dev/null || true
 rem_done 95 "restricted /etc/crontab"
 
-# RULE96:
+fi
+# RULE96:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 96; then
 rem_skip 96 "review remediation: The rsyslog service is enabled"
 
-# RULE97:
+fi
+# RULE97:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 97; then
 rem_skip 97 "review remediation: Default rsyslog file permissions are configured"
 
-# RULE98:
+fi
+# RULE98:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 98; then
 rem_skip 98 "review remediation: Rsyslog is configured to send logs to a remote log host"
 
-# RULE99:
+fi
+# RULE99:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 99; then
 rem_skip 99 "review remediation: Remote rsyslog messages are accepted only for designated host logs is configured"
 
-# RULE100:
+fi
+# RULE100:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 100; then
 chmod 600 /etc/crontab 2>/dev/null || true
 chown root:root /etc/crontab 2>/dev/null || true
 rem_done 100 "restricted /etc/crontab"
 
-# RULE101:
+fi
+# RULE101:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 101; then
 rem_skip 101 "review remediation: Permissions for /etc/crontab is configured"
 
-# RULE102:
+fi
+# RULE102:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 102; then
 rem_skip 102 "review remediation: Permissions for /etc/cron.hourly is configured"
 
-# RULE103:
+fi
+# RULE103:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 103; then
 rem_skip 103 "review remediation: Permissions for /etc/cron.daily is configured"
 
-# RULE104:
+fi
+# RULE104:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 104; then
 rem_skip 104 "review remediation: Permissions for /etc/cron.weekly is configured"
 
-# RULE105:
+fi
+# RULE105:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 105; then
 rem_skip 105 "review remediation: Permissions for /etc/cron.monthly is configured"
 
-# RULE106:
+fi
+# RULE106:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 106; then
 set_sshd_kv MaxAuthTries 4
 rem_done 106 "sshd MaxAuthTries"
 
-# RULE107:
+fi
+# RULE107:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 107; then
 rem_skip 107 "review remediation: Access to /cron is permitted only for authorized users"
 
-# RULE108:
+fi
+# RULE108:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 108; then
 set_sshd_kv HostbasedAuthentication no
 rem_done 108 "sshd HostbasedAuthentication"
 
-# RULE109:
+fi
+# RULE109:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 109; then
 set_sshd_kv PermitRootLogin no
 rem_done 109 "sshd PermitRootLogin"
 
-# RULE110:
+fi
+# RULE110:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 110; then
 set_sshd_kv PermitEmptyPasswords no
 rem_done 110 "sshd PermitEmptyPasswords"
 
-# RULE111:
+fi
+# RULE111:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 111; then
 rem_skip 111 "review remediation: SSH X11 forwarding is disabled"
 
-# RULE112:
+fi
+# RULE112:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 112; then
 rem_skip 112 "review remediation: SSH MaxAuthTries is set to 4 or less is configured"
 
-# RULE113:
+fi
+# RULE113:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 113; then
 set_sshd_kv ClientAliveInterval 300
 rem_done 113 "sshd ClientAliveInterval"
 
-# RULE114:
+fi
+# RULE114:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 114; then
 set_sshd_kv ClientAliveInterval 300
 rem_done 114 "sshd ClientAliveInterval"
 
-# RULE115:
+fi
+# RULE115:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 115; then
 rem_skip 115 "review remediation: SSH root login is disabled"
 
-# RULE116:
+fi
+# RULE116:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 116; then
 set_sshd_kv Banner /etc/issue.net
 rem_done 116 "sshd Banner"
 
-# RULE117:
+fi
+# RULE117:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 117; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -526,42 +781,64 @@ ocredit = -1
 EOF
 rem_done 117 "password quality"
 
-# RULE118:
+fi
+# RULE118:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 118; then
 rem_skip 118 "review remediation: Use only approved MAC algorithms"
 
-# RULE119:
+fi
+# RULE119:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 119; then
 rem_skip 119 "review remediation: SSH idle timeout interval is configured"
 
-# RULE120:
+fi
+# RULE120:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 120; then
 rem_skip 120 "review remediation: SSH LoginGraceTime is set to one minute or less"
 
-# RULE121:
+fi
+# RULE121:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 121; then
 rem_skip 121 "review remediation: SSH warning banner is configured"
 
-# RULE122:
+fi
+# RULE122:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 122; then
 set_login_defs_kv PASS_WARN_AGE 7
 rem_done 122 "PASS_WARN_AGE 7"
 
-# RULE123:
+fi
+# RULE123:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 123; then
 rem_skip 123 "review remediation: Lockouts for failed password attempts is configured"
 
-# RULE124:
+fi
+# RULE124:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 124; then
 rem_skip 124 "review remediation: Lock inactive passwords"
 
-# RULE125:
+fi
+# RULE125:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 125; then
 rem_skip 125 "review remediation: The password change date is not overdue for all users is configured"
 
-# RULE126:
+fi
+# RULE126:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 126; then
 rem_skip 126 "review remediation: Password expiration warning period"
 
-# RULE127:
+fi
+# RULE127:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 127; then
 set_login_defs_kv UMASK 027
 cat >/etc/profile.d/99-cre-umask.sh <<'EOF'
 umask 027
 EOF
 rem_done 127 "default umask 027"
 
-# RULE128:
+fi
+# RULE128:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 128; then
 cat >/etc/profile.d/99-cre-timeout.sh <<'EOF'
 TMOUT=600
 readonly TMOUT
@@ -569,98 +846,160 @@ export TMOUT
 EOF
 rem_done 128 "TMOUT=600"
 
-# RULE129:
+fi
+# RULE129:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 129; then
 rem_skip 129 "review remediation: Lock inactive passwords"
 
-# RULE130:
+fi
+# RULE130:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 130; then
 rem_skip 130 "review remediation: Permissions on /etc/passwd are configured correctly"
 
-# RULE131:
+fi
+# RULE131:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 131; then
 rem_skip 131 "review remediation: Default group for the root account GID 0"
 
-# RULE132:
+fi
+# RULE132:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 132; then
 rem_skip 132 "review remediation: Default user umask value"
 
-# RULE133:
+fi
+# RULE133:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 133; then
 rem_skip 133 "review remediation: User shell timeout"
 
-# RULE134:
+fi
+# RULE134:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 134; then
 rem_skip 134 "review remediation: Permissions for /etc/passwd is configured"
 
-# RULE135:
+fi
+# RULE135:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 135; then
 rem_skip 135 "review remediation: Permissions for /etc/passwd- is configured"
 
-# RULE136:
+fi
+# RULE136:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 136; then
 rem_skip 136 "review remediation: Permissions for /etc/group is configured"
 
-# RULE137:
+fi
+# RULE137:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 137; then
 rem_skip 137 "review remediation: Permissions for /etc/shadow- is configured"
 
-# RULE138:
+fi
+# RULE138:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 138; then
 rem_skip 138 "review remediation: Permissions for /etc/shadow is configured"
 
-# RULE139:
+fi
+# RULE139:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 139; then
 rem_skip 139 "review remediation: Permissions for /etc/passwd- is configured"
 
-# RULE140:
+fi
+# RULE140:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 140; then
 rem_skip 140 "review remediation: Permissions for /etc/gshadow is configured"
 
-# RULE141:
+fi
+# RULE141:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 141; then
 rem_skip 141 "review remediation: Permissions for /etc/gshadow- is configured"
 
-# RULE142:
+fi
+# RULE142:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 142; then
 rem_skip 142 "review remediation: There are no world-writable files"
 
-# RULE143:
+fi
+# RULE143:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 143; then
 rem_skip 143 "review remediation: No unused files or directories exist"
 
-# RULE144:
+fi
+# RULE144:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 144; then
 rem_skip 144 "review remediation: No unused files or directories exist"
 
-# RULE145:
+fi
+# RULE145:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 145; then
 rem_skip 145 "review remediation: Audit SUID executable files"
 
-# RULE146:
+fi
+# RULE146:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 146; then
 rem_skip 146 "review remediation: Audit SGID executable files"
 
-# RULE147:
+fi
+# RULE147:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 147; then
 rem_skip 147 "review remediation: Password fields are not empty"
 
-# RULE148:
+fi
+# RULE148:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 148; then
 rem_skip 148 "review remediation: Root is the only UID 0 account"
 
-# RULE149:
+fi
+# RULE149:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 149; then
 rem_skip 149 "review remediation: OSSEC is installed is configured"
 
-# RULE150:
+fi
+# RULE150:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 150; then
 rem_skip 150 "review remediation: Accounts do not have empty password fields"
 
-# RULE151:
+fi
+# RULE151:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 151; then
 rem_skip 151 "review remediation: The syslog service is enabled"
 
-# RULE152:
+fi
+# RULE152:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 152; then
 rem_skip 152 "review remediation: OSSEC is installed is configured"
 
-# RULE153:
+fi
+# RULE153:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 153; then
 set_login_defs_kv ENCRYPT_METHOD SHA512
 rem_done 153 "ENCRYPT_METHOD SHA512"
 
-# RULE154:
+fi
+# RULE154:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 154; then
 rem_skip 154 "review remediation: The syslog service is enabled"
 
-# RULE155:
+fi
+# RULE155:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 155; then
 rem_skip 155 "review remediation: The syslog-ng service is enabled"
 
-# RULE156:
+fi
+# RULE156:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 156; then
 rem_skip 156 "review remediation: Time synchronization is used is configured"
 
-# RULE157:
+fi
+# RULE157:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 157; then
 rem_skip 157 "review remediation: NFS and RPC are not enabled is configured"
 
-# RULE158:
+fi
+# RULE158:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 158; then
 rem_skip 158 "review remediation: pam_pwquality strength requirements are configured"
 
-# RULE159:
+fi
+# RULE159:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 159; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -671,7 +1010,9 @@ ocredit = -1
 EOF
 rem_done 159 "password quality"
 
-# RULE160:
+fi
+# RULE160:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 160; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -682,14 +1023,20 @@ ocredit = -1
 EOF
 rem_done 160 "password quality"
 
-# RULE161:
+fi
+# RULE161:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 161; then
 rem_skip 161 "review remediation: pam_pwquality length and character requirements are configured"
 
-# RULE162:
+fi
+# RULE162:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 162; then
 pam_faillock_debian >/dev/null 2>&1 || true
 rem_done 162 "pam faillock"
 
-# RULE163:
+fi
+# RULE163:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 163; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -700,262 +1047,412 @@ ocredit = -1
 EOF
 rem_done 163 "password quality"
 
-# RULE164:
+fi
+# RULE164:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 164; then
 sec_audit_pkg_install rsyslog
 sec_audit_start_svc rsyslog
 rem_done 164 "rsyslog installed"
 
-# RULE165:
+fi
+# RULE165:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 165; then
 rem_skip 165 "review remediation: NTP is configured"
 
-# RULE166:
+fi
+# RULE166:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 166; then
 rem_skip 166 "review remediation: The local login warning banner is configured correctly"
 
-# RULE167:
+fi
+# RULE167:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 167; then
 rem_skip 167 "review remediation: The local login warning banner is configured correctly"
 
-# RULE168:
+fi
+# RULE168:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 168; then
 rem_skip 168 "review remediation: The local login warning banner is configured correctly"
 
-# RULE169:
+fi
+# RULE169:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 169; then
 rem_skip 169 "review remediation: The local login warning banner is configured correctly"
 
-# RULE170:
+fi
+# RULE170:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 170; then
 rem_skip 170 "review remediation: The message of the day is configured correctly"
 
-# RULE171:
+fi
+# RULE171:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 171; then
 rem_skip 171 "review remediation: The message of the day is configured correctly"
 
-# RULE172:
+fi
+# RULE172:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 172; then
 rem_skip 172 "review remediation: The message of the day is configured correctly"
 
-# RULE173:
+fi
+# RULE173:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 173; then
 rem_skip 173 "review remediation: The message of the day is configured correctly"
 
-# RULE174:
+fi
+# RULE174:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 174; then
 rem_skip 174 "review remediation: The remote login warning banner is configured correctly"
 
-# RULE175:
+fi
+# RULE175:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 175; then
 rem_skip 175 "review remediation: The remote login warning banner is configured correctly"
 
-# RULE176:
+fi
+# RULE176:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 176; then
 rem_skip 176 "review remediation: The remote login warning banner is configured correctly"
 
-# RULE177:
+fi
+# RULE177:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 177; then
 rem_skip 177 "review remediation: The remote login warning banner is configured correctly"
 
-# RULE178:
+fi
+# RULE178:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 178; then
 rem_skip 178 "review remediation: The nodev mount option prevents device files on the partition"
 
-# RULE179:
+fi
+# RULE179:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 179; then
 rem_skip 179 "review remediation: The nosuid mount option prevents setuid files on the partition"
 
-# RULE180:
+fi
+# RULE180:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 180; then
 rem_skip 180 "review remediation: The nodev mount option prevents device files on the partition"
 
-# RULE181:
+fi
+# RULE181:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 181; then
 rem_skip 181 "review remediation: The noexec mount option prevents executable files on the partition"
 
-# RULE182:
+fi
+# RULE182:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 182; then
 rem_skip 182 "review remediation: The nosuid mount option prevents setuid files on the partition"
 
-# RULE183:
+fi
+# RULE183:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 183; then
 rem_skip 183 "review remediation: The noexec mount option prevents executable files on the partition"
 
-# RULE184:
+fi
+# RULE184:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 184; then
 rem_skip 184 "review remediation: The nodev mount option prevents device files on the partition"
 
-# RULE185:
+fi
+# RULE185:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 185; then
 rem_skip 185 "review remediation: The nosuid mount option prevents setuid files on the partition"
 
-# RULE186:
+fi
+# RULE186:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 186; then
 rem_skip 186 "review remediation: The nosuid mount option prevents setuid files on the partition"
 
-# RULE187:
+fi
+# RULE187:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 187; then
 sec_audit_pkg_install rsyslog
 sec_audit_start_svc rsyslog
 rem_done 187 "rsyslog installed"
 
-# RULE188:
+fi
+# RULE188:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 188; then
 rem_skip 188 "create separate partition for /home during provisioning; then set mount options"
 
-# RULE189:
+fi
+# RULE189:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 189; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 189 "auditd running"
 
-# RULE190:
+fi
+# RULE190:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 190; then
 sec_audit_pkg_install auditd audispd-plugins
 sec_audit_start_svc auditd
 rem_done 190 "auditd running"
 
-# RULE191:
+fi
+# RULE191:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 191; then
 rem_skip 191 "review remediation: Ensure audit_backlog_limit is sufficient"
 
-# RULE192:
+fi
+# RULE192:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 192; then
 rem_skip 192 "review remediation: Ensure events that modify date and time information are collected"
 
-# RULE193:
+fi
+# RULE193:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 193; then
 rem_skip 193 "Ensure events that modify user/group information are collected"
 
-# RULE194:
+fi
+# RULE194:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 194; then
 rem_skip 194 "review remediation: Ensure login and logout events are collected"
 
-# RULE195:
+fi
+# RULE195:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 195; then
 rem_skip 195 "review remediation: Ensure session initiation information is collected"
 
-# RULE196:
+fi
+# RULE196:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 196; then
 rem_skip 196 "review remediation: Ensure use of privileged commands are collected"
 
-# RULE197:
+fi
+# RULE197:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 197; then
 rem_skip 197 "review remediation: Ensure file deletion events by users are collected"
 
-# RULE198:
+fi
+# RULE198:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 198; then
 rem_skip 198 "review remediation: Ensure changes to system administration scope (sudoers) is collected"
 
-# RULE199:
+fi
+# RULE199:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 199; then
 sec_audit_pkg_install rsyslog
 sec_audit_start_svc rsyslog
 rem_done 199 "rsyslog installed"
 
-# RULE200:
+fi
+# RULE200:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 200; then
 rem_skip 200 "review remediation: Ensure permissions on SSH private host key files are configured"
 
-# RULE201:
+fi
+# RULE201:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 201; then
 rem_skip 201 "review remediation: Ensure permissions on SSH public host key files are configured"
 
-# RULE202:
+fi
+# RULE202:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 202; then
 rem_skip 202 "Ensure system accounts are secured"
 
-# RULE203:
+fi
+# RULE203:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 203; then
 rem_skip 203 "review remediation: Ensure access to the su command is restricted"
 
-# RULE204:
+fi
+# RULE204:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 204; then
 rem_skip 204 "Ensure root PATH Integrity"
 
-# RULE205:
+fi
+# RULE205:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 205; then
 rem_skip 205 "review remediation: Users' dot files are not group- or world-writable is configured"
 
-# RULE206:
+fi
+# RULE206:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 206; then
 rem_skip 206 "Ensure no duplicate UIDs exist"
 
-# RULE207:
+fi
+# RULE207:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 207; then
 rem_skip 207 "Ensure no duplicate GIDs exist"
 
-# RULE208:
+fi
+# RULE208:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 208; then
 rem_skip 208 "Ensure no duplicate user names exist"
 
-# RULE209:
+fi
+# RULE209:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 209; then
 rem_skip 209 "Ensure no duplicate group names exist"
 
-# RULE210:
+fi
+# RULE210:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 210; then
 rem_skip 210 "Ensure shadow group is empty"
 
-# RULE211:
+fi
+# RULE211:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 211; then
 sec_audit_disable_kmod bluetooth
 rem_done 211 "disabled wireless interfaces"
 
-# RULE212:
+fi
+# RULE212:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 212; then
 rem_skip 212 "review remediation: Ensure SSH PAM is enabled"
 
-# RULE213:
+fi
+# RULE213:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 213; then
 sec_audit_disable_kmod freevxfs
 rem_done 213 "blacklisted kernel module freevxfs"
 
-# RULE214:
+fi
+# RULE214:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 214; then
 sec_audit_disable_kmod hfs
 rem_done 214 "blacklisted kernel module hfs"
 
-# RULE215:
+fi
+# RULE215:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 215; then
 sec_audit_disable_kmod hfsplus
 rem_done 215 "blacklisted kernel module hfsplus"
 
-# RULE216:
+fi
+# RULE216:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 216; then
 sec_audit_disable_kmod jffs2
 rem_done 216 "blacklisted kernel module jffs2"
 
-# RULE217:
+fi
+# RULE217:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 217; then
 sec_audit_disable_kmod udf
 rem_done 217 "blacklisted kernel module udf"
 
-# RULE218:
+fi
+# RULE218:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 218; then
 rem_skip 218 "Ensure /dev/shm is a separate partition"
 
-# RULE219:
+fi
+# RULE219:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 219; then
 harden_file /boot/grub2/grub.cfg 600 root:root
 harden_file /boot/grub2/user.cfg 600 root:root
 rem_done 219 "hardened grub permissions"
 
-# RULE220:
+fi
+# RULE220:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 220; then
 set_sysctl kernel.yama.ptrace_scope 1
 rem_done 220 "set kernel.yama.ptrace_scope=1"
 
-# RULE221:
+fi
+# RULE221:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 221; then
 rem_skip 221 "review remediation: Ensure Automatic Error Reporting is not enabled"
 
-# RULE222:
+fi
+# RULE222:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 222; then
 sec_audit_disable_svc dnsmasq.service
 sec_audit_pkg_remove dnsmasq
 rem_done 222 "disabled dnsmasq"
 
-# RULE223:
+fi
+# RULE223:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 223; then
 rem_skip 223 "review remediation: Ensure message access server services are not in use"
 
-# RULE224:
+fi
+# RULE224:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 224; then
 sec_audit_disable_svc rpcbind.socket
 sec_audit_disable_svc rpcbind.service
 sec_audit_pkg_remove rpcbind
 rem_done 224 "disabled rpcbind"
 
-# RULE225:
+fi
+# RULE225:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 225; then
 sec_audit_disable_svc vsftpd.service
 sec_audit_pkg_remove vsftpd
 rem_done 225 "disabled vsftpd"
 
-# RULE226:
+fi
+# RULE226:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 226; then
 rem_skip 226 "review remediation: Ensure xinetd services are not in use"
 
-# RULE227:
+fi
+# RULE227:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 227; then
 sec_audit_pkg_remove ftp
 rem_done 227 "removed ftp"
 
-# RULE228:
+fi
+# RULE228:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 228; then
 sec_audit_disable_svc bluetooth.service
 sec_audit_pkg_remove bluez
 rem_done 228 "disabled bluez"
 
-# RULE229:
+fi
+# RULE229:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 229; then
 rem_skip 229 "review remediation: Ensure tcp syn cookies is enabled"
 
-# RULE230:
+fi
+# RULE230:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 230; then
 set_sshd_kv Banner /etc/issue.net
 rem_done 230 "sshd Banner"
 
-# RULE231:
+fi
+# RULE231:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 231; then
 rem_skip 231 "review remediation: Ensure sshd Ciphers are configured"
 
-# RULE232:
+fi
+# RULE232:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 232; then
 set_sshd_kv ClientAliveInterval 300
 rem_done 232 "sshd ClientAliveInterval"
 
-# RULE233:
+fi
+# RULE233:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 233; then
 set_sshd_kv DisableForwarding yes
 rem_done 233 "sshd DisableForwarding"
 
-# RULE234:
+fi
+# RULE234:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 234; then
 set_sshd_kv GSSAPIAuthentication no
 rem_done 234 "sshd GSSAPIAuthentication"
 
-# RULE235:
+fi
+# RULE235:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 235; then
 rem_skip 235 "review remediation: Ensure sshd KexAlgorithms is configured"
 
-# RULE236:
+fi
+# RULE236:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 236; then
 rem_skip 236 "review remediation: Ensure latest version of pam is installed"
 
-# RULE237:
+fi
+# RULE237:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 237; then
 rem_skip 237 "review remediation: Ensure libpam-modules is installed"
 
-# RULE238:
+fi
+# RULE238:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 238; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -966,14 +1463,20 @@ ocredit = -1
 EOF
 rem_done 238 "password quality"
 
-# RULE239:
+fi
+# RULE239:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 239; then
 rem_skip 239 "review remediation: Ensure pam_unix module is enabled"
 
-# RULE240:
+fi
+# RULE240:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 240; then
 pam_faillock_debian >/dev/null 2>&1 || true
 rem_done 240 "pam faillock"
 
-# RULE241:
+fi
+# RULE241:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 241; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -984,39 +1487,61 @@ ocredit = -1
 EOF
 rem_done 241 "password quality"
 
-# RULE242:
+fi
+# RULE242:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 242; then
 grep -q remember /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 rem_done 242 "password history"
 
-# RULE243:
+fi
+# RULE243:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 243; then
 pam_faillock_debian >/dev/null 2>&1 || true
 rem_done 243 "pam faillock"
 
-# RULE244:
+fi
+# RULE244:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 244; then
 rem_skip 244 "review remediation: Ensure password unlock time is configured"
 
-# RULE245:
+fi
+# RULE245:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 245; then
 rem_skip 245 "Ensure password failed attempts lockout includes root account"
 
-# RULE246:
+fi
+# RULE246:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 246; then
 rem_skip 246 "review remediation: Ensure password number of changed characters is configured"
 
-# RULE247:
+fi
+# RULE247:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 247; then
 rem_skip 247 "review remediation: Ensure minimum password length is configured"
 
-# RULE248:
+fi
+# RULE248:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 248; then
 rem_skip 248 "Ensure password complexity is configured"
 
-# RULE249:
+fi
+# RULE249:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 249; then
 rem_skip 249 "review remediation: Ensure password same consecutive characters is configured"
 
-# RULE250:
+fi
+# RULE250:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 250; then
 rem_skip 250 "review remediation: Ensure password maximum sequential characters is configured"
 
-# RULE251:
+fi
+# RULE251:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 251; then
 rem_skip 251 "review remediation: Ensure password dictionary check is enabled"
 
-# RULE252:
+fi
+# RULE252:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 252; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -1027,7 +1552,9 @@ ocredit = -1
 EOF
 rem_done 252 "password quality"
 
-# RULE253:
+fi
+# RULE253:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 253; then
 sec_audit_pkg_install libpam-pwquality
 cat >/etc/security/pwquality.conf <<'EOF'
 minlen = 14
@@ -1038,70 +1565,108 @@ ocredit = -1
 EOF
 rem_done 253 "password quality"
 
-# RULE254:
+fi
+# RULE254:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 254; then
 grep -q remember /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 rem_done 254 "password history"
 
-# RULE255:
+fi
+# RULE255:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 255; then
 grep -q remember /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 rem_done 255 "password history"
 
-# RULE256:
+fi
+# RULE256:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 256; then
 grep -q remember /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 rem_done 256 "password history"
 
-# RULE257:
+fi
+# RULE257:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 257; then
 rem_skip 257 "review remediation: Ensure pam_unix does not include nullok"
 
-# RULE258:
+fi
+# RULE258:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 258; then
 grep -q remember /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 rem_done 258 "password history"
 
-# RULE259:
+fi
+# RULE259:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 259; then
 set_login_defs_kv ENCRYPT_METHOD SHA512
 rem_done 259 "ENCRYPT_METHOD SHA512"
 
-# RULE260:
+fi
+# RULE260:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 260; then
 rem_skip 260 "review remediation: Ensure pam_unix includes use_authtok"
 
-# RULE261:
+fi
+# RULE261:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 261; then
 rem_skip 261 "Ensure root is the only GID 0 account"
 
-# RULE262:
+fi
+# RULE262:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 262; then
 rem_skip 262 "Ensure group root is the only GID 0 group"
 
-# RULE263:
+fi
+# RULE263:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 263; then
 rem_skip 263 "review remediation: Ensure root password is set"
 
-# RULE264:
+fi
+# RULE264:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 264; then
 set_login_defs_kv UMASK 027
 cat >/etc/profile.d/99-cre-umask.sh <<'EOF'
 umask 027
 EOF
 rem_done 264 "default umask 027"
 
-# RULE265:
+fi
+# RULE265:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 265; then
 rem_skip 265 "Ensure system accounts do not have a valid login shell"
 
-# RULE266:
+fi
+# RULE266:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 266; then
 rem_skip 266 "Ensure accounts without a valid login shell are locked"
 
-# RULE267:
+fi
+# RULE267:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 267; then
 rem_skip 267 "review remediation: Ensure nologin is not listed in /etc/shells"
 
-# RULE268:
+fi
+# RULE268:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 268; then
 rem_skip 268 "review remediation: Ensure cryptographic mechanisms are used to protect the integrity of audit tools"
 
-# RULE269:
+fi
+# RULE269:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 269; then
 rem_skip 269 "Ensure journald sec_audit_log file access is configured"
 
-# RULE270:
+fi
+# RULE270:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 270; then
 rem_skip 270 "Ensure journald sec_audit_log file rotation is configured"
 
-# RULE271:
+fi
+# RULE271:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 271; then
 rem_skip 271 "configure central logging per site policy before enabling journal remote/upload"
 
-# RULE272:
+fi
+# RULE272:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 272; then
 mkdir -p /etc/systemd/journald.conf.d
 cat >/etc/systemd/journald.conf.d/99-debian11-cre.conf <<'EOF'
 [Journal]
@@ -1112,7 +1677,9 @@ EOF
 systemctl restart systemd-journald >/dev/null 2>&1 || true
 rem_done 272 "journald configuration"
 
-# RULE273:
+fi
+# RULE273:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 273; then
 mkdir -p /etc/systemd/journald.conf.d
 cat >/etc/systemd/journald.conf.d/99-debian11-cre.conf <<'EOF'
 [Journal]
@@ -1123,29 +1690,45 @@ EOF
 systemctl restart systemd-journald >/dev/null 2>&1 || true
 rem_done 273 "journald configuration"
 
-# RULE274:
+fi
+# RULE274:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 274; then
 rem_skip 274 "Ensure systemd-journal-remote authentication is configured"
 
-# RULE275:
+fi
+# RULE275:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 275; then
 rem_skip 275 "Ensure systemd-journal-upload is enabled and active"
 
-# RULE276:
+fi
+# RULE276:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 276; then
 rem_skip 276 "Ensure systemd-journal-remote service is not in use"
 
-# RULE277:
+fi
+# RULE277:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 277; then
 rem_skip 277 "review remediation: Ensure access to all logfiles has been configured"
 
-# RULE278:
+fi
+# RULE278:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 278; then
 rem_skip 278 "review remediation: Ensure system warns when audit logs are low on space"
 
-# RULE279:
+fi
+# RULE279:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 279; then
 harden_file /etc/shells 644 root:root
 rem_done 279 "permissions /etc/shells"
 
-# RULE280:
+fi
+# RULE280:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 280; then
 rem_skip 280 "review remediation: Ensure permissions on /etc/security/opasswd are configured"
 
-# RULE281:
+fi
+# RULE281:  # SECAUDIT_RULE_WRAP
+if secaudit_rule_enabled 281; then
 rem_skip 281 "Ensure local interactive user dot files access is configured"
 
 DEBIAN_FRONTEND=noninteractive apt-get update >/dev/null 2>&1 || true
@@ -1154,3 +1737,4 @@ DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1 || true
 sec_audit_log " remediation complete (Debian11_remediation.sh)"
 exit 0
 
+fi

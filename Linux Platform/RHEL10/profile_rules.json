@@ -1108,6 +1108,7 @@
       "title": "Only approved services are listening on network interfaces",
       "check_script": "RHEL10",
       "match_pattern": "RULE101=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "Network-facing services bind to interfaces and ports that remote clients can reach. This manual control requires review of listening sockets against an approved service inventory.",
       "impact": "Unauthorized or unexpected listeners expand the remote attack surface and may expose vulnerable or misconfigured services. Restricting listening services to approved ones reduces exposure."
     },
@@ -1755,6 +1756,7 @@
       "title": "Firewalld services and ports are configured",
       "check_script": "RHEL10",
       "match_pattern": "RULE160=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "Within a firewalld zone, services and ports may be explicitly allowed, rejected, or dropped. Only required network services should be permitted through the active zone.",
       "impact": "Unnecessary open services and ports increase the attack surface available to remote attackers. Restricting firewalld to only required services and ports limits exposure and reduces the likelihood of unauthorized network access."
     },
@@ -2556,6 +2558,7 @@
       "title": "Journald log file access is configured",
       "check_script": "RHEL10",
       "match_pattern": "RULE233=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "Journald creates log files as needed and applies configurable permissions to newly created files. Proper access settings restrict who can read or modify journal data on disk.",
       "impact": "Incorrect permissions on journal files can expose sensitive operational or security data, or allow unauthorized modification of audit-relevant logs."
     },
@@ -2708,6 +2711,7 @@
       "title": "Rsyslog logging is configured",
       "check_script": "RHEL10",
       "match_pattern": "RULE247=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "The files /etc/rsyslog.conf and /etc/rsyslog.d/*.conf define which message classes are logged and where they are written. These rules determine how system and security events are captured on disk or forwarded.",
       "impact": "Incomplete or missing rsyslog rules can omit important security-related messages, reducing the ability to detect and investigate unauthorized activity."
     },
@@ -3498,6 +3502,7 @@
       "title": "SUID and SGID files are reviewed",
       "check_script": "RHEL10",
       "match_pattern": "RULE319=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "SUID and SGID permission bits cause a program to execute with the file owner's or group's privileges rather than those of the invoking user. Such files should be inventoried and reviewed for legitimacy.",
       "impact": "Unnecessary or unexpected SUID/SGID binaries increase privilege-escalation risk; periodic review helps ensure only justified programs retain these elevated execution rights."
     },

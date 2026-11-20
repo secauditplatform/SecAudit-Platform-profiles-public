@@ -1,5 +1,27 @@
 #!/usr/local/bin/bash
 
+# SecAudit rule allowlist — source or paste into audit/remediation shell scripts.
+# Unset/empty SECAUDIT_RULES and SECAUDIT_REMEDIATE_RULES => all rules enabled.
+secaudit_rule_enabled() {
+    local raw="${SECAUDIT_RULES:-${SECAUDIT_REMEDIATE_RULES:-}}" id="$1" token n want
+    [ -z "$raw" ] && return 0
+    n="${id#RULE}"; n="${n#rule}"; n="${n#Rule}"
+    case "$n" in (*[!0-9]*|"") want=$(printf '%s' "$id" | tr '[:lower:]' '[:upper:]') ;;
+        *) want="RULE$((10#$n))" ;;
+    esac
+    local IFS=','
+    for token in $raw; do
+        token=$(printf '%s' "$token" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+        [ -z "$token" ] && continue
+        local tn="${token#RULE}"
+        case "$tn" in (*[!0-9]*|"") ;;
+            *) token="RULE$((10#$tn))" ;;
+        esac
+        [ "$token" = "$want" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -44,6 +66,7 @@ sec_audit_fail_note() { FBSD15_FAIL="$1"; }
 
 sec_audit_rule_end() {
     local n="$1" joined=""
+    secaudit_rule_enabled "$n" || return 0
     if [ -n "$FBSD15_FAIL" ]; then
         printf '[remediation] REMEDIATE RULE%s= failed: %s\n' "$n" "$FBSD15_FAIL"
         return
@@ -67,6 +90,8 @@ sec_audit_mode() { stat -f %Lp "$1" 2>/dev/null || stat -c %a "$1" 2>/dev/null; 
 sec_audit_backup() {
     local f="$1"
     [ -e "$f" ] || return 0
+    # Never nest backups (e.g. sudoers.d/*.secaudit.bak from a prior drop-in).
+    case "$f" in *.secaudit.bak) return 0 ;; esac
     [ -e "${f}.secaudit.bak" ] && return 0
     cp -p "$f" "${f}.secaudit.bak" 2>/dev/null
 }
@@ -438,6 +463,7 @@ sec_audit_sudoers_edit() {
     sec_audit_sed_inplace "$FBSD15_SUDOERS" "$expr"
     for f in "$FBSD15_SUDOERS_DIR"/*; do
         [ -f "$f" ] || continue
+        case "$f" in *.secaudit.bak) continue ;; esac
         sec_audit_backup "$f"
         sec_audit_sed_inplace "$f" "$expr"
     done
@@ -445,6 +471,7 @@ sec_audit_sudoers_edit() {
         cp -p "${FBSD15_SUDOERS}.secaudit.bak" "$FBSD15_SUDOERS" 2>/dev/null
         for f in "$FBSD15_SUDOERS_DIR"/*.secaudit.bak; do
             [ -f "$f" ] || continue
+            case "${f%.secaudit.bak}" in *.secaudit.bak) continue ;; esac
             cp -p "$f" "${f%.secaudit.bak}" 2>/dev/null
         done
         sec_audit_fail_note "sudoers syntax check failed, change reverted"

@@ -1,0 +1,292 @@
+---
+- name: "Apache Tomcat security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    tomcat_fail_on_noncompliance: false
+    tomcat_strict_os_check: false
+    tomcat_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "Remove extraneous files and directories"
+        severity: "MEDIUM"
+      RULE2:
+        id: "RULE2"
+        summary: "Alter the Advertised server.info String"
+        severity: "MEDIUM"
+      RULE3:
+        id: "RULE3"
+        summary: "Alter the Advertised server.number String"
+        severity: "MEDIUM"
+      RULE4:
+        id: "RULE4"
+        summary: "Alter the Advertised server.built Date"
+        severity: "MEDIUM"
+      RULE5:
+        id: "RULE5"
+        summary: "Turn off TRACE"
+        severity: "MEDIUM"
+      RULE6:
+        id: "RULE6"
+        summary: "The Server Header is modified to prevent information disclosure"
+        severity: "HIGH"
+      RULE7:
+        id: "RULE7"
+        summary: "Set a nondeterministic Shutdown command value"
+        severity: "MEDIUM"
+      RULE8:
+        id: "RULE8"
+        summary: "Disable the Shutdown port"
+        severity: "MEDIUM"
+      RULE9:
+        id: "RULE9"
+        summary: "Restrict access to $CATALINA_HOME"
+        severity: "HIGH"
+      RULE10:
+        id: "RULE10"
+        summary: "Restrict access to $CATALINA_BASE"
+        severity: "HIGH"
+      RULE11:
+        id: "RULE11"
+        summary: "Restrict access to Tomcat configuration directory"
+        severity: "HIGH"
+      RULE12:
+        id: "RULE12"
+        summary: "Restrict access to Tomcat logs directory"
+        severity: "HIGH"
+      RULE13:
+        id: "RULE13"
+        summary: "Restrict access to Tomcat temp directory"
+        severity: "MEDIUM"
+      RULE14:
+        id: "RULE14"
+        summary: "Restrict access to Tomcat bin directory"
+        severity: "HIGH"
+      RULE15:
+        id: "RULE15"
+        summary: "Restrict access to Tomcat web application directory"
+        severity: "HIGH"
+      RULE16:
+        id: "RULE16"
+        summary: "Restrict access to Tomcat catalina.properties"
+        severity: "HIGH"
+      RULE17:
+        id: "RULE17"
+        summary: "Restrict access to Tomcat catalina.policy"
+        severity: "HIGH"
+      RULE18:
+        id: "RULE18"
+        summary: "Restrict access to Tomcat context.xml"
+        severity: "MEDIUM"
+      RULE19:
+        id: "RULE19"
+        summary: "Restrict access to Tomcat logging.properties"
+        severity: "HIGH"
+      RULE20:
+        id: "RULE20"
+        summary: "Restrict access to Tomcat server.xml"
+        severity: "HIGH"
+      RULE21:
+        id: "RULE21"
+        summary: "Restrict access to Tomcat tomcat-users.xml"
+        severity: "HIGH"
+      RULE22:
+        id: "RULE22"
+        summary: "Restrict access to Tomcat web.xml"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "Restrict access to jaspic-providers.xml"
+        severity: "HIGH"
+      RULE24:
+        id: "RULE24"
+        summary: "MemoryRealm is not used"
+        severity: "MEDIUM"
+      RULE25:
+        id: "RULE25"
+        summary: "JDBCRealm is not used"
+        severity: "MEDIUM"
+      RULE26:
+        id: "RULE26"
+        summary: "UserDatabaseRealm is not used"
+        severity: "MEDIUM"
+      RULE27:
+        id: "RULE27"
+        summary: "JAASRealm is not used"
+        severity: "MEDIUM"
+      RULE28:
+        id: "RULE28"
+        summary: "Use LockOut Realms"
+        severity: "MEDIUM"
+      RULE29:
+        id: "RULE29"
+        summary: "Application specific logging"
+        severity: "MEDIUM"
+      RULE30:
+        id: "RULE30"
+        summary: "Specify file handler in logging.properties files"
+        severity: "MEDIUM"
+      RULE31:
+        id: "RULE31"
+        summary: "ClassName is set correctly in context.xml"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "Pattern in context.xml is correct"
+        severity: "LOW"
+      RULE33:
+        id: "RULE33"
+        summary: "Restrict runtime access to sensitive packages"
+        severity: "MEDIUM"
+      RULE34:
+        id: "RULE34"
+        summary: "Disabling auto deployment of applications"
+        severity: "MEDIUM"
+      RULE35:
+        id: "RULE35"
+        summary: "Disable deploy on startup of applications"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "Restrict access to the web administration application"
+        severity: "HIGH"
+      RULE37:
+        id: "RULE37"
+        summary: "Force SSL when accessing the manager application via HTTP"
+        severity: "HIGH"
+      RULE38:
+        id: "RULE38"
+        summary: "Rename the manager application"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "Enable strict servlet Compliance"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "Turn off session facade recycling"
+        severity: "MEDIUM"
+      RULE41:
+        id: "RULE41"
+        summary: "Do not allow additional path delimiters"
+        severity: "MEDIUM"
+      RULE42:
+        id: "RULE42"
+        summary: "Configure connectionTimeout"
+        severity: "LOW"
+      RULE43:
+        id: "RULE43"
+        summary: "Force SSL for all applications"
+        severity: "MEDIUM"
+      RULE44:
+        id: "RULE44"
+        summary: "Do not allow symbolic linking"
+        severity: "MEDIUM"
+      RULE45:
+        id: "RULE45"
+        summary: "Do not run applications as privileged"
+        severity: "MEDIUM"
+      RULE46:
+        id: "RULE46"
+        summary: "Do not allow cross context requests"
+        severity: "MEDIUM"
+      RULE47:
+        id: "RULE47"
+        summary: "Do not resolve hosts on logging valves"
+        severity: "MEDIUM"
+      RULE48:
+        id: "RULE48"
+        summary: "Enable memory leak listener"
+        severity: "MEDIUM"
+      RULE49:
+        id: "RULE49"
+        summary: "Setting Security Lifecycle Listener"
+        severity: "MEDIUM"
+      RULE50:
+        id: "RULE50"
+        summary: "Setting Security Lifecycle Listener"
+        severity: "MEDIUM"
+      RULE51:
+        id: "RULE51"
+        summary: "Production applications do not set metadata-complete to false"
+        severity: "MEDIUM"
+      RULE52:
+        id: "RULE52"
+        summary: "Production applications do not set logEffectiveWebXml to false"
+        severity: "MEDIUM"
+      RULE53:
+        id: "RULE53"
+        summary: "Manager application passwords are not default or plaintext"
+        severity: "MEDIUM"
+      RULE54:
+        id: "RULE54"
+        summary: "The manager application uses DIGEST authentication"
+        severity: "MEDIUM"
+
+  tasks:
+    - name: "Run Apache Tomcat audit script"
+      ansible.builtin.script: ApacheTomcat.sh
+      args:
+        executable: /bin/bash
+      register: tomcat_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        tomcat_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in tomcat_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = tomcat_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        tomcat_pass_count: >-
+          {{ tomcat_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        tomcat_fail_count: >-
+          {{ tomcat_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        tomcat_total_count: "{{ tomcat_lines | default([]) | length }}"
+
+    - name: "Apache Tomcat compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: "Apache Tomcat"
+          script: ApacheTomcat.sh
+          total: "{{ tomcat_total_count }}"
+          passed: "{{ tomcat_pass_count }}"
+          failed: "{{ tomcat_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ tomcat_lines | default([]) }}"
+          script_rc: "{{ tomcat_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (tomcat_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from ApacheTomcat.sh output.
+          rc={{ tomcat_audit_raw.rc | default('n/a') }}
+          stderr={{ tomcat_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (tomcat_fail_count | int) == 0
+      when: tomcat_fail_on_noncompliance | bool

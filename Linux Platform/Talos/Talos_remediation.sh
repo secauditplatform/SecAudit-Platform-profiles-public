@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# SecAudit rule allowlist — source or paste into audit/remediation shell scripts.
+# Unset/empty SECAUDIT_RULES and SECAUDIT_REMEDIATE_RULES => all rules enabled.
+secaudit_rule_enabled() {
+    local raw="${SECAUDIT_RULES:-${SECAUDIT_REMEDIATE_RULES:-}}" id="$1" token n want
+    [ -z "$raw" ] && return 0
+    n="${id#RULE}"; n="${n#rule}"; n="${n#Rule}"
+    case "$n" in (*[!0-9]*|"") want=$(printf '%s' "$id" | tr '[:lower:]' '[:upper:]') ;;
+        *) want="RULE$((10#$n))" ;;
+    esac
+    local IFS=','
+    for token in $raw; do
+        token=$(printf '%s' "$token" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+        [ -z "$token" ] && continue
+        local tn="${token#RULE}"
+        case "$tn" in (*[!0-9]*|"") ;;
+            *) token="RULE$((10#$tn))" ;;
+        esac
+        [ "$token" = "$want" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -14,12 +36,10 @@ set +e
 
 sec_audit_log() { printf '[remediation] %s\n' "$*"; }
 
-sec_audit_remediate_done() {
-    printf '[remediation] REMEDIATE RULE%s= applied: %s\n' "$1" "$2"
+sec_audit_remediate_done() { secaudit_rule_enabled "$1" || return 0; printf '[remediation] REMEDIATE RULE%s= applied: %s\n' "$1" "$2"
 }
 
-sec_audit_remediate_skip() {
-    printf '[remediation] REMEDIATE RULE%s= SKIP: manual step required - %s\n' "$1" "$2"
+sec_audit_remediate_skip() { secaudit_rule_enabled "$1" || return 0; printf '[remediation] REMEDIATE RULE%s= SKIP: manual step required - %s\n' "$1" "$2"
 }
 
 # Talos Linux is an immutable, API-managed OS: every change goes through the

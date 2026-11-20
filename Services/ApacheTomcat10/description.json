@@ -1,0 +1,18 @@
+{
+  "profile_name": "Apache Tomcat 10",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for Apache Tomcat 10.",
+  "purpose": "Gather Apache Tomcat evidence, including sample applications, file permissions, realms, logging, and connector settings, and evaluate the host against that baseline.",
+  "software": {
+    "name": "Apache Tomcat",
+    "vendor": "Apache Software Foundation",
+    "category": "Application software",
+    "version": "10.*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "ApacheTomcat.yml",
+  "compliance_playbook_version": "1.0"
+}

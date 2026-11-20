@@ -1,3 +1,21 @@
+﻿# SecAudit rule allowlist — paste into audit/remediation PowerShell scripts.
+# Unset/empty SECAUDIT_RULES and SECAUDIT_REMEDIATE_RULES => all rules enabled.
+function Test-SecAuditRuleEnabled {
+    param([Parameter(Mandatory=$true)][string]$Id)
+    $raw = $env:SECAUDIT_RULES
+    if ([string]::IsNullOrWhiteSpace($raw)) { $raw = $env:SECAUDIT_REMEDIATE_RULES }
+    if ([string]::IsNullOrWhiteSpace($raw)) { return $true }
+    $want = $Id.Trim().ToUpperInvariant()
+    if ($want -match '^RULE0*(\d+)$') { $want = "RULE$([int]$Matches[1])" }
+    foreach ($token in ($raw -split ',')) {
+        $t = $token.Trim().ToUpperInvariant()
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+        if ($t -match '^RULE0*(\d+)$') { $t = "RULE$([int]$Matches[1])" }
+        if ($t -eq $want) { return $true }
+    }
+    return $false
+}
+
 ﻿# SecAudit Platform - Windows Server 2025 host audit
 # Output: RULExxx= PASS|FAIL: actual=...; expected(OPERATOR)=...
 # Every check below reads one piece of host state and compares it inline; no rule data file is used.
@@ -547,6 +565,7 @@ function hku {
 
 function check_rule {
     param([string]$Id, $Actual, [string]$Operator, [string]$Target, [string]$Default, [string]$ValueType)
+    if (-not (Test-SecAuditRuleEnabled -Id $Id)) { return }
     if ($null -ne $Actual -and $Actual.PSObject.Properties['__fail']) {
         $message = [string]$Actual.message
         if ($message -like 'incomplete_scan:*') {

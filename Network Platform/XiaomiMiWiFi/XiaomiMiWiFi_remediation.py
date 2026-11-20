@@ -3,6 +3,29 @@
 
 from __future__ import annotations
 
+
+# --- SecAudit rule allowlist (SECAUDIT_RULES / SECAUDIT_REMEDIATE_RULES) ---
+def secaudit_rule_enabled(rule_id) -> bool:
+    import os, re
+    raw = (os.environ.get("SECAUDIT_RULES") or os.environ.get("SECAUDIT_REMEDIATE_RULES") or "").strip()
+    if not raw:
+        return True
+    text = str(rule_id).strip().upper()
+    m = re.fullmatch(r"RULE0*(\d+)", text)
+    if m:
+        text = f"RULE{int(m.group(1))}"
+    elif text.isdigit():
+        text = f"RULE{int(text)}"
+    for token in raw.split(","):
+        t = token.strip().upper()
+        if not t:
+            continue
+        tm = re.fullmatch(r"RULE0*(\d+)", t)
+        if tm:
+            t = f"RULE{int(tm.group(1))}"
+        if t == text:
+            return True
+    return False
 import os
 import re
 import shutil

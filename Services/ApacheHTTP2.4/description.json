@@ -1,0 +1,18 @@
+{
+  "profile_name": "Apache HTTP 2.4",
+  "is_active": true,
+  "version": "1.0",
+  "overview": "Security configuration baseline for Apache HTTP Server 2.4.",
+  "purpose": "Gather Apache HTTP Server evidence, including modules, the service account, permissions, request limits, logging, and TLS, and evaluate the host against that baseline.",
+  "software": {
+    "name": "Apache HTTP",
+    "vendor": "Apache Software Foundation",
+    "category": "Application software",
+    "version": "2.4.*"
+  },
+  "encoding": "utf-8",
+  "profile_family": "custom",
+  "profile_rules": "profile_rules.json",
+  "compliance_playbook": "ApacheHTTP.yml",
+  "compliance_playbook_version": "1.0"
+}

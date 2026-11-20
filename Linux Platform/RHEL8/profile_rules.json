@@ -1020,6 +1020,7 @@
       "title": "2.4 Ensure nonessential services are removed or masked",
       "check_script": "RHEL8",
       "match_pattern": "RULE93=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "This setting relates to: 2.4 Ensure nonessential services are removed or masked.",
       "impact": "Misconfiguration increases the local attack surface or weakens system accountability."
     },
@@ -1491,6 +1492,7 @@
       "title": "4.2.1.5 Ensure logging is configured",
       "check_script": "RHEL8",
       "match_pattern": "RULE136=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "This setting relates to: 4.2.1.5 Ensure logging is configured.",
       "impact": "Misconfiguration increases the local attack surface or weakens system accountability."
     },
@@ -1610,6 +1612,7 @@
       "title": "4.2.2.7 Ensure journald default file permissions configured",
       "check_script": "RHEL8",
       "match_pattern": "RULE147=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "This setting relates to: 4.2.2.7 Ensure journald default file permissions configured.",
       "impact": "Misconfiguration increases the local attack surface or weakens system accountability."
     },
@@ -2323,6 +2326,7 @@
       "title": "6.2.7 Ensure root PATH Integrity",
       "check_script": "RHEL8",
       "match_pattern": "RULE212=(.*)",
+      "criticality": "HIGH",
       "explanation": "This setting relates to: 6.2.7 Ensure root PATH Integrity.",
       "impact": "Misconfiguration increases the local attack surface or weakens system accountability."
     },
@@ -2343,6 +2347,7 @@
       "title": "6.2.10 Ensure users own their home directories",
       "check_script": "RHEL8",
       "match_pattern": "RULE214=(.*)",
+      "criticality": "MEDIUM",
       "explanation": "This setting relates to: 6.2.10 Ensure users own their home directories.",
       "impact": "Misconfiguration increases the local attack surface or weakens system accountability."
     },

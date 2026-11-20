@@ -17,6 +17,6 @@
   },
   "encoding": "utf-8",
   "profile_rules": "profile_rules.json",
-  "compliance_playbook": "XiaomiMiWiFi.yml",
+  "compliance_playbook": "XiaomiMiWiFi_compliance.yml",
   "compliance_playbook_version": "1.0"
 }

@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# SecAudit rule allowlist — source or paste into audit/remediation shell scripts.
+# Unset/empty SECAUDIT_RULES and SECAUDIT_REMEDIATE_RULES => all rules enabled.
+secaudit_rule_enabled() {
+    local raw="${SECAUDIT_RULES:-${SECAUDIT_REMEDIATE_RULES:-}}" id="$1" token n want
+    [ -z "$raw" ] && return 0
+    n="${id#RULE}"; n="${n#rule}"; n="${n#Rule}"
+    case "$n" in (*[!0-9]*|"") want=$(printf '%s' "$id" | tr '[:lower:]' '[:upper:]') ;;
+        *) want="RULE$((10#$n))" ;;
+    esac
+    local IFS=','
+    for token in $raw; do
+        token=$(printf '%s' "$token" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+        [ -z "$token" ] && continue
+        local tn="${token#RULE}"
+        case "$tn" in (*[!0-9]*|"") ;;
+            *) token="RULE$((10#$tn))" ;;
+        esac
+        [ "$token" = "$want" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then

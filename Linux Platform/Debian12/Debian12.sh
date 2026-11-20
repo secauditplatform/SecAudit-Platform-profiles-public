@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# SecAudit rule allowlist — source or paste into audit/remediation shell scripts.
+# Unset/empty SECAUDIT_RULES and SECAUDIT_REMEDIATE_RULES => all rules enabled.
+secaudit_rule_enabled() {
+    local raw="${SECAUDIT_RULES:-${SECAUDIT_REMEDIATE_RULES:-}}" id="$1" token n want
+    [ -z "$raw" ] && return 0
+    n="${id#RULE}"; n="${n#rule}"; n="${n#Rule}"
+    case "$n" in (*[!0-9]*|"") want=$(printf '%s' "$id" | tr '[:lower:]' '[:upper:]') ;;
+        *) want="RULE$((10#$n))" ;;
+    esac
+    local IFS=','
+    for token in $raw; do
+        token=$(printf '%s' "$token" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+        [ -z "$token" ] && continue
+        local tn="${token#RULE}"
+        case "$tn" in (*[!0-9]*|"") ;;
+            *) token="RULE$((10#$tn))" ;;
+        esac
+        [ "$token" = "$want" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -22,10 +44,10 @@ DEB12_ALLOW_CONTAINER_KMOD="${DEB12_ALLOW_CONTAINER_KMOD:-${CRE_ALLOW_CONTAINER_
 CRE_ALLOW_CONTAINER_KMOD="${DEB12_ALLOW_CONTAINER_KMOD}"
 # --- bootstrap / reporting ---
 # Normalize leading-zero CIS ids (010 -> 10) so RULE* matches profile_rules.json.
-sec_audit_report_pass() { printf 'RULE%d= PASS: %s\n' "$((10#$1))" "$2"; }
-sec_audit_report_fail() { printf 'RULE%d= FAIL: %s\n' "$((10#$1))" "${3:-$2}"; }
-sec_audit_report_skip() { printf 'RULE%d= SKIP: %s\n' "$((10#$1))" "$2"; }
-sec_audit_report_error() { printf 'RULE%d= ERROR: %s\n' "$((10#$1))" "$2"; }
+sec_audit_report_pass() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%d= PASS: %s\n' "$((10#$1))" "$2"; }
+sec_audit_report_fail() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%d= FAIL: %s\n' "$((10#$1))" "${3:-$2}"; }
+sec_audit_report_skip() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%d= SKIP: %s\n' "$((10#$1))" "$2"; }
+sec_audit_report_error() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%d= ERROR: %s\n' "$((10#$1))" "$2"; }
 
 # --- string / cmd / package utils ---
 sec_audit_have_bin() { command -v "$1" >/dev/null 2>&1; }

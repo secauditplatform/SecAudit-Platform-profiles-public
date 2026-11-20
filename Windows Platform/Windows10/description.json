@@ -1,11 +1,11 @@
 {
-  "profile_name": "Windows_10_Enterprise_22H2_V221",
+  "profile_name": "Windows 10",
   "is_active": true,
   "version": "1.1",
-  "overview": "Security configuration baseline for Microsoft Windows 10 Enterprise 22H2 workstations, aligned with hardening best practices.",
-  "purpose": "Gather host configuration evidence via WinRM/PowerShell—including secedit, auditpol, built-in accounts, and HKLM/HKU registry settings—and evaluate Windows 10 Enterprise 22H2 systems against the defined security baseline to identify misconfigurations and compliance gaps.",
+  "overview": "Security configuration baseline for Windows 10 hosts, aligned with hardening best practices.",
+  "purpose": "Gather host configuration evidence via WinRM/PowerShell—including secedit, auditpol, built-in accounts, and HKLM/HKU registry settings—and evaluate Windows 10 systems against the defined security baseline to identify misconfigurations and compliance gaps.",
   "os": {
-    "name": "Microsoft Windows 10 Enterprise for workstations",
+    "name": "Windows 10",
     "vendor": "Microsoft Corporation",
     "version": "22H2"
   },

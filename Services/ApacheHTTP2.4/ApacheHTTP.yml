@@ -1,0 +1,392 @@
+---
+- name: "Apache HTTP security baseline audit"
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    apachehttp_fail_on_noncompliance: false
+    apachehttp_strict_os_check: false
+    apachehttp_rule_meta:
+      RULE1:
+        id: "RULE1"
+        summary: "The Log Config Module Is Enabled"
+        severity: "MEDIUM"
+      RULE2:
+        id: "RULE2"
+        summary: "The WebDAV Modules Are Disabled"
+        severity: "MEDIUM"
+      RULE3:
+        id: "RULE3"
+        summary: "The Status Module Is Disabled"
+        severity: "LOW"
+      RULE4:
+        id: "RULE4"
+        summary: "The Autoindex Module Is Disabled"
+        severity: "MEDIUM"
+      RULE5:
+        id: "RULE5"
+        summary: "The Proxy Modules Are Disabled if not in use"
+        severity: "MEDIUM"
+      RULE6:
+        id: "RULE6"
+        summary: "The User Directories Module Is Disabled"
+        severity: "MEDIUM"
+      RULE7:
+        id: "RULE7"
+        summary: "The Info Module Is Disabled"
+        severity: "MEDIUM"
+      RULE8:
+        id: "RULE8"
+        summary: "The Basic and Digest Authentication Modules are Disabled"
+        severity: "HIGH"
+      RULE9:
+        id: "RULE9"
+        summary: "The Apache Web Server Runs As a Non-Root User"
+        severity: "HIGH"
+      RULE10:
+        id: "RULE10"
+        summary: "The Apache User Account Has an Invalid Shell"
+        severity: "HIGH"
+      RULE11:
+        id: "RULE11"
+        summary: "The Apache User Account Is Locked"
+        severity: "HIGH"
+      RULE12:
+        id: "RULE12"
+        summary: "Apache Directories and Files Are Owned By Root"
+        severity: "HIGH"
+      RULE13:
+        id: "RULE13"
+        summary: "The Group Is Set Correctly on Apache Directories and Files"
+        severity: "HIGH"
+      RULE14:
+        id: "RULE14"
+        summary: "Other Write Access on Apache Directories and Files Is Restricted"
+        severity: "MEDIUM"
+      RULE15:
+        id: "RULE15"
+        summary: "The Core Dump Directory Is Secured"
+        severity: "MEDIUM"
+      RULE16:
+        id: "RULE16"
+        summary: "The Lock File Is Secured"
+        severity: "HIGH"
+      RULE17:
+        id: "RULE17"
+        summary: "The Pid File Is Secured"
+        severity: "HIGH"
+      RULE18:
+        id: "RULE18"
+        summary: "The ScoreBoard File Is Secured"
+        severity: "HIGH"
+      RULE19:
+        id: "RULE19"
+        summary: "Group Write Access for the Apache Directories and Files Is Properly Restricted"
+        severity: "MEDIUM"
+      RULE20:
+        id: "RULE20"
+        summary: "Group Write Access for the Document Root Directories and Files Is Properly Restricted"
+        severity: "MEDIUM"
+      RULE21:
+        id: "RULE21"
+        summary: "Access to OS Root Directory Is Denied By Default"
+        severity: "MEDIUM"
+      RULE22:
+        id: "RULE22"
+        summary: "OverRide Is Disabled for the OS Root Directory"
+        severity: "HIGH"
+      RULE23:
+        id: "RULE23"
+        summary: "OverRide Is Disabled for All Directories"
+        severity: "HIGH"
+      RULE24:
+        id: "RULE24"
+        summary: "Options for the OS Root Directory Are Restricted"
+        severity: "MEDIUM"
+      RULE25:
+        id: "RULE25"
+        summary: "Options for the Web Root Directory Are Restricted"
+        severity: "MEDIUM"
+      RULE26:
+        id: "RULE26"
+        summary: "Options for Other Directories Are Minimized"
+        severity: "MEDIUM"
+      RULE27:
+        id: "RULE27"
+        summary: "Default HTML Content Is Removed"
+        severity: "LOW"
+      RULE28:
+        id: "RULE28"
+        summary: "The Default CGI Content printenv Script Is Removed"
+        severity: "MEDIUM"
+      RULE29:
+        id: "RULE29"
+        summary: "The Default CGI Content test-cgi Script Is Removed"
+        severity: "MEDIUM"
+      RULE30:
+        id: "RULE30"
+        summary: "HTTP Request Methods Are Restricted"
+        severity: "HIGH"
+      RULE31:
+        id: "RULE31"
+        summary: "The HTTP TRACE Method Is Disabled"
+        severity: "MEDIUM"
+      RULE32:
+        id: "RULE32"
+        summary: "Old HTTP Protocol Versions Are Disallowed"
+        severity: "HIGH"
+      RULE33:
+        id: "RULE33"
+        summary: "Access to .ht* Files Is Restricted"
+        severity: "HIGH"
+      RULE34:
+        id: "RULE34"
+        summary: "Access to .git Files Is Restricted"
+        severity: "MEDIUM"
+      RULE35:
+        id: "RULE35"
+        summary: "Access to .svn Files Is Restricted"
+        severity: "MEDIUM"
+      RULE36:
+        id: "RULE36"
+        summary: "Access to Inappropriate File Extensions Is Restricted"
+        severity: "HIGH"
+      RULE37:
+        id: "RULE37"
+        summary: "IP Address Based Requests Are Disallowed"
+        severity: "MEDIUM"
+      RULE38:
+        id: "RULE38"
+        summary: "The IP Addresses for Listening for Requests Are Specified"
+        severity: "MEDIUM"
+      RULE39:
+        id: "RULE39"
+        summary: "Browser Framing Is Restricted"
+        severity: "MEDIUM"
+      RULE40:
+        id: "RULE40"
+        summary: "HTTP Header Referrer-Policy is set appropriately"
+        severity: "HIGH"
+      RULE41:
+        id: "RULE41"
+        summary: "HTTP Header Permissions-Policy is set appropriately"
+        severity: "HIGH"
+      RULE42:
+        id: "RULE42"
+        summary: "The Error Log Filename and Severity Level Are Configured Correctly"
+        severity: "MEDIUM"
+      RULE43:
+        id: "RULE43"
+        summary: "A Syslog Facility Is Configured for Error Logging"
+        severity: "MEDIUM"
+      RULE44:
+        id: "RULE44"
+        summary: "The Server Access Log Is Configured Correctly"
+        severity: "MEDIUM"
+      RULE45:
+        id: "RULE45"
+        summary: "Log Storage and Rotation Is Configured Correctly"
+        severity: "MEDIUM"
+      RULE46:
+        id: "RULE46"
+        summary: "Applicable Patches Are Applied"
+        severity: "HIGH"
+      RULE47:
+        id: "RULE47"
+        summary: "ModSecurity Is Installed and Enabled"
+        severity: "HIGH"
+      RULE48:
+        id: "RULE48"
+        summary: "The OWASP ModSecurity Core Rule Set Is Installed and Enabled"
+        severity: "HIGH"
+      RULE49:
+        id: "RULE49"
+        summary: "Mod_ssl and/or mod_nss Is Installed"
+        severity: "HIGH"
+      RULE50:
+        id: "RULE50"
+        summary: "A Valid Trusted Certificate Is Installed"
+        severity: "HIGH"
+      RULE51:
+        id: "RULE51"
+        summary: "The Server's Private Key Is Protected"
+        severity: "HIGH"
+      RULE52:
+        id: "RULE52"
+        summary: "The TLSv1.0 and TLSv1.1 Protocols are Disabled"
+        severity: "HIGH"
+      RULE53:
+        id: "RULE53"
+        summary: "Weak SSL/TLS Ciphers Are Disabled"
+        severity: "HIGH"
+      RULE54:
+        id: "RULE54"
+        summary: "Insecure SSL Renegotiation Is Not Enabled"
+        severity: "HIGH"
+      RULE55:
+        id: "RULE55"
+        summary: "SSL Compression is not Enabled"
+        severity: "HIGH"
+      RULE56:
+        id: "RULE56"
+        summary: "Medium Strength SSL/TLS Ciphers Are Disabled"
+        severity: "MEDIUM"
+      RULE57:
+        id: "RULE57"
+        summary: "All Web Content is Accessed via HTTPS"
+        severity: "HIGH"
+      RULE58:
+        id: "RULE58"
+        summary: "OCSP Stapling Is Enabled"
+        severity: "MEDIUM"
+      RULE59:
+        id: "RULE59"
+        summary: "HTTP Strict Transport Security Is Enabled"
+        severity: "HIGH"
+      RULE60:
+        id: "RULE60"
+        summary: "Only Cipher Suites That Provide Forward Secrecy Are Enabled"
+        severity: "MEDIUM"
+      RULE61:
+        id: "RULE61"
+        summary: "ServerTokens is Set to 'Prod' or 'ProductOnly'"
+        severity: "HIGH"
+      RULE62:
+        id: "RULE62"
+        summary: "ServerSignature Is Not Enabled"
+        severity: "MEDIUM"
+      RULE63:
+        id: "RULE63"
+        summary: "All Default Apache Content Is Removed"
+        severity: "MEDIUM"
+      RULE64:
+        id: "RULE64"
+        summary: "ETag Response Header Fields Do Not Include Inodes"
+        severity: "MEDIUM"
+      RULE65:
+        id: "RULE65"
+        summary: "The TimeOut Is Set to 10 or Less"
+        severity: "MEDIUM"
+      RULE66:
+        id: "RULE66"
+        summary: "KeepAlive Is Enabled"
+        severity: "MEDIUM"
+      RULE67:
+        id: "RULE67"
+        summary: "MaxKeepAliveRequests is Set to a Value of 100 or Greater"
+        severity: "MEDIUM"
+      RULE68:
+        id: "RULE68"
+        summary: "KeepAliveTimeout is Set to a Value of 15 or Less"
+        severity: "MEDIUM"
+      RULE69:
+        id: "RULE69"
+        summary: "The Timeout Limits for Request Headers is Set to 40 or Less"
+        severity: "MEDIUM"
+      RULE70:
+        id: "RULE70"
+        summary: "Timeout Limits for the Request Body is Set to 20 or Less"
+        severity: "MEDIUM"
+      RULE71:
+        id: "RULE71"
+        summary: "The LimitRequestLine directive is Set to 8190 or less"
+        severity: "MEDIUM"
+      RULE72:
+        id: "RULE72"
+        summary: "The LimitRequestFields Directive is Set to 100 or Less"
+        severity: "MEDIUM"
+      RULE73:
+        id: "RULE73"
+        summary: "The LimitRequestFieldsize Directive is Set to 1024 or Less"
+        severity: "MEDIUM"
+      RULE74:
+        id: "RULE74"
+        summary: "The LimitRequestBody Directive is Set to 102400 or Less"
+        severity: "MEDIUM"
+      RULE75:
+        id: "RULE75"
+        summary: "SELinux Is Enabled in Enforcing Mode"
+        severity: "HIGH"
+      RULE76:
+        id: "RULE76"
+        summary: "Apache Processes Run in the httpd_t Confined Context"
+        severity: "HIGH"
+      RULE77:
+        id: "RULE77"
+        summary: "The httpd_t Type is Not in Permissive Mode"
+        severity: "HIGH"
+      RULE78:
+        id: "RULE78"
+        summary: "The AppArmor Framework Is Enabled"
+        severity: "HIGH"
+      RULE79:
+        id: "RULE79"
+        summary: "Apache AppArmor Profile is in Enforce Mode"
+        severity: "HIGH"
+
+  tasks:
+    - name: "Run Apache HTTP audit script"
+      ansible.builtin.script: ApacheHTTP.sh
+      args:
+        executable: /bin/bash
+      register: apachehttp_audit_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse RULE results into STATUS|id|summary|detail lines
+      ansible.builtin.set_fact:
+        apachehttp_lines: >-
+          {%- set rows = [] -%}
+          {%- for line in apachehttp_audit_raw.stdout_lines | default([]) -%}
+          {%- set matched = line | regex_findall('^(RULE\\d+)\\s*=\\s*(PASS|FAIL|REVIEW|N/?A|SKIP|ERROR)\\s*:?\\s*(.*)$') -%}
+          {%- if matched | length > 0 -%}
+          {%- set rule_key = matched[0][0] | regex_replace('^RULE0*(\\d+)$', 'RULE\\1') -%}
+          {%- set status = matched[0][1] | upper | regex_replace('/','') -%}
+          {%- if status == 'NA' -%}{%- set status = 'SKIP' -%}{%- endif -%}
+          {%- set detail = matched[0][2] -%}
+          {%- set meta = apachehttp_rule_meta[rule_key] | default({}) -%}
+          {%- set row = status ~ '|' ~ (meta.id | default(rule_key)) ~ '|' ~ (meta.summary | default(rule_key)) ~ '|' ~ detail -%}
+          {%- set _ = rows.append(row) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Count PASS and FAIL results
+      ansible.builtin.set_fact:
+        apachehttp_pass_count: >-
+          {{ apachehttp_lines | default([])
+             | select('match', '^PASS\|') | list | length }}
+        apachehttp_fail_count: >-
+          {{ apachehttp_lines | default([])
+             | select('match', '^FAIL\|') | list | length }}
+        apachehttp_total_count: "{{ apachehttp_lines | default([]) | length }}"
+
+    - name: "Apache HTTP compliance summary"
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          profile: "Apache HTTP"
+          script: ApacheHTTP.sh
+          total: "{{ apachehttp_total_count }}"
+          passed: "{{ apachehttp_pass_count }}"
+          failed: "{{ apachehttp_fail_count }}"
+          format: STATUS|rule_id|summary|detail
+          checks: "{{ apachehttp_lines | default([]) }}"
+          script_rc: "{{ apachehttp_audit_raw.rc | default('n/a') }}"
+
+    - name: Ensure audit script produced parseable RULE results
+      ansible.builtin.assert:
+        that:
+          - (apachehttp_total_count | int) > 0
+        fail_msg: >-
+          No RULE*= PASS/FAIL lines parsed from ApacheHTTP.sh output.
+          rc={{ apachehttp_audit_raw.rc | default('n/a') }}
+          stderr={{ apachehttp_audit_raw.stderr | default('') }}
+
+    - name: Fail when non-compliant checks exist
+      ansible.builtin.assert:
+        that:
+          - (apachehttp_fail_count | int) == 0
+      when: apachehttp_fail_on_noncompliance | bool
