@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "NTP_MIN_SERVERS",
+      "type": "int",
+      "default": 2,
+      "min": 1,
+      "max": 8,
+      "description": "Minimum NTP servers. The check fails when fewer are configured.",
+      "requirement_ids": [
+        "RULE1",
+        "RULE4"
+      ]
+    },
+    {
+      "name": "POD_SECURITY_ENFORCE",
+      "type": "enum",
+      "default": "restricted",
+      "enum": [
+        "restricted",
+        "baseline",
+        "privileged"
+      ],
+      "description": "Pod Security admission enforce level.",
+      "requirement_ids": [
+        "RULE6"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_SEND_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4 send_redirects for all and default.",
+      "requirement_ids": [
+        "RULE8"
+      ]
+    },
+    {
+      "name": "SYSCTL_ACCEPT_SOURCE_ROUTE",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required accept_source_route for IPv4 and IPv6, all and default.",
+      "requirement_ids": [
+        "RULE9"
+      ]
+    },
+    {
+      "name": "SYSCTL_ACCEPT_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required accept_redirects for IPv4 and IPv6, all and default.",
+      "requirement_ids": [
+        "RULE10"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_SECURE_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4 secure_redirects for all and default.",
+      "requirement_ids": [
+        "RULE11"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_LOG_MARTIANS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4 log_martians for all and default.",
+      "requirement_ids": [
+        "RULE12"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ICMP_ECHO_IGN_BCAST",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.icmp_echo_ignore_broadcasts.",
+      "requirement_ids": [
+        "RULE13"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ICMP_IGN_BOGUS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.icmp_ignore_bogus_error_responses.",
+      "requirement_ids": [
+        "RULE14"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_TCP_SYNCOOKIES",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.tcp_syncookies.",
+      "requirement_ids": [
+        "RULE15"
+      ]
+    }
+  ]
+}

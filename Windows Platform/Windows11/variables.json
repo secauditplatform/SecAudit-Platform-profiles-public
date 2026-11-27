@@ -1,0 +1,3516 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "MAXIMUMPASSWORDAGE",
+      "type": "string",
+      "default": "1..30",
+      "description": "MaximumPasswordAge BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE063"
+      ]
+    },
+    {
+      "name": "INACTIVITYTIMEOUTSECS",
+      "type": "string",
+      "default": "1..900",
+      "description": "inactivitytimeoutsecs BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE068"
+      ]
+    },
+    {
+      "name": "CACHEDLOGONSCOUNT",
+      "type": "int",
+      "default": 4,
+      "min": 0,
+      "max": 99999,
+      "description": "CachedLogonsCount LESS_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE071"
+      ]
+    },
+    {
+      "name": "PASSWORDEXPIRYWARNING",
+      "type": "string",
+      "default": "5..14",
+      "description": "PasswordExpiryWarning BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE072"
+      ]
+    },
+    {
+      "name": "SCREMOVEOPTION",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 99999,
+      "description": "scremoveoption GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE073"
+      ]
+    },
+    {
+      "name": "AUTODISCONNECT",
+      "type": "string",
+      "default": "1..15",
+      "description": "autodisconnect BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE077"
+      ]
+    },
+    {
+      "name": "SMBSERVERNAMEHARDENINGLEVEL",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 99999,
+      "description": "smbservernamehardeninglevel GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE081"
+      ]
+    },
+    {
+      "name": "LDAPCLIENTINTEGRITY",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 99999,
+      "description": "ldapclientintegrity GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE101"
+      ]
+    },
+    {
+      "name": "LOGFILESIZE",
+      "type": "int",
+      "default": 16384,
+      "min": 0,
+      "max": 99999,
+      "description": "LogFileSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE165"
+      ]
+    },
+    {
+      "name": "LOGFILESIZE_175",
+      "type": "int",
+      "default": 16384,
+      "min": 0,
+      "max": 99999,
+      "description": "LogFileSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE175"
+      ]
+    },
+    {
+      "name": "LOGFILESIZE_185",
+      "type": "int",
+      "default": 16384,
+      "min": 0,
+      "max": 99999,
+      "description": "LogFileSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE185"
+      ]
+    },
+    {
+      "name": "PASSWORDLENGTH",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 99999,
+      "description": "PasswordLength GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE219"
+      ]
+    },
+    {
+      "name": "PASSWORDAGEDAYS",
+      "type": "int",
+      "default": 30,
+      "min": 0,
+      "max": 99999,
+      "description": "PasswordAgeDays LESS_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE220"
+      ]
+    },
+    {
+      "name": "REQUIREPINFORPAIRING",
+      "type": "string",
+      "default": "1..2",
+      "description": "RequirePinForPairing BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE384"
+      ]
+    },
+    {
+      "name": "ALLOWTELEMETRY",
+      "type": "string",
+      "default": "0..1",
+      "description": "AllowTelemetry BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE387"
+      ]
+    },
+    {
+      "name": "MAXSIZE",
+      "type": "int",
+      "default": 32768,
+      "min": 0,
+      "max": 99999,
+      "description": "MaxSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE393"
+      ]
+    },
+    {
+      "name": "MAXSIZE_395",
+      "type": "int",
+      "default": 192608,
+      "min": 0,
+      "max": 192608,
+      "description": "MaxSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE395"
+      ]
+    },
+    {
+      "name": "MAXSIZE_397",
+      "type": "int",
+      "default": 32768,
+      "min": 0,
+      "max": 99999,
+      "description": "MaxSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE397"
+      ]
+    },
+    {
+      "name": "MAXSIZE_399",
+      "type": "int",
+      "default": 32768,
+      "min": 0,
+      "max": 99999,
+      "description": "MaxSize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE399"
+      ]
+    },
+    {
+      "name": "MAXIDLETIME",
+      "type": "string",
+      "default": "1..900000",
+      "description": "MaxIdleTime BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE427"
+      ]
+    },
+    {
+      "name": "DOHPOLICY",
+      "type": "string",
+      "default": "2..3",
+      "description": "DoHPolicy BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE495"
+      ]
+    },
+    {
+      "name": "PASSWORDHISTORYSIZE",
+      "type": "int",
+      "default": 24,
+      "min": 0,
+      "max": 99999,
+      "description": "PasswordHistorySize GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE001"
+      ]
+    },
+    {
+      "name": "MAXIMUMPASSWORDAGE_002",
+      "type": "string",
+      "default": "1..60",
+      "description": "MaximumPasswordAge BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE002"
+      ]
+    },
+    {
+      "name": "MINIMUMPASSWORDAGE",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 99999,
+      "description": "MinimumPasswordAge GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE003"
+      ]
+    },
+    {
+      "name": "MINIMUMPASSWORDLENGTH",
+      "type": "int",
+      "default": 14,
+      "min": 0,
+      "max": 99999,
+      "description": "MinimumPasswordLength GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE004"
+      ]
+    },
+    {
+      "name": "LOCKOUTDURATION",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 99999,
+      "description": "LockoutDuration GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE007"
+      ]
+    },
+    {
+      "name": "LOCKOUTBADCOUNT",
+      "type": "string",
+      "default": "1..10",
+      "description": "LockoutBadCount BETWEEN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE008"
+      ]
+    },
+    {
+      "name": "RESETLOCKOUTCOUNT",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 99999,
+      "description": "ResetLockoutCount GREATER_OR_EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE009"
+      ]
+    },
+    {
+      "name": "NOCONNECTEDUSER",
+      "type": "int",
+      "default": 3,
+      "description": "noconnecteduser EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE050"
+      ]
+    },
+    {
+      "name": "LIMITBLANKPASSWORDUSE",
+      "type": "int",
+      "default": 1,
+      "description": "LimitBlankPasswordUse EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE052"
+      ]
+    },
+    {
+      "name": "SCENOAPPLYLEGACYAUDITPOLICY",
+      "type": "int",
+      "default": 1,
+      "description": "scenoapplylegacyauditpolicy EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE055"
+      ]
+    },
+    {
+      "name": "CRASHONAUDITFAIL",
+      "type": "int",
+      "default": 0,
+      "description": "crashonauditfail EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE056"
+      ]
+    },
+    {
+      "name": "ALLOCATEDASD",
+      "type": "int",
+      "default": 0,
+      "description": "allocatedasd EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE057"
+      ]
+    },
+    {
+      "name": "ADDPRINTERDRIVERS",
+      "type": "int",
+      "default": 1,
+      "description": "AddPrinterDrivers EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE058"
+      ]
+    },
+    {
+      "name": "REQUIRESIGNORSEAL",
+      "type": "int",
+      "default": 1,
+      "description": "RequireSignOrSeal EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE059"
+      ]
+    },
+    {
+      "name": "SEALSECURECHANNEL",
+      "type": "int",
+      "default": 1,
+      "description": "SealSecureChannel EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE060"
+      ]
+    },
+    {
+      "name": "SIGNSECURECHANNEL",
+      "type": "int",
+      "default": 1,
+      "description": "SignSecureChannel EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE061"
+      ]
+    },
+    {
+      "name": "DISABLEPASSWORDCHANGE",
+      "type": "int",
+      "default": 0,
+      "description": "DisablePasswordChange EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE062"
+      ]
+    },
+    {
+      "name": "REQUIRESTRONGKEY",
+      "type": "int",
+      "default": 1,
+      "description": "RequireStrongKey EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE064"
+      ]
+    },
+    {
+      "name": "DONTDISPLAYLASTUSERNAME",
+      "type": "int",
+      "default": 1,
+      "description": "dontdisplaylastusername EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE065"
+      ]
+    },
+    {
+      "name": "DISABLECAD",
+      "type": "int",
+      "default": 0,
+      "description": "disablecad EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE066"
+      ]
+    },
+    {
+      "name": "REQUIRESECURITYSIGNATURE",
+      "type": "int",
+      "default": 1,
+      "description": "RequireSecuritySignature EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE074"
+      ]
+    },
+    {
+      "name": "ENABLESECURITYSIGNATURE",
+      "type": "int",
+      "default": 1,
+      "description": "EnableSecuritySignature EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE075"
+      ]
+    },
+    {
+      "name": "ENABLEPLAINTEXTPASSWORD",
+      "type": "int",
+      "default": 0,
+      "description": "EnablePlainTextPassword EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE076"
+      ]
+    },
+    {
+      "name": "REQUIRESECURITYSIGNATURE_078",
+      "type": "int",
+      "default": 1,
+      "description": "requiresecuritysignature EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE078"
+      ]
+    },
+    {
+      "name": "ENABLESECURITYSIGNATURE_079",
+      "type": "int",
+      "default": 1,
+      "description": "enablesecuritysignature EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE079"
+      ]
+    },
+    {
+      "name": "ENABLEFORCEDLOGOFF",
+      "type": "int",
+      "default": 1,
+      "description": "enableforcedlogoff EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE080"
+      ]
+    },
+    {
+      "name": "RESTRICTANONYMOUSSAM",
+      "type": "int",
+      "default": 1,
+      "description": "restrictanonymoussam EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE083"
+      ]
+    },
+    {
+      "name": "RESTRICTANONYMOUS",
+      "type": "int",
+      "default": 1,
+      "description": "restrictanonymous EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE084"
+      ]
+    },
+    {
+      "name": "DISABLEDOMAINCREDS",
+      "type": "int",
+      "default": 1,
+      "description": "disabledomaincreds EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE085"
+      ]
+    },
+    {
+      "name": "EVERYONEINCLUDESANONYMOUS",
+      "type": "int",
+      "default": 0,
+      "description": "everyoneincludesanonymous EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE086"
+      ]
+    },
+    {
+      "name": "NULLSESSIONPIPES",
+      "type": "string",
+      "default": "",
+      "description": "NullSessionPipes EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE087"
+      ]
+    },
+    {
+      "name": "RESTRICTNULLSESSACCESS",
+      "type": "int",
+      "default": 1,
+      "description": "restrictnullsessaccess EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE090"
+      ]
+    },
+    {
+      "name": "RESTRICTREMOTESAM",
+      "type": "string",
+      "default": "O:BAG:BAD:(A,,RC,,,BA)",
+      "description": "restrictremotesam EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE091"
+      ]
+    },
+    {
+      "name": "NULLSESSIONSHARES",
+      "type": "string",
+      "default": "",
+      "description": "nullsessionshares EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE092"
+      ]
+    },
+    {
+      "name": "FORCEGUEST",
+      "type": "int",
+      "default": 0,
+      "description": "forceguest EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE093"
+      ]
+    },
+    {
+      "name": "USEMACHINEID",
+      "type": "int",
+      "default": 1,
+      "description": "usemachineid EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE094"
+      ]
+    },
+    {
+      "name": "ALLOWNULLSESSIONFALLBACK",
+      "type": "int",
+      "default": 0,
+      "description": "allownullsessionfallback EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE095"
+      ]
+    },
+    {
+      "name": "ALLOWONLINEID",
+      "type": "int",
+      "default": 0,
+      "description": "allowonlineid EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE096"
+      ]
+    },
+    {
+      "name": "SUPPORTEDENCRYPTIONTYPES",
+      "type": "int",
+      "default": 2147483640,
+      "description": "supportedencryptiontypes EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE097"
+      ]
+    },
+    {
+      "name": "NOLMHASH",
+      "type": "int",
+      "default": 1,
+      "description": "NoLmHash EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE098"
+      ]
+    },
+    {
+      "name": "ENABLEFORCEDLOGOFF_099",
+      "type": "int",
+      "default": 1,
+      "description": "enableforcedlogoff EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE099"
+      ]
+    },
+    {
+      "name": "LMCOMPATIBILITYLEVEL",
+      "type": "int",
+      "default": 5,
+      "description": "lmcompatibilitylevel EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE100"
+      ]
+    },
+    {
+      "name": "NTLMMINCLIENTSEC",
+      "type": "int",
+      "default": 537395200,
+      "description": "NtlmMinClientSec EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE102"
+      ]
+    },
+    {
+      "name": "NTLMMINSERVERSEC",
+      "type": "int",
+      "default": 537395200,
+      "description": "NtlmMinServerSec EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE103"
+      ]
+    },
+    {
+      "name": "FORCEKEYPROTECTION",
+      "type": "int",
+      "default": 1,
+      "description": "forcekeyprotection EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE104"
+      ]
+    },
+    {
+      "name": "OBCASEINSENSITIVE",
+      "type": "int",
+      "default": 1,
+      "description": "obcaseinsensitive EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE105"
+      ]
+    },
+    {
+      "name": "PROTECTIONMODE",
+      "type": "int",
+      "default": 1,
+      "description": "ProtectionMode EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE106"
+      ]
+    },
+    {
+      "name": "FILTERADMINISTRATORTOKEN",
+      "type": "int",
+      "default": 1,
+      "description": "FilterAdministratorToken EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE107"
+      ]
+    },
+    {
+      "name": "ENABLEUIADESKTOPTOGGLE",
+      "type": "int",
+      "default": 0,
+      "description": "EnableUIADesktopToggle EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE108"
+      ]
+    },
+    {
+      "name": "CONSENTPROMPTBEHAVIORADMIN",
+      "type": "int",
+      "default": 2,
+      "description": "ConsentPromptBehaviorAdmin EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE109"
+      ]
+    },
+    {
+      "name": "CONSENTPROMPTBEHAVIORUSER",
+      "type": "int",
+      "default": 0,
+      "description": "ConsentPromptBehaviorUser EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE110"
+      ]
+    },
+    {
+      "name": "ENABLEINSTALLERDETECTION",
+      "type": "int",
+      "default": 1,
+      "description": "EnableInstallerDetection EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE111"
+      ]
+    },
+    {
+      "name": "ENABLESECUREUIAPATHS",
+      "type": "int",
+      "default": 1,
+      "description": "EnableSecureUIAPaths EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE112"
+      ]
+    },
+    {
+      "name": "ENABLELUA",
+      "type": "int",
+      "default": 1,
+      "description": "EnableLUA EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE113"
+      ]
+    },
+    {
+      "name": "PROMPTONSECUREDESKTOP",
+      "type": "int",
+      "default": 1,
+      "description": "PromptOnSecureDesktop EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE114"
+      ]
+    },
+    {
+      "name": "ENABLEVIRTUALIZATION",
+      "type": "int",
+      "default": 1,
+      "description": "EnableVirtualization EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE115"
+      ]
+    },
+    {
+      "name": "START",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE117"
+      ]
+    },
+    {
+      "name": "START_118",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE118"
+      ]
+    },
+    {
+      "name": "START_119",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE119"
+      ]
+    },
+    {
+      "name": "START_120",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE120"
+      ]
+    },
+    {
+      "name": "START_123",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE123"
+      ]
+    },
+    {
+      "name": "START_124",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE124"
+      ]
+    },
+    {
+      "name": "START_125",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE125"
+      ]
+    },
+    {
+      "name": "START_126",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE126"
+      ]
+    },
+    {
+      "name": "START_127",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE127"
+      ]
+    },
+    {
+      "name": "START_128",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE128"
+      ]
+    },
+    {
+      "name": "START_129",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE129"
+      ]
+    },
+    {
+      "name": "START_130",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE130"
+      ]
+    },
+    {
+      "name": "START_131",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE131"
+      ]
+    },
+    {
+      "name": "START_132",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE132"
+      ]
+    },
+    {
+      "name": "START_133",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE133"
+      ]
+    },
+    {
+      "name": "START_134",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE134"
+      ]
+    },
+    {
+      "name": "START_135",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE135"
+      ]
+    },
+    {
+      "name": "START_136",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE136"
+      ]
+    },
+    {
+      "name": "START_137",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE137"
+      ]
+    },
+    {
+      "name": "START_138",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE138"
+      ]
+    },
+    {
+      "name": "START_139",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE139"
+      ]
+    },
+    {
+      "name": "START_140",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE140"
+      ]
+    },
+    {
+      "name": "START_141",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE141"
+      ]
+    },
+    {
+      "name": "START_143",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE143"
+      ]
+    },
+    {
+      "name": "START_144",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE144"
+      ]
+    },
+    {
+      "name": "START_145",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE145"
+      ]
+    },
+    {
+      "name": "START_146",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE146"
+      ]
+    },
+    {
+      "name": "START_147",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE147"
+      ]
+    },
+    {
+      "name": "START_148",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE148"
+      ]
+    },
+    {
+      "name": "START_149",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE149"
+      ]
+    },
+    {
+      "name": "START_150",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE150"
+      ]
+    },
+    {
+      "name": "START_151",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE151"
+      ]
+    },
+    {
+      "name": "START_152",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE152"
+      ]
+    },
+    {
+      "name": "START_154",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE154"
+      ]
+    },
+    {
+      "name": "START_155",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE155"
+      ]
+    },
+    {
+      "name": "START_156",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE156"
+      ]
+    },
+    {
+      "name": "START_157",
+      "type": "int",
+      "default": 4,
+      "description": "Start EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE157"
+      ]
+    },
+    {
+      "name": "ENABLEFIREWALL",
+      "type": "int",
+      "default": 1,
+      "description": "EnableFirewall EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE158"
+      ]
+    },
+    {
+      "name": "DEFAULTINBOUNDACTION",
+      "type": "int",
+      "default": 1,
+      "description": "DefaultInboundAction EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE159"
+      ]
+    },
+    {
+      "name": "DEFAULTOUTBOUNDACTION",
+      "type": "int",
+      "default": 0,
+      "description": "DefaultOutboundAction EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE160"
+      ]
+    },
+    {
+      "name": "DISABLENOTIFICATIONS",
+      "type": "int",
+      "default": 1,
+      "description": "DisableNotifications EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE161"
+      ]
+    },
+    {
+      "name": "ALLOWLOCALPOLICYMERGE",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLocalPolicyMerge EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE162"
+      ]
+    },
+    {
+      "name": "ALLOWLOCALIPSECPOLICYMERGE",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLocalIPsecPolicyMerge EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE163"
+      ]
+    },
+    {
+      "name": "LOGFILEPATH",
+      "type": "string",
+      "default": "%SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log",
+      "description": "LogFilePath EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE164"
+      ]
+    },
+    {
+      "name": "LOGDROPPEDPACKETS",
+      "type": "int",
+      "default": 1,
+      "description": "LogDroppedPackets EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE166"
+      ]
+    },
+    {
+      "name": "LOGSUCCESSFULCONNECTIONS",
+      "type": "int",
+      "default": 1,
+      "description": "LogSuccessfulConnections EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE167"
+      ]
+    },
+    {
+      "name": "ENABLEFIREWALL_168",
+      "type": "int",
+      "default": 1,
+      "description": "EnableFirewall EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE168"
+      ]
+    },
+    {
+      "name": "DEFAULTINBOUNDACTION_169",
+      "type": "int",
+      "default": 1,
+      "description": "DefaultInboundAction EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE169"
+      ]
+    },
+    {
+      "name": "DEFAULTOUTBOUNDACTION_170",
+      "type": "int",
+      "default": 0,
+      "description": "DefaultOutboundAction EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE170"
+      ]
+    },
+    {
+      "name": "DISABLENOTIFICATIONS_171",
+      "type": "int",
+      "default": 1,
+      "description": "DisableNotifications EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE171"
+      ]
+    },
+    {
+      "name": "ALLOWLOCALPOLICYMERGE_172",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLocalPolicyMerge EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE172"
+      ]
+    },
+    {
+      "name": "ALLOWLOCALIPSECPOLICYMERGE_173",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLocalIPsecPolicyMerge EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE173"
+      ]
+    },
+    {
+      "name": "LOGFILEPATH_174",
+      "type": "string",
+      "default": "%SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log",
+      "description": "LogFilePath EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE174"
+      ]
+    },
+    {
+      "name": "LOGDROPPEDPACKETS_176",
+      "type": "int",
+      "default": 1,
+      "description": "LogDroppedPackets EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE176"
+      ]
+    },
+    {
+      "name": "LOGSUCCESSFULCONNECTIONS_177",
+      "type": "int",
+      "default": 1,
+      "description": "LogSuccessfulConnections EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE177"
+      ]
+    },
+    {
+      "name": "ENABLEFIREWALL_178",
+      "type": "int",
+      "default": 1,
+      "description": "EnableFirewall EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE178"
+      ]
+    },
+    {
+      "name": "DEFAULTINBOUNDACTION_179",
+      "type": "int",
+      "default": 1,
+      "description": "DefaultInboundAction EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE179"
+      ]
+    },
+    {
+      "name": "DEFAULTOUTBOUNDACTION_180",
+      "type": "int",
+      "default": 0,
+      "description": "DefaultOutboundAction EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE180"
+      ]
+    },
+    {
+      "name": "DISABLENOTIFICATIONS_181",
+      "type": "int",
+      "default": 0,
+      "description": "DisableNotifications EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE181"
+      ]
+    },
+    {
+      "name": "ALLOWLOCALPOLICYMERGE_182",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLocalPolicyMerge EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE182"
+      ]
+    },
+    {
+      "name": "ALLOWLOCALIPSECPOLICYMERGE_183",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLocalIPsecPolicyMerge EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE183"
+      ]
+    },
+    {
+      "name": "LOGFILEPATH_184",
+      "type": "string",
+      "default": "%SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log",
+      "description": "LogFilePath EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE184"
+      ]
+    },
+    {
+      "name": "LOGDROPPEDPACKETS_186",
+      "type": "int",
+      "default": 1,
+      "description": "LogDroppedPackets EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE186"
+      ]
+    },
+    {
+      "name": "LOGSUCCESSFULCONNECTIONS_187",
+      "type": "int",
+      "default": 1,
+      "description": "LogSuccessfulConnections EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE187"
+      ]
+    },
+    {
+      "name": "NOLOCKSCREENCAMERA",
+      "type": "int",
+      "default": 1,
+      "description": "NoLockScreenCamera EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE212"
+      ]
+    },
+    {
+      "name": "NOLOCKSCREENSLIDESHOW",
+      "type": "int",
+      "default": 1,
+      "description": "NoLockScreenSlideshow EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE213"
+      ]
+    },
+    {
+      "name": "ALLOWINPUTPERSONALIZATION",
+      "type": "int",
+      "default": 1,
+      "description": "AllowInputPersonalization EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE214"
+      ]
+    },
+    {
+      "name": "DLLNAME",
+      "type": "string",
+      "default": "C:\\Program Files\\LAPS\\CSE\\AdmPwd.dll",
+      "description": "DllName EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE215"
+      ]
+    },
+    {
+      "name": "PWDEXPIRATIONPROTECTIONENABLED",
+      "type": "int",
+      "default": 1,
+      "description": "PwdExpirationProtectionEnabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE216"
+      ]
+    },
+    {
+      "name": "ADMPWDENABLED",
+      "type": "int",
+      "default": 1,
+      "description": "AdmPwdEnabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE217"
+      ]
+    },
+    {
+      "name": "PASSWORDCOMPLEXITY",
+      "type": "int",
+      "default": 4,
+      "description": "PasswordComplexity EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE218"
+      ]
+    },
+    {
+      "name": "AUTOADMINLOGON",
+      "type": "int",
+      "default": 0,
+      "description": "AutoAdminLogon EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE221"
+      ]
+    },
+    {
+      "name": "DISABLEIPSOURCEROUTING",
+      "type": "int",
+      "default": 2,
+      "description": "DisableIPSourceRouting EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE222"
+      ]
+    },
+    {
+      "name": "DISABLEIPSOURCEROUTING_223",
+      "type": "int",
+      "default": 2,
+      "description": "DisableIPSourceRouting EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE223"
+      ]
+    },
+    {
+      "name": "DISABLESAVEPASSWORD",
+      "type": "int",
+      "default": 1,
+      "description": "DisableSavePassword EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE224"
+      ]
+    },
+    {
+      "name": "ENABLEICMPREDIRECT",
+      "type": "int",
+      "default": 0,
+      "description": "EnableICMPRedirect EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE225"
+      ]
+    },
+    {
+      "name": "KEEPALIVETIME",
+      "type": "int",
+      "default": 300000,
+      "description": "KeepAliveTime EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE226"
+      ]
+    },
+    {
+      "name": "NONAMERELEASEONDEMAND",
+      "type": "int",
+      "default": 1,
+      "description": "NoNameReleaseOnDemand EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE227"
+      ]
+    },
+    {
+      "name": "PERFORMROUTERDISCOVERY",
+      "type": "int",
+      "default": 0,
+      "description": "PerformRouterDiscovery EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE228"
+      ]
+    },
+    {
+      "name": "SAFEDLLSEARCHMODE",
+      "type": "int",
+      "default": 1,
+      "description": "SafeDllSearchMode EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE229"
+      ]
+    },
+    {
+      "name": "SCREENSAVERGRACEPERIOD",
+      "type": "int",
+      "default": 5,
+      "description": "ScreenSaverGracePeriod EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE230"
+      ]
+    },
+    {
+      "name": "TCPMAXDATARETRANSMISSIONS",
+      "type": "int",
+      "default": 3,
+      "description": "TcpMaxDataRetransmissions EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE231"
+      ]
+    },
+    {
+      "name": "TCPMAXDATARETRANSMISSIONS_232",
+      "type": "int",
+      "default": 3,
+      "description": "TcpMaxDataRetransmissions EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE232"
+      ]
+    },
+    {
+      "name": "WARNINGLEVEL",
+      "type": "int",
+      "default": 90,
+      "description": "WarningLevel EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE233"
+      ]
+    },
+    {
+      "name": "NODETYPE",
+      "type": "int",
+      "default": 2,
+      "description": "NodeType EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE234"
+      ]
+    },
+    {
+      "name": "ENABLEMULTICAST",
+      "type": "int",
+      "default": 0,
+      "description": "EnableMulticast EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE235"
+      ]
+    },
+    {
+      "name": "ENABLEFONTPROVIDERS",
+      "type": "int",
+      "default": 0,
+      "description": "EnableFontProviders EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE236"
+      ]
+    },
+    {
+      "name": "ALLOWINSECUREGUESTAUTH",
+      "type": "int",
+      "default": 0,
+      "description": "AllowInsecureGuestAuth EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE237"
+      ]
+    },
+    {
+      "name": "ALLOWLLTDIOONDOMAIN",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLLTDIOOnDomain EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE238"
+      ]
+    },
+    {
+      "name": "ALLOWRSPNDRONDOMAIN",
+      "type": "int",
+      "default": 0,
+      "description": "AllowRspndrOnDomain EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE239"
+      ]
+    },
+    {
+      "name": "DISABLED",
+      "type": "int",
+      "default": 1,
+      "description": "Disabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE240"
+      ]
+    },
+    {
+      "name": "NC_ALLOWNETBRIDGE_NLA",
+      "type": "int",
+      "default": 0,
+      "description": "NC_AllowNetBridge_NLA EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE241"
+      ]
+    },
+    {
+      "name": "NC_SHOWSHAREDACCESSUI",
+      "type": "int",
+      "default": 0,
+      "description": "NC_ShowSharedAccessUI EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE242"
+      ]
+    },
+    {
+      "name": "NC_STDDOMAINUSERSETLOCATION",
+      "type": "int",
+      "default": 1,
+      "description": "NC_StdDomainUserSetLocation EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE243"
+      ]
+    },
+    {
+      "name": "DISABLEDCOMPONENTS",
+      "type": "int",
+      "default": 255,
+      "description": "DisabledComponents EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE245"
+      ]
+    },
+    {
+      "name": "ENABLEREGISTRARS",
+      "type": "int",
+      "default": 0,
+      "description": "EnableRegistrars EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE246"
+      ]
+    },
+    {
+      "name": "DISABLEWCNUI",
+      "type": "int",
+      "default": 1,
+      "description": "DisableWcnUi EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE247"
+      ]
+    },
+    {
+      "name": "FMINIMIZECONNECTIONS",
+      "type": "int",
+      "default": 1,
+      "description": "fMinimizeConnections EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE248"
+      ]
+    },
+    {
+      "name": "FBLOCKNONDOMAIN",
+      "type": "int",
+      "default": 1,
+      "description": "fBlockNonDomain EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE249"
+      ]
+    },
+    {
+      "name": "AUTOCONNECTALLOWEDOEM",
+      "type": "int",
+      "default": 0,
+      "description": "AutoConnectAllowedOEM EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE250"
+      ]
+    },
+    {
+      "name": "LOCALACCOUNTTOKENFILTERPOLICY",
+      "type": "int",
+      "default": 0,
+      "description": "LocalAccountTokenFilterPolicy EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE251"
+      ]
+    },
+    {
+      "name": "USELOGONCREDENTIAL",
+      "type": "int",
+      "default": 0,
+      "description": "UseLogonCredential EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE252"
+      ]
+    },
+    {
+      "name": "PROCESSCREATIONINCLUDECMDLINE_ENABLED",
+      "type": "int",
+      "default": 0,
+      "description": "ProcessCreationIncludeCmdLine_Enabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE253"
+      ]
+    },
+    {
+      "name": "DRIVERLOADPOLICY",
+      "type": "int",
+      "default": 3,
+      "description": "DriverLoadPolicy EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE260"
+      ]
+    },
+    {
+      "name": "NOBACKGROUNDPOLICY",
+      "type": "int",
+      "default": 1,
+      "description": "NoBackgroundPolicy EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE261"
+      ]
+    },
+    {
+      "name": "NOGPOLISTCHANGES",
+      "type": "int",
+      "default": 0,
+      "description": "NoGPOListChanges EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE262"
+      ]
+    },
+    {
+      "name": "ENABLECDP",
+      "type": "int",
+      "default": 0,
+      "description": "EnableCdp EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE263"
+      ]
+    },
+    {
+      "name": "NOUSESTOREOPENWITH",
+      "type": "int",
+      "default": 1,
+      "description": "NoUseStoreOpenWith EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE265"
+      ]
+    },
+    {
+      "name": "DISABLEWEBPNPDOWNLOAD",
+      "type": "int",
+      "default": 1,
+      "description": "DisableWebPnPDownload EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE266"
+      ]
+    },
+    {
+      "name": "PREVENTHANDWRITINGDATASHARING",
+      "type": "int",
+      "default": 1,
+      "description": "PreventHandwritingDataSharing EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE267"
+      ]
+    },
+    {
+      "name": "PREVENTHANDWRITINGERRORREPORTS",
+      "type": "int",
+      "default": 1,
+      "description": "PreventHandwritingErrorReports EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE268"
+      ]
+    },
+    {
+      "name": "EXITONMSICW",
+      "type": "int",
+      "default": 1,
+      "description": "ExitOnMSICW EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE269"
+      ]
+    },
+    {
+      "name": "NOWEBSERVICES",
+      "type": "int",
+      "default": 1,
+      "description": "NoWebServices EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE270"
+      ]
+    },
+    {
+      "name": "DISABLEHTTPPRINTING",
+      "type": "int",
+      "default": 1,
+      "description": "DisableHTTPPrinting EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE271"
+      ]
+    },
+    {
+      "name": "NOREGISTRATION",
+      "type": "int",
+      "default": 1,
+      "description": "NoRegistration EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE272"
+      ]
+    },
+    {
+      "name": "DISABLECONTENTFILEUPDATES",
+      "type": "int",
+      "default": 1,
+      "description": "DisableContentFileUpdates EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE273"
+      ]
+    },
+    {
+      "name": "NOONLINEPRINTSWIZARD",
+      "type": "int",
+      "default": 1,
+      "description": "NoOnlinePrintsWizard EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE274"
+      ]
+    },
+    {
+      "name": "NOPUBLISHINGWIZARD",
+      "type": "int",
+      "default": 1,
+      "description": "NoPublishingWizard EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE275"
+      ]
+    },
+    {
+      "name": "CEIP",
+      "type": "int",
+      "default": 2,
+      "description": "CEIP EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE276"
+      ]
+    },
+    {
+      "name": "CEIPENABLE",
+      "type": "int",
+      "default": 0,
+      "description": "CEIPEnable EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE277"
+      ]
+    },
+    {
+      "name": "DISABLED_278",
+      "type": "int",
+      "default": 1,
+      "description": "Disabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE278"
+      ]
+    },
+    {
+      "name": "DEVICEPKINITBEHAVIOR",
+      "type": "int",
+      "default": 0,
+      "description": "DevicePKInitBehavior EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE279"
+      ]
+    },
+    {
+      "name": "BLOCKUSERINPUTMETHODSFORSIGNIN",
+      "type": "int",
+      "default": 1,
+      "description": "BlockUserInputMethodsForSignIn EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE280"
+      ]
+    },
+    {
+      "name": "BLOCKUSERFROMSHOWINGACCOUNTDETAILSONSIGNI",
+      "type": "int",
+      "default": 1,
+      "description": "BlockUserFromShowingAccountDetailsOnSignin EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE281"
+      ]
+    },
+    {
+      "name": "DONTDISPLAYNETWORKSELECTIONUI",
+      "type": "int",
+      "default": 1,
+      "description": "DontDisplayNetworkSelectionUI EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE282"
+      ]
+    },
+    {
+      "name": "DONTENUMERATECONNECTEDUSERS",
+      "type": "int",
+      "default": 1,
+      "description": "DontEnumerateConnectedUsers EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE283"
+      ]
+    },
+    {
+      "name": "ENUMERATELOCALUSERS",
+      "type": "int",
+      "default": 0,
+      "description": "EnumerateLocalUsers EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE284"
+      ]
+    },
+    {
+      "name": "DISABLELOCKSCREENAPPNOTIFICATIONS",
+      "type": "int",
+      "default": 1,
+      "description": "DisableLockScreenAppNotifications EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE285"
+      ]
+    },
+    {
+      "name": "ALLOWDOMAINPINLOGON",
+      "type": "int",
+      "default": 0,
+      "description": "AllowDomainPINLogon EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE286"
+      ]
+    },
+    {
+      "name": "DCSETTINGINDEX",
+      "type": "int",
+      "default": 0,
+      "description": "DCSettingIndex EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE288"
+      ]
+    },
+    {
+      "name": "ACSETTINGINDEX",
+      "type": "int",
+      "default": 0,
+      "description": "ACSettingIndex EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE289"
+      ]
+    },
+    {
+      "name": "DCSETTINGINDEX_292",
+      "type": "int",
+      "default": 1,
+      "description": "DCSettingIndex EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE292"
+      ]
+    },
+    {
+      "name": "ACSETTINGINDEX_293",
+      "type": "int",
+      "default": 1,
+      "description": "ACSettingIndex EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE293"
+      ]
+    },
+    {
+      "name": "FALLOWUNSOLICITED",
+      "type": "int",
+      "default": 0,
+      "description": "fAllowUnsolicited EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE294"
+      ]
+    },
+    {
+      "name": "FALLOWTOGETHELP",
+      "type": "int",
+      "default": 0,
+      "description": "fAllowToGetHelp EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE295"
+      ]
+    },
+    {
+      "name": "ENABLEAUTHEPRESOLUTION",
+      "type": "int",
+      "default": 1,
+      "description": "EnableAuthEpResolution EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE296"
+      ]
+    },
+    {
+      "name": "RESTRICTREMOTECLIENTS",
+      "type": "int",
+      "default": 1,
+      "description": "RestrictRemoteClients EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE297"
+      ]
+    },
+    {
+      "name": "DISABLEQUERYREMOTESERVER",
+      "type": "int",
+      "default": 0,
+      "description": "DisableQueryRemoteServer EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE298"
+      ]
+    },
+    {
+      "name": "SCENARIOEXECUTIONENABLED",
+      "type": "int",
+      "default": 0,
+      "description": "ScenarioExecutionEnabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE299"
+      ]
+    },
+    {
+      "name": "DISABLEDBYGROUPPOLICY",
+      "type": "int",
+      "default": 1,
+      "description": "DisabledByGroupPolicy EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE300"
+      ]
+    },
+    {
+      "name": "ENABLED",
+      "type": "int",
+      "default": 1,
+      "description": "Enabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE301"
+      ]
+    },
+    {
+      "name": "ENABLED_302",
+      "type": "int",
+      "default": 0,
+      "description": "Enabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE302"
+      ]
+    },
+    {
+      "name": "ALLOWSHAREDLOCALAPPDATA",
+      "type": "int",
+      "default": 0,
+      "description": "AllowSharedLocalAppData EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE303"
+      ]
+    },
+    {
+      "name": "MSAOPTIONAL",
+      "type": "int",
+      "default": 1,
+      "description": "MSAOptional EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE319"
+      ]
+    },
+    {
+      "name": "BLOCKHOSTEDAPPACCESSWINRT",
+      "type": "int",
+      "default": 1,
+      "description": "BlockHostedAppAccessWinRT EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE320"
+      ]
+    },
+    {
+      "name": "NOAUTOPLAYFORNONVOLUME",
+      "type": "int",
+      "default": 1,
+      "description": "NoAutoplayfornonVolume EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE321"
+      ]
+    },
+    {
+      "name": "NOAUTORUN",
+      "type": "int",
+      "default": 1,
+      "description": "NoAutorun EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE322"
+      ]
+    },
+    {
+      "name": "NODRIVETYPEAUTORUN",
+      "type": "int",
+      "default": 255,
+      "description": "NoDriveTypeAutoRun EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE323"
+      ]
+    },
+    {
+      "name": "ENHANCEDANTISPOOFING",
+      "type": "int",
+      "default": 1,
+      "description": "EnhancedAntiSpoofing EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE324"
+      ]
+    },
+    {
+      "name": "ALLOWCAMERA",
+      "type": "int",
+      "default": 0,
+      "description": "AllowCamera EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE382"
+      ]
+    },
+    {
+      "name": "DISABLEWINDOWSCONSUMERFEATURES",
+      "type": "int",
+      "default": 1,
+      "description": "DisableWindowsConsumerFeatures EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE383"
+      ]
+    },
+    {
+      "name": "DISABLEPASSWORDREVEAL",
+      "type": "int",
+      "default": 1,
+      "description": "DisablePasswordReveal EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE385"
+      ]
+    },
+    {
+      "name": "ENUMERATEADMINISTRATORS",
+      "type": "int",
+      "default": 0,
+      "description": "EnumerateAdministrators EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE386"
+      ]
+    },
+    {
+      "name": "DONOTSHOWFEEDBACKNOTIFICATIONS",
+      "type": "int",
+      "default": 1,
+      "description": "DoNotShowFeedbackNotifications EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE389"
+      ]
+    },
+    {
+      "name": "ALLOWBUILDPREVIEW",
+      "type": "int",
+      "default": 0,
+      "description": "AllowBuildPreview EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE390"
+      ]
+    },
+    {
+      "name": "DODOWNLOADMODE",
+      "type": "int",
+      "default": 3,
+      "description": "DODownloadMode EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE391"
+      ]
+    },
+    {
+      "name": "RETENTION",
+      "type": "int",
+      "default": 0,
+      "description": "Retention EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE392"
+      ]
+    },
+    {
+      "name": "RETENTION_394",
+      "type": "int",
+      "default": 0,
+      "description": "Retention EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE394"
+      ]
+    },
+    {
+      "name": "RETENTION_396",
+      "type": "int",
+      "default": 0,
+      "description": "Retention EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE396"
+      ]
+    },
+    {
+      "name": "RETENTION_398",
+      "type": "int",
+      "default": 0,
+      "description": "Retention EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE398"
+      ]
+    },
+    {
+      "name": "NODATAEXECUTIONPREVENTION",
+      "type": "int",
+      "default": 0,
+      "description": "NoDataExecutionPrevention EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE401"
+      ]
+    },
+    {
+      "name": "NOHEAPTERMINATIONONCORRUPTION",
+      "type": "int",
+      "default": 0,
+      "description": "NoHeapTerminationOnCorruption EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE402"
+      ]
+    },
+    {
+      "name": "PREXPSP2SHELLPROTOCOLBEHAVIOR",
+      "type": "int",
+      "default": 0,
+      "description": "PreXPSP2ShellProtocolBehavior EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE403"
+      ]
+    },
+    {
+      "name": "DISABLEHOMEGROUP",
+      "type": "int",
+      "default": 1,
+      "description": "DisableHomeGroup EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE404"
+      ]
+    },
+    {
+      "name": "DISABLELOCATION",
+      "type": "int",
+      "default": 1,
+      "description": "DisableLocation EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE405"
+      ]
+    },
+    {
+      "name": "FORMSUGGEST_PASSWORDS",
+      "type": "string",
+      "default": "no",
+      "description": "FormSuggest Passwords EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE409"
+      ]
+    },
+    {
+      "name": "ALLOWPOPUPS",
+      "type": "string",
+      "default": "yes",
+      "description": "AllowPopups EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE410"
+      ]
+    },
+    {
+      "name": "SHOWSEARCHSUGGESTIONSGLOBAL",
+      "type": "int",
+      "default": 0,
+      "description": "ShowSearchSuggestionsGlobal EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE411"
+      ]
+    },
+    {
+      "name": "ENABLEDV9",
+      "type": "int",
+      "default": 1,
+      "description": "EnabledV9 EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE412"
+      ]
+    },
+    {
+      "name": "DISABLEFILESYNCNGSC",
+      "type": "int",
+      "default": 1,
+      "description": "DisableFileSyncNGSC EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE417"
+      ]
+    },
+    {
+      "name": "DISABLEPASSWORDSAVING",
+      "type": "int",
+      "default": 1,
+      "description": "DisablePasswordSaving EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE418"
+      ]
+    },
+    {
+      "name": "FDENYTSCONNECTIONS",
+      "type": "int",
+      "default": 0,
+      "description": "fDenyTSConnections EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE419"
+      ]
+    },
+    {
+      "name": "FDISABLECCM",
+      "type": "int",
+      "default": 1,
+      "description": "fDisableCcm EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE420"
+      ]
+    },
+    {
+      "name": "FDISABLECDM",
+      "type": "int",
+      "default": 1,
+      "description": "fDisableCdm EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE421"
+      ]
+    },
+    {
+      "name": "FDISABLELPT",
+      "type": "int",
+      "default": 1,
+      "description": "fDisableLPT EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE422"
+      ]
+    },
+    {
+      "name": "FDISABLEPNPREDIR",
+      "type": "int",
+      "default": 1,
+      "description": "fDisablePNPRedir EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE423"
+      ]
+    },
+    {
+      "name": "FPROMPTFORPASSWORD",
+      "type": "int",
+      "default": 1,
+      "description": "fPromptForPassword EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE424"
+      ]
+    },
+    {
+      "name": "FENCRYPTRPCTRAFFIC",
+      "type": "int",
+      "default": 1,
+      "description": "fEncryptRPCTraffic EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE425"
+      ]
+    },
+    {
+      "name": "MINENCRYPTIONLEVEL",
+      "type": "int",
+      "default": 3,
+      "description": "MinEncryptionLevel EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE426"
+      ]
+    },
+    {
+      "name": "MAXDISCONNECTIONTIME",
+      "type": "int",
+      "default": 60000,
+      "description": "MaxDisconnectionTime EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE428"
+      ]
+    },
+    {
+      "name": "DELETETEMPDIRSONEXIT",
+      "type": "int",
+      "default": 1,
+      "description": "DeleteTempDirsOnExit EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE429"
+      ]
+    },
+    {
+      "name": "PERSESSIONTEMPDIR",
+      "type": "int",
+      "default": 1,
+      "description": "PerSessionTempDir EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE430"
+      ]
+    },
+    {
+      "name": "DISABLEENCLOSUREDOWNLOAD",
+      "type": "int",
+      "default": 1,
+      "description": "DisableEnclosureDownload EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE431"
+      ]
+    },
+    {
+      "name": "ALLOWCORTANA",
+      "type": "int",
+      "default": 0,
+      "description": "AllowCortana EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE432"
+      ]
+    },
+    {
+      "name": "ALLOWCORTANAABOVELOCK",
+      "type": "int",
+      "default": 0,
+      "description": "AllowCortanaAboveLock EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE433"
+      ]
+    },
+    {
+      "name": "ALLOWINDEXINGENCRYPTEDSTORESORITEMS",
+      "type": "int",
+      "default": 0,
+      "description": "AllowIndexingEncryptedStoresOrItems EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE434"
+      ]
+    },
+    {
+      "name": "ALLOWSEARCHTOUSELOCATION",
+      "type": "int",
+      "default": 0,
+      "description": "AllowSearchToUseLocation EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE435"
+      ]
+    },
+    {
+      "name": "NOGENTICKET",
+      "type": "int",
+      "default": 1,
+      "description": "NoGenTicket EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE436"
+      ]
+    },
+    {
+      "name": "DISABLESTOREAPPS",
+      "type": "int",
+      "default": 0,
+      "description": "DisableStoreApps EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE437"
+      ]
+    },
+    {
+      "name": "AUTODOWNLOAD",
+      "type": "int",
+      "default": 4,
+      "description": "AutoDownload EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE438"
+      ]
+    },
+    {
+      "name": "DISABLEOSUPGRADE",
+      "type": "int",
+      "default": 1,
+      "description": "DisableOSUpgrade EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE439"
+      ]
+    },
+    {
+      "name": "REMOVEWINDOWSSTORE",
+      "type": "int",
+      "default": 1,
+      "description": "RemoveWindowsStore EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE440"
+      ]
+    },
+    {
+      "name": "SPYNETREPORTING",
+      "type": "int",
+      "default": 0,
+      "description": "SpyNetReporting EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE441"
+      ]
+    },
+    {
+      "name": "DISABLEGENERICREPORTS",
+      "type": "int",
+      "default": 1,
+      "description": "DisableGenericRePorts EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE442"
+      ]
+    },
+    {
+      "name": "ALLOWGAMEDVR",
+      "type": "int",
+      "default": 0,
+      "description": "AllowGameDVR EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE443"
+      ]
+    },
+    {
+      "name": "ALLOWSUGGESTEDAPPSINWINDOWSINKWORKSPACE",
+      "type": "int",
+      "default": 0,
+      "description": "AllowSuggestedAppsInWindowsInkWorkspace EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE444"
+      ]
+    },
+    {
+      "name": "ENABLEUSERCONTROL",
+      "type": "int",
+      "default": 0,
+      "description": "EnableUserControl EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE446"
+      ]
+    },
+    {
+      "name": "ALWAYSINSTALLELEVATED",
+      "type": "int",
+      "default": 0,
+      "description": "AlwaysInstallElevated EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE447"
+      ]
+    },
+    {
+      "name": "SAFEFORSCRIPTING",
+      "type": "int",
+      "default": 0,
+      "description": "SafeForScripting EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE448"
+      ]
+    },
+    {
+      "name": "DISABLEAUTOMATICRESTARTSIGNON",
+      "type": "int",
+      "default": 1,
+      "description": "DisableAutomaticRestartSignOn EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE449"
+      ]
+    },
+    {
+      "name": "ENABLESCRIPTBLOCKLOGGING",
+      "type": "int",
+      "default": 1,
+      "description": "EnableScriptBlockLogging EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE450"
+      ]
+    },
+    {
+      "name": "ENABLETRANSCRIPTING",
+      "type": "int",
+      "default": 0,
+      "description": "EnableTranscripting EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE451"
+      ]
+    },
+    {
+      "name": "ALLOWBASIC",
+      "type": "int",
+      "default": 0,
+      "description": "AllowBasic EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE452"
+      ]
+    },
+    {
+      "name": "ALLOWUNENCRYPTEDTRAFFIC",
+      "type": "int",
+      "default": 0,
+      "description": "AllowUnencryptedTraffic EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE453"
+      ]
+    },
+    {
+      "name": "ALLOWDIGEST",
+      "type": "int",
+      "default": 0,
+      "description": "AllowDigest EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE454"
+      ]
+    },
+    {
+      "name": "ALLOWBASIC_455",
+      "type": "int",
+      "default": 0,
+      "description": "AllowBasic EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE455"
+      ]
+    },
+    {
+      "name": "ALLOWAUTOCONFIG",
+      "type": "int",
+      "default": 0,
+      "description": "AllowAutoConfig EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE456"
+      ]
+    },
+    {
+      "name": "ALLOWUNENCRYPTEDTRAFFIC_457",
+      "type": "int",
+      "default": 0,
+      "description": "AllowUnencryptedTraffic EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE457"
+      ]
+    },
+    {
+      "name": "DISABLERUNAS",
+      "type": "int",
+      "default": 1,
+      "description": "DisableRunAs EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE458"
+      ]
+    },
+    {
+      "name": "ALLOWREMOTESHELLACCESS",
+      "type": "int",
+      "default": 0,
+      "description": "AllowRemoteShellAccess EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE459"
+      ]
+    },
+    {
+      "name": "DEFERFEATUREUPDATES",
+      "type": "int",
+      "default": 1,
+      "description": "DeferFeatureUpdates EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE460"
+      ]
+    },
+    {
+      "name": "DEFERQUALITYUPDATES",
+      "type": "int",
+      "default": 1,
+      "description": "DeferQualityUpdates EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE461"
+      ]
+    },
+    {
+      "name": "NOAUTOUPDATE",
+      "type": "int",
+      "default": 0,
+      "description": "NoAutoUpdate EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE462"
+      ]
+    },
+    {
+      "name": "SCHEDULEDINSTALLDAY",
+      "type": "int",
+      "default": 0,
+      "description": "ScheduledInstallDay EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE463"
+      ]
+    },
+    {
+      "name": "NOAUTOREBOOTWITHLOGGEDONUSERS",
+      "type": "int",
+      "default": 0,
+      "description": "NoAutoRebootWithLoggedOnUsers EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE464"
+      ]
+    },
+    {
+      "name": "ALLOWLLTDIOONPUBLICNET",
+      "type": "int",
+      "default": 0,
+      "description": "AllowLLTDIOOnPublicNet EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE479"
+      ]
+    },
+    {
+      "name": "ENABLELLTDIO",
+      "type": "int",
+      "default": 0,
+      "description": "EnableLLTDIO EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE480"
+      ]
+    },
+    {
+      "name": "PROHIBITLLTDIOONPRIVATENET",
+      "type": "int",
+      "default": 0,
+      "description": "ProhibitLLTDIOOnPrivateNet EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE481"
+      ]
+    },
+    {
+      "name": "ALLOWRSPNDRONPUBLICNET",
+      "type": "int",
+      "default": 0,
+      "description": "AllowRspndrOnPublicNet EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE482"
+      ]
+    },
+    {
+      "name": "ENABLERSPNDR",
+      "type": "int",
+      "default": 0,
+      "description": "EnableRspndr EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE483"
+      ]
+    },
+    {
+      "name": "PROHIBITRSPNDRONPRIVATENET",
+      "type": "int",
+      "default": 0,
+      "description": "ProhibitRspndrOnPrivateNet EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE484"
+      ]
+    },
+    {
+      "name": "DISABLEUPNPREGISTRAR",
+      "type": "int",
+      "default": 0,
+      "description": "DisableUPnPRegistrar EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE485"
+      ]
+    },
+    {
+      "name": "DISABLEINBAND802DOT11REGISTRAR",
+      "type": "int",
+      "default": 0,
+      "description": "DisableInBand802DOT11Registrar EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE486"
+      ]
+    },
+    {
+      "name": "DISABLEFLASHCONFIGREGISTRAR",
+      "type": "int",
+      "default": 0,
+      "description": "DisableFlashConfigRegistrar EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE487"
+      ]
+    },
+    {
+      "name": "DISABLEWPDREGISTRAR",
+      "type": "int",
+      "default": 0,
+      "description": "DisableWPDRegistrar EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE488"
+      ]
+    },
+    {
+      "name": "DEVICEPKINITENABLED",
+      "type": "int",
+      "default": 1,
+      "description": "DevicePKInitEnabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE489"
+      ]
+    },
+    {
+      "name": "DEFERFEATUREUPDATESPERIODINDAYS",
+      "type": "int",
+      "default": 180,
+      "description": "DeferFeatureUpdatesPeriodInDays EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE492"
+      ]
+    },
+    {
+      "name": "DEFERQUALITYUPDATESPERIODINDAYS",
+      "type": "int",
+      "default": 0,
+      "description": "DeferQualityUpdatesPeriodInDays EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE494"
+      ]
+    },
+    {
+      "name": "NOTIFYPASSWORDREUSE",
+      "type": "int",
+      "default": 1,
+      "description": "NotifyPasswordReuse EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE496"
+      ]
+    },
+    {
+      "name": "NOTIFYUNSAFEAPP",
+      "type": "int",
+      "default": 1,
+      "description": "NotifyUnsafeApp EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE497"
+      ]
+    },
+    {
+      "name": "PASSWORDCOMPLEXITY_005",
+      "type": "int",
+      "default": 1,
+      "description": "PasswordComplexity EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE005"
+      ]
+    },
+    {
+      "name": "LSAANONYMOUSNAMELOOKUP",
+      "type": "int",
+      "default": 0,
+      "description": "LSAAnonymousNameLookup EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE082"
+      ]
+    },
+    {
+      "name": "SETRUSTEDCREDMANACCESSPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeTrustedCredManAccessPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE010"
+      ]
+    },
+    {
+      "name": "SENETWORKLOGONRIGHT",
+      "type": "string",
+      "default": "Administrators,Remote Desktop Users",
+      "description": "SeNetworkLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE011"
+      ]
+    },
+    {
+      "name": "SETCBPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeTcbPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE012"
+      ]
+    },
+    {
+      "name": "SEINCREASEQUOTAPRIVILEGE",
+      "type": "string",
+      "default": "Administrators,LOCAL SERVICE,NETWORK SERVICE",
+      "description": "SeIncreaseQuotaPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE013"
+      ]
+    },
+    {
+      "name": "SEINTERACTIVELOGONRIGHT",
+      "type": "string",
+      "default": "Administrators,Users",
+      "description": "SeInteractiveLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE014"
+      ]
+    },
+    {
+      "name": "SEREMOTEINTERACTIVELOGONRIGHT",
+      "type": "string",
+      "default": "Administrators,Remote Desktop Users",
+      "description": "SeRemoteInteractiveLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE015"
+      ]
+    },
+    {
+      "name": "SEBACKUPPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeBackupPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE016"
+      ]
+    },
+    {
+      "name": "SESYSTEMTIMEPRIVILEGE",
+      "type": "string",
+      "default": "Administrators, LOCAL SERVICE",
+      "description": "SeSystemtimePrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE017"
+      ]
+    },
+    {
+      "name": "SETIMEZONEPRIVILEGE",
+      "type": "string",
+      "default": "Administrators,LOCAL SERVICE, Users",
+      "description": "SeTimeZonePrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE018"
+      ]
+    },
+    {
+      "name": "SECREATEPAGEFILEPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeCreatePagefilePrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE019"
+      ]
+    },
+    {
+      "name": "SECREATETOKENPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeCreateTokenPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE020"
+      ]
+    },
+    {
+      "name": "SECREATEGLOBALPRIVILEGE",
+      "type": "string",
+      "default": "Administrators,LOCAL SERVICE,NETWORK SERVICE,SERVICE",
+      "description": "SeCreateGlobalPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE021"
+      ]
+    },
+    {
+      "name": "SECREATEPERMANENTPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeCreatePermanentPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE022"
+      ]
+    },
+    {
+      "name": "SECREATESYMBOLICLINKPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeCreateSymbolicLinkPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE023"
+      ]
+    },
+    {
+      "name": "SEDEBUGPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeDebugPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE024"
+      ]
+    },
+    {
+      "name": "SEDENYNETWORKLOGONRIGHT",
+      "type": "string",
+      "default": "Guests,Local account",
+      "description": "SeDenyNetworkLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE025"
+      ]
+    },
+    {
+      "name": "SEDENYBATCHLOGONRIGHT",
+      "type": "string",
+      "default": "Guests",
+      "description": "SeDenyBatchLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE026"
+      ]
+    },
+    {
+      "name": "SEDENYSERVICELOGONRIGHT",
+      "type": "string",
+      "default": "Guests",
+      "description": "SeDenyServiceLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE027"
+      ]
+    },
+    {
+      "name": "SEDENYINTERACTIVELOGONRIGHT",
+      "type": "string",
+      "default": "Guests",
+      "description": "SeDenyInteractiveLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE028"
+      ]
+    },
+    {
+      "name": "SEENABLEDELEGATIONPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeEnableDelegationPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE030"
+      ]
+    },
+    {
+      "name": "SEREMOTESHUTDOWNPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeRemoteShutdownPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE031"
+      ]
+    },
+    {
+      "name": "SEAUDITPRIVILEGE",
+      "type": "string",
+      "default": "LOCAL SERVICE,NETWORK SERVICE",
+      "description": "SeAuditPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE032"
+      ]
+    },
+    {
+      "name": "SEIMPERSONATEPRIVILEGE",
+      "type": "string",
+      "default": "Administrators,LOCAL SERVICE,NETWORK SERVICE,SERVICE",
+      "description": "SeImpersonatePrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE033"
+      ]
+    },
+    {
+      "name": "SEINCREASEBASEPRIORITYPRIVILEGE",
+      "type": "string",
+      "default": "Administrators, Window Manager\\Window Manager Group",
+      "description": "SeIncreaseBasePriorityPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE034"
+      ]
+    },
+    {
+      "name": "SELOADDRIVERPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeLoadDriverPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE035"
+      ]
+    },
+    {
+      "name": "SELOCKMEMORYPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeLockMemoryPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE036"
+      ]
+    },
+    {
+      "name": "SEBATCHLOGONRIGHT",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeBatchLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE037"
+      ]
+    },
+    {
+      "name": "SESERVICELOGONRIGHT",
+      "type": "string",
+      "default": "",
+      "description": "SeServiceLogonRight EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE038"
+      ]
+    },
+    {
+      "name": "SESECURITYPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeSecurityPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE039"
+      ]
+    },
+    {
+      "name": "SERELABELPRIVILEGE",
+      "type": "string",
+      "default": "",
+      "description": "SeRelabelPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE040"
+      ]
+    },
+    {
+      "name": "SESYSTEMENVIRONMENTPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeSystemEnvironmentPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE041"
+      ]
+    },
+    {
+      "name": "SEMANAGEVOLUMEPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeManageVolumePrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE042"
+      ]
+    },
+    {
+      "name": "SEPROFILESINGLEPROCESSPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeProfileSingleProcessPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE043"
+      ]
+    },
+    {
+      "name": "SEASSIGNPRIMARYTOKENPRIVILEGE",
+      "type": "string",
+      "default": "LOCAL SERVICE,NETWORK SERVICE",
+      "description": "SeAssignPrimaryTokenPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE045"
+      ]
+    },
+    {
+      "name": "SERESTOREPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeRestorePrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE046"
+      ]
+    },
+    {
+      "name": "SESHUTDOWNPRIVILEGE",
+      "type": "string",
+      "default": "Administrators,Users",
+      "description": "SeShutdownPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE047"
+      ]
+    },
+    {
+      "name": "SETAKEOWNERSHIPPRIVILEGE",
+      "type": "string",
+      "default": "Administrators",
+      "description": "SeTakeOwnershipPrivilege EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE048"
+      ]
+    },
+    {
+      "name": "CREDENTIAL_VALIDATION",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Credential Validation IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE188"
+      ]
+    },
+    {
+      "name": "APPLICATION_GROUP_MANAGEMENT",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Application Group Management IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE189"
+      ]
+    },
+    {
+      "name": "COMPUTER_ACCOUNT_MANAGEMENT",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Computer Account Management IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE190"
+      ]
+    },
+    {
+      "name": "OTHER_ACCOUNT_MANAGEMENT_EVENTS",
+      "type": "string",
+      "default": "Success",
+      "description": "Other Account Management Events IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE191"
+      ]
+    },
+    {
+      "name": "SECURITY_GROUP_MANAGEMENT",
+      "type": "string",
+      "default": "Success",
+      "description": "Security Group Management IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE192"
+      ]
+    },
+    {
+      "name": "USER_ACCOUNT_MANAGEMENT",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "User Account Management IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE193"
+      ]
+    },
+    {
+      "name": "PLUG_AND_PLAY_EVENTS",
+      "type": "string",
+      "default": "Success",
+      "description": "Plug and Play Events IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE194"
+      ]
+    },
+    {
+      "name": "PROCESS_CREATION",
+      "type": "string",
+      "default": "Success",
+      "description": "Process Creation IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE195"
+      ]
+    },
+    {
+      "name": "ACCOUNT_LOCKOUT",
+      "type": "string",
+      "default": "Failure",
+      "description": "Account Lockout IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE196"
+      ]
+    },
+    {
+      "name": "GROUP_MEMBERSHIP",
+      "type": "string",
+      "default": "Success",
+      "description": "Group Membership IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE197"
+      ]
+    },
+    {
+      "name": "LOGOFF",
+      "type": "string",
+      "default": "Success",
+      "description": "Logoff IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE198"
+      ]
+    },
+    {
+      "name": "LOGON",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Logon IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE199"
+      ]
+    },
+    {
+      "name": "OTHER_LOGON_LOGOFF_EVENTS",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Other Logon/Logoff Events IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE200"
+      ]
+    },
+    {
+      "name": "SPECIAL_LOGON",
+      "type": "string",
+      "default": "Success",
+      "description": "Special Logon IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE201"
+      ]
+    },
+    {
+      "name": "REMOVABLE_STORAGE",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Removable Storage IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE202"
+      ]
+    },
+    {
+      "name": "AUDIT_POLICY_CHANGE",
+      "type": "string",
+      "default": "Success",
+      "description": "Audit Policy Change IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE203"
+      ]
+    },
+    {
+      "name": "AUTHENTICATION_POLICY_CHANGE",
+      "type": "string",
+      "default": "Success",
+      "description": "Authentication Policy Change IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE204"
+      ]
+    },
+    {
+      "name": "AUTHORIZATION_POLICY_CHANGE",
+      "type": "string",
+      "default": "Success",
+      "description": "Authorization Policy Change IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE205"
+      ]
+    },
+    {
+      "name": "SENSITIVE_PRIVILEGE_USE",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Sensitive Privilege Use IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE206"
+      ]
+    },
+    {
+      "name": "IPSEC_DRIVER",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "IPsec Driver IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE207"
+      ]
+    },
+    {
+      "name": "OTHER_SYSTEM_EVENTS",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "Other System Events IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE208"
+      ]
+    },
+    {
+      "name": "SECURITY_STATE_CHANGE",
+      "type": "string",
+      "default": "Success",
+      "description": "Security State Change IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE209"
+      ]
+    },
+    {
+      "name": "SECURITY_SYSTEM_EXTENSION",
+      "type": "string",
+      "default": "Success",
+      "description": "Security System Extension IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE210"
+      ]
+    },
+    {
+      "name": "SYSTEM_INTEGRITY",
+      "type": "string",
+      "default": "Success and Failure",
+      "description": "System Integrity IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE211"
+      ]
+    },
+    {
+      "name": "LOCALADMINISTRATOR_DISABLED",
+      "type": "string",
+      "default": "True",
+      "description": "LocalAdministrator Disabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE049"
+      ]
+    },
+    {
+      "name": "LOCALGUEST_DISABLED",
+      "type": "string",
+      "default": "True",
+      "description": "LocalGuest Disabled EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE051"
+      ]
+    },
+    {
+      "name": "LOCALADMINISTRATOR_NAME",
+      "type": "string",
+      "default": "Administrator",
+      "description": "LocalAdministrator Name NOT_IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE053"
+      ]
+    },
+    {
+      "name": "LOCALGUEST_NAME",
+      "type": "string",
+      "default": "Guest",
+      "description": "LocalGuest Name NOT_IN target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE054"
+      ]
+    },
+    {
+      "name": "SCREENSAVEACTIVE",
+      "type": "int",
+      "default": 0,
+      "description": "ScreenSaveActive EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE465"
+      ]
+    },
+    {
+      "name": "SCRNSAVE_EXE",
+      "type": "int",
+      "default": 0,
+      "description": "SCRNSAVE.EXE EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE466"
+      ]
+    },
+    {
+      "name": "SCREENSAVERISSECURE",
+      "type": "int",
+      "default": 0,
+      "description": "ScreenSaverIsSecure EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE467"
+      ]
+    },
+    {
+      "name": "SCREENSAVETIMEOUT",
+      "type": "int",
+      "default": 0,
+      "description": "ScreenSaveTimeOut EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE468"
+      ]
+    },
+    {
+      "name": "NOTOASTAPPLICATIONNOTIFICATIONONLOCKSCREE",
+      "type": "int",
+      "default": 0,
+      "description": "NoToastApplicationNotificationOnLockScreen EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE469"
+      ]
+    },
+    {
+      "name": "NOIMPLICITFEEDBACK",
+      "type": "int",
+      "default": 0,
+      "description": "NoImplicitFeedback EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE470"
+      ]
+    },
+    {
+      "name": "SAVEZONEINFORMATION",
+      "type": "int",
+      "default": 0,
+      "description": "SaveZoneInformation EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE471"
+      ]
+    },
+    {
+      "name": "DISABLETHIRDPARTYSUGGESTIONS",
+      "type": "int",
+      "default": 0,
+      "description": "DisableThirdPartySuggestions EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE474"
+      ]
+    },
+    {
+      "name": "DISABLEWINDOWSSPOTLIGHTFEATURES",
+      "type": "int",
+      "default": 0,
+      "description": "DisableWindowsSpotlightFeatures EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE475"
+      ]
+    },
+    {
+      "name": "NOINPLACESHARING",
+      "type": "int",
+      "default": 0,
+      "description": "NoInplaceSharing EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE476"
+      ]
+    },
+    {
+      "name": "ALWAYSINSTALLELEVATED_477",
+      "type": "int",
+      "default": 0,
+      "description": "AlwaysInstallElevated EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE477"
+      ]
+    },
+    {
+      "name": "PREVENTCODECDOWNLOAD",
+      "type": "int",
+      "default": 0,
+      "description": "PreventCodecDownload EQUAL target. The value replaces the whole target.",
+      "requirement_ids": [
+        "RULE478"
+      ]
+    }
+  ]
+}

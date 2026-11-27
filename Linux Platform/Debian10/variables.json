@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "SYSCTL_KRN_RANDOMIZE_VA_SPACE",
+      "type": "int",
+      "default": 2,
+      "min": 0,
+      "max": 2,
+      "description": "Required value of kernel.randomize_va_space. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE35"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_IP_FORWARD",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.ip_forward. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE74"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_SEND_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.conf.all.send_redirects. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE75"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_ACCEPT_SOURCE_ROUTE",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.conf.all.accept_source_route. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE76"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.conf.all.accept_redirects. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE77"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_SECURE_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.conf.all.secure_redirects. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE78"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_LOG_MARTIANS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.conf.all.log_martians. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE79"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ICMP_ECHO_IGNORE_BROADCASTS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.icmp_echo_ignore_broadcasts. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE80"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESP",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.icmp_ignore_bogus_error_responses. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE81"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_RP_FILTER",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 2,
+      "description": "Required value of net.ipv4.conf.all.rp_filter. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE82"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_TCP_SYNCOOKIES",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.tcp_syncookies. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE83"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV6_ALL_ACCEPT_RA",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv6.conf.all.accept_ra. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE84"
+      ]
+    },
+    {
+      "name": "SYSCTL_FS_SUID_DUMPABLE",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2,
+      "description": "Required value of fs.suid_dumpable. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE39"
+      ]
+    },
+    {
+      "name": "CLIENT_ALIVE_INTERVAL",
+      "type": "int",
+      "default": 900,
+      "min": 1,
+      "max": 86400,
+      "description": "SSH ClientAliveInterval ceiling in seconds. The check fails above this.",
+      "requirement_ids": [
+        "RULE119"
+      ]
+    },
+    {
+      "name": "PASS_MAX_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum password age in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE127"
+      ]
+    },
+    {
+      "name": "PASS_MIN_DAYS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 365,
+      "description": "Minimum days between password changes. The check fails below this.",
+      "requirement_ids": [
+        "RULE126"
+      ]
+    },
+    {
+      "name": "INACTIVE_DAYS",
+      "type": "int",
+      "default": 30,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum inactive-password lock in days. Zero and negative shadow ages still follow the original shadow test.",
+      "requirement_ids": [
+        "RULE129"
+      ]
+    },
+    {
+      "name": "MAX_AUTH_TRIES",
+      "type": "int",
+      "default": 4,
+      "min": 1,
+      "max": 20,
+      "description": "Maximum SSH MaxAuthTries.",
+      "requirement_ids": [
+        "RULE112"
+      ]
+    },
+    {
+      "name": "LOGIN_GRACE_TIME",
+      "type": "int",
+      "default": 60,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum SSH LoginGraceTime in seconds.",
+      "requirement_ids": [
+        "RULE120"
+      ]
+    },
+    {
+      "name": "CLIENT_ALIVE_COUNT_MAX",
+      "type": "int",
+      "default": 3,
+      "min": 1,
+      "max": 20,
+      "description": "Maximum sshd ClientAliveCountMax.",
+      "requirement_ids": [
+        "RULE1191"
+      ]
+    }
+  ]
+}

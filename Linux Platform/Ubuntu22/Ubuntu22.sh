@@ -22,6 +22,33 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+sec_audit_mode_policy() {
+    local path="$1" max="$2" legacy="$3" kind="$4" legacy_re="$5" got
+    got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+    if [ "$max" = "$legacy" ]; then
+        printf '%s\n' "$got" | grep -qE -- "$legacy_re"
+        return $?
+    fi
+    [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+    if [ "$kind" = "exact" ]; then
+        (( 8#$got == 8#$max ))
+    else
+        (( (8#$got & ~8#$max) == 0 ))
+    fi
+}
+
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -1959,7 +1986,7 @@ fi
 # RULE191:
 sec_audit__sshd_t_ensure
 lg=$(sec_audit_sshd_t_grep -i logingracetime 2>/dev/null | awk '{print $2}' | head -n1)
-if [[ -n $lg && $lg -le 60 ]]; then sec_audit_report_pass 191 "LoginGraceTime $lg"; else sec_audit_report_fail 191 "LoginGraceTime >60"; fi
+if [[ -n $lg && $lg -le "$(secaudit_var LOGIN_GRACE_TIME 60)" ]]; then sec_audit_report_pass 191 "LoginGraceTime $lg"; else sec_audit_report_fail 191 "LoginGraceTime >60"; fi
 
 # RULE193:
 if grep -q difok /etc/security/pwquality.conf /etc/pam.d/common-password 2>/dev/null; then sec_audit_report_pass 193 "difok configured"; else sec_audit_report_fail 193 "difok missing"; fi
@@ -1985,7 +2012,7 @@ else
 fi
 
 # RULE209:
-if grep -Psi '^\h*PASS_MIN_DAYS\h+([1-9]|[1-9][0-9]+)\b' /etc/login.defs 2>/dev/null; then
+if awk -v limit="$(secaudit_var PASS_MIN_DAYS 1)" 'BEGIN{ok=0} /^[[:space:]]*PASS_MIN_DAYS[[:space:]]+/ { if ($2+0>=limit+0) ok=1 } END{exit !ok}' /etc/login.defs 2>/dev/null; then
     sec_audit_report_pass 209 "PASS_MIN_DAYS configured in /etc/login.defs"
 else
     sec_audit_report_fail 209 "PASS_MIN_DAYS not configured in /etc/login.defs"
@@ -1993,11 +2020,11 @@ fi
 
 # RULE210:
 v=$(grep -E '^PASS_WARN_AGE' /etc/login.defs | awk '{print $2}' | head -n1)
-if [[ -n $v && $v -ge 7 ]]; then sec_audit_report_pass 210 "PASS_WARN_AGE $v"; else sec_audit_report_fail 210 "PASS_WARN_AGE <7"; fi
+if [[ -n $v && $v -ge "$(secaudit_var PASS_WARN_AGE 7)" ]]; then sec_audit_report_pass 210 "PASS_WARN_AGE $v"; else sec_audit_report_fail 210 "PASS_WARN_AGE <7"; fi
 
 # RULE212:
 inac=$(useradd -D 2>/dev/null | awk -F= '/INACTIVE/{print $2}')
-if [[ -n $inac && $inac -le 30 ]]; then sec_audit_report_pass 212 "INACTIVE $inac"; else sec_audit_report_fail 212 "inactive lock >30 days"; fi
+if [[ -n $inac && $inac -le "$(secaudit_var INACTIVE_DAYS 30)" ]]; then sec_audit_report_pass 212 "INACTIVE $inac"; else sec_audit_report_fail 212 "inactive lock >30 days"; fi
 
 # RULE213:
 if [ ! -r /etc/shadow ]; then
@@ -2303,7 +2330,7 @@ fi
 _fail50=1
 while IFS= read -r _gcfg; do
     [[ -f "$_gcfg" ]] || continue
-    if stat -Lc '%a' "$_gcfg" 2>/dev/null | grep -q '^[0-6]00$'; then
+    if sec_audit_mode_policy "$_gcfg" "$(secaudit_var MODE_GRUB_CFG 600)" 600 within '^[0-6]00$'; then
         if stat -Lc '%U:%G' "$_gcfg" 2>/dev/null | grep -q '^root:root$'; then
             _fail50=0
             break
@@ -2322,7 +2349,7 @@ sec_audit_run_process_hardening() {
 
 # RULE44:
 _aslr=$(sec_audit_sysctl_key_runtime kernel.randomize_va_space)
-if sec_audit_sysctl_runtime_equals kernel.randomize_va_space 2; then
+if sec_audit_sysctl_runtime_equals kernel.randomize_va_space $(secaudit_var SYSCTL_KRN_RANDOMIZE_VA_SPACE 2); then
     sec_audit_report_pass 44 "kernel.randomize_va_space=2 (ASLR enabled)${_aslr:+ }$(sec_audit_sysctl_runtime_disk_hint kernel.randomize_va_space 2)"
 else
     sec_audit_report_fail 44 "kernel.randomize_va_space is '${_aslr:-<unset>}', expected 2$(sec_audit_sysctl_runtime_disk_hint kernel.randomize_va_space 2)"
@@ -2337,7 +2364,7 @@ else
 fi
 
 # RULE46:
-if sec_audit_limits_core_zero_and_systemd_ok && sec_audit_sysctl_runtime_equals fs.suid_dumpable 0; then
+if sec_audit_limits_core_zero_and_systemd_ok && sec_audit_sysctl_runtime_equals fs.suid_dumpable $(secaudit_var SYSCTL_FS_SUID_DUMPABLE 0); then
     sec_audit_report_pass 46 "core dumps restricted (* hard core 0 and fs.suid_dumpable=0)"
 else
     sec_audit_report_fail 46 "core dumps not fully restricted"
@@ -2755,17 +2782,17 @@ sec_audit_check_kernel_mod_rule 113 rds "rds.ko*"
 sec_audit_check_kernel_mod_rule 114 tipc "tipc.ko*"
 
 # RULE115:
-sec_audit_assert_sysctl_equals 115 net.ipv4.ip_forward 0
+sec_audit_assert_sysctl_equals 115 net.ipv4.ip_forward "$(secaudit_var SYSCTL_IPV4_IP_FORWARD 0)"
 
 # RULE116:
 sec_audit_sysctl_multi_rule 116 "packet redirect sending disabled" "send_redirects not disabled" \
     net.ipv4.conf.all.send_redirects 0 net.ipv4.conf.default.send_redirects 0
 
 # RULE117:
-sec_audit_assert_sysctl_equals 117 net.ipv4.icmp_ignore_bogus_error_responses 1
+sec_audit_assert_sysctl_equals 117 net.ipv4.icmp_ignore_bogus_error_responses "$(secaudit_var SYSCTL_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESP 1)"
 
 # RULE118:
-sec_audit_assert_sysctl_equals 118 net.ipv4.icmp_echo_ignore_broadcasts 1
+sec_audit_assert_sysctl_equals 118 net.ipv4.icmp_echo_ignore_broadcasts "$(secaudit_var SYSCTL_IPV4_ICMP_ECHO_IGNORE_BROADCASTS 1)"
 
 # RULE119:
 sec_audit_sysctl_multi_rule 119 "ICMP redirects not accepted" "accept_redirects not disabled" \
@@ -2784,7 +2811,7 @@ sec_audit_sysctl_multi_rule 123 "suspicious packets logged" "log_martians not en
     net.ipv4.conf.all.log_martians 1 net.ipv4.conf.default.log_martians 1
 
 # RULE124:
-sec_audit_assert_sysctl_equals 124 net.ipv4.tcp_syncookies 1
+sec_audit_assert_sysctl_equals 124 net.ipv4.tcp_syncookies "$(secaudit_var SYSCTL_IPV4_TCP_SYNCOOKIES 1)"
 
 # RULE125:
 sec_audit_sysctl_multi_rule 125 "IPv6 router advertisements not accepted" "IPv6 accept_ra not disabled" \
@@ -3033,7 +3060,7 @@ fi
 sec_audit__sshd_t_ensure
 ci=$(sec_audit_sshd_t_grep -i clientaliveinterval 2>/dev/null | awk '{print $2}' | head -n1)
 cc=$(sec_audit_sshd_t_grep -i clientalivecountmax 2>/dev/null | awk '{print $2}' | head -n1)
-if [[ -n $ci && $ci -le 900 && -n $cc && $cc -le 3 ]]; then sec_audit_report_pass 160 "ClientAliveInterval/CountMax OK"; else sec_audit_report_fail 160 "ClientAlive not configured"; fi
+if [[ -n $ci && $ci -le "$(secaudit_var CLIENT_ALIVE_INTERVAL 900)" && -n $cc && $cc -le "$(secaudit_var CLIENT_ALIVE_COUNT_MAX 3)" ]]; then sec_audit_report_pass 160 "ClientAliveInterval/CountMax OK"; else sec_audit_report_fail 160 "ClientAlive not configured"; fi
 # RULE161:
 sec_audit__sshd_t_ensure
 if sec_audit_sshd_effective_equals disableforwarding yes || sec_audit_sshd_effective_equals allowtcpforwarding no; then
@@ -3060,7 +3087,7 @@ fi
 # RULE166:
 sec_audit__sshd_t_ensure
 lg=$(sec_audit_sshd_t_grep -i logingracetime 2>/dev/null | awk '{print $2}' | head -n1)
-if [[ -n $lg && $lg -le 60 ]]; then sec_audit_report_pass 166 "LoginGraceTime $lg"; else sec_audit_report_fail 166 "LoginGraceTime >60"; fi
+if [[ -n $lg && $lg -le "$(secaudit_var LOGIN_GRACE_TIME 60)" ]]; then sec_audit_report_pass 166 "LoginGraceTime $lg"; else sec_audit_report_fail 166 "LoginGraceTime >60"; fi
 # RULE167:
 sec_audit__sshd_t_ensure
 lv=$(sec_audit_sshd_t_grep -i loglevel 2>/dev/null | awk '{print $2}' | head -n1 | tr '[:upper:]' '[:lower:]')
@@ -3071,11 +3098,11 @@ if sec_audit_sshd_effective_not_weak_token macs '(hmac-md5|hmac-sha1|umac-64@ope
 # RULE169:
 sec_audit__sshd_t_ensure
 ma=$(sec_audit_sshd_t_grep -i maxauthtries 2>/dev/null | awk '{print $2}' | head -n1)
-if [[ -n $ma && $ma -le 4 ]]; then sec_audit_report_pass 169 "MaxAuthTries $ma"; else sec_audit_report_fail 169 "MaxAuthTries >4"; fi
+if [[ -n $ma && $ma -le "$(secaudit_var MAX_AUTH_TRIES 4)" ]]; then sec_audit_report_pass 169 "MaxAuthTries $ma"; else sec_audit_report_fail 169 "MaxAuthTries >4"; fi
 # RULE170:
 sec_audit__sshd_t_ensure
 ms=$(sec_audit_sshd_t_grep -i maxsessions 2>/dev/null | awk '{print $2}' | head -n1)
-if [[ -n $ms && $ms -le 10 ]]; then sec_audit_report_pass 170 "MaxSessions $ms"; else sec_audit_report_fail 170 "MaxSessions >10"; fi
+if [[ -n $ms && $ms -le "$(secaudit_var MAX_SESSIONS 10)" ]]; then sec_audit_report_pass 170 "MaxSessions $ms"; else sec_audit_report_fail 170 "MaxSessions >10"; fi
 # RULE171:
 sec_audit__sshd_t_ensure
 if sec_audit_sshd_t_grep -i maxstartups 2>/dev/null | grep -q .; then sec_audit_report_pass 171 "MaxStartups configured"; else sec_audit_report_fail 171 "MaxStartups not set"; fi
@@ -3123,7 +3150,7 @@ fi
 
 # RULE181:
 to=$(grep -hr 'timestamp_timeout' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -oE '[0-9]+' | head -n1)
-if [[ -n $to && $to -le 15 ]]; then sec_audit_report_pass 181 "sudo timestamp_timeout $to"; else sec_audit_report_fail 181 "timestamp_timeout >15 or unset"; fi
+if [[ -n $to && $to -le "$(secaudit_var SUDO_TIMESTAMP_TIMEOUT 15)" ]]; then sec_audit_report_pass 181 "sudo timestamp_timeout $to"; else sec_audit_report_fail 181 "timestamp_timeout >15 or unset"; fi
 
 # RULE247:
 sec_audit__audit_rules_files_ensure
@@ -3180,7 +3207,7 @@ fi
 
 # RULE194:
 v=$(grep -E '^PASS_MIN_DAYS' /etc/login.defs | awk '{print $2}' | head -n1)
-if [[ -n $v && $v -ge 1 ]]; then sec_audit_report_pass 194 "PASS_MIN_DAYS $v"; else sec_audit_report_fail 194 "PASS_MIN_DAYS <1"; fi
+if [[ -n $v && $v -ge "$(secaudit_var PASS_MIN_DAYS 1)" ]]; then sec_audit_report_pass 194 "PASS_MIN_DAYS $v"; else sec_audit_report_fail 194 "PASS_MIN_DAYS <1"; fi
 
 # RULE195:
 if grep -Psi '^\h*(minclass|[dulo]credit)\b' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null; then

@@ -22,6 +22,30 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Return 0 when $1 equals one comma-separated token of $2.
+secaudit_in_csv() {
+    local want="$1" list="$2" token
+    local IFS=','
+    for token in $list; do
+        token="${token#"${token%%[![:space:]]*}"}"
+        token="${token%"${token##*[![:space:]]}"}"
+        [ "$want" = "$token" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -42,6 +66,11 @@ _DOCKER_SOCK="${DOCKER_SOCK:-${SECAUDIT_DOCKER_SOCK:-/var/run/docker.sock}}"
 _DOCKER_CONTAINERD_SOCK="${CONTAINERD_SOCK:-${SECAUDIT_CONTAINERD_SOCK:-/run/containerd/containerd.sock}}"
 _DOCKER_FIND_CAP="${DOCKER_FIND_CAP:-20}"
 _DOCKER_CMD_CAP="${DOCKER_CMD_CAP:-12}"
+_DOCKER_MODE_UNIT=$(secaudit_var MODE_UNIT 644)
+_DOCKER_MODE_DOCKER_DIR=$(secaudit_var MODE_DOCKER_DIR 755)
+_DOCKER_MODE_CERT=$(secaudit_var MODE_CERT 444)
+_DOCKER_MODE_KEY=$(secaudit_var MODE_KEY 400)
+_DOCKER_MODE_SOCK=$(secaudit_var MODE_SOCK 660)
 _DOCKER_RULE_COUNT=98
 
 # --- runtime state ---
@@ -56,10 +85,10 @@ _DOCKER_SVC_FILE=""
 _DOCKER_SOCK_UNIT=""
 
 # --- bootstrap / reporting ---
-secaudit_report_pass() { printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
-secaudit_report_fail() { printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
-secaudit_report_skip() { printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
-secaudit_report_error() { printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
+secaudit_report_pass() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
+secaudit_report_fail() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
+secaudit_report_skip() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
+secaudit_report_error() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
 
 # --- string / cmd utils ---
 secaudit_have_bin() { command -v "$1" >/dev/null 2>&1; }
@@ -517,7 +546,7 @@ secaudit_check_engine_version() {
         return 0
     fi
     major=$(printf '%s' "$ver" | grep -oE '^[0-9]+' | head -1)
-    if [ -n "$major" ] && [ "$major" -ge 20 ] 2>/dev/null; then
+    if [ -n "$major" ] && [ "$major" -ge "$(secaudit_var ENGINE_MIN_MAJOR 20)" ] 2>/dev/null; then
         secaudit_report_pass "$num" "Docker server version ${ver} (>=20.x; confirm patch currency)"
     else
         secaudit_report_fail "$num" "Docker server version ${ver} is older than the 20.x baseline"
@@ -575,14 +604,13 @@ secaudit_check_log_level() {
     local lvl
     lvl=$(secaudit_merged_val "log-level")
     [ -n "$lvl" ] || lvl=$(secaudit_daemon_val "log-level")
-    case "$(printf '%s' "$lvl" | tr '[:upper:]' '[:lower:]')" in
-        info|"")
-            secaudit_report_pass "$num" "daemon log-level is info or the info default (${lvl:-unset})"
-            ;;
-        *)
-            secaudit_report_fail "$num" "daemon log-level is '${lvl}' (required info)"
-            ;;
-    esac
+    local lvl_l
+    lvl_l=$(printf '%s' "$lvl" | tr '[:upper:]' '[:lower:]')
+    if [ -z "$lvl_l" ] || secaudit_in_csv "$lvl_l" "$(printf '%s' "$(secaudit_var LOG_LEVEL info)" | tr '[:upper:]' '[:lower:]')"; then
+        secaudit_report_pass "$num" "daemon log-level is $(secaudit_var LOG_LEVEL info) or unset (${lvl:-unset})"
+    else
+        secaudit_report_fail "$num" "daemon log-level is '${lvl}' (required $(secaudit_var LOG_LEVEL info))"
+    fi
 }
 
 secaudit_check_iptables_enabled() {
@@ -627,20 +655,15 @@ secaudit_check_storage_driver() {
     local drv
     drv=$(secaudit_merged_val "storage-driver" Driver)
     [ -n "$drv" ] || drv=$(secaudit_info_get Driver 2>/dev/null || true)
-    case "$drv" in
-        aufs)
-            secaudit_report_fail "$num" "storage-driver is aufs"
-            ;;
-        overlay2)
-            secaudit_report_pass "$num" "storage-driver is overlay2"
-            ;;
-        "")
-            secaudit_report_fail "$num" "storage-driver could not be determined"
-            ;;
-        *)
-            secaudit_report_pass "$num" "storage-driver is ${drv} (not aufs; overlay2 preferred)"
-            ;;
-    esac
+    if [ -z "$drv" ]; then
+        secaudit_report_fail "$num" "storage-driver could not be determined"
+    elif secaudit_in_csv "$drv" "$(secaudit_var FORBIDDEN_STORAGE aufs)"; then
+        secaudit_report_fail "$num" "storage-driver is ${drv}"
+    elif [ "$drv" = overlay2 ]; then
+        secaudit_report_pass "$num" "storage-driver is overlay2"
+    else
+        secaudit_report_pass "$num" "storage-driver is ${drv} (not $(secaudit_var FORBIDDEN_STORAGE aufs); overlay2 preferred)"
+    fi
 }
 
 secaudit_check_tls_auth() {
@@ -685,17 +708,11 @@ secaudit_check_log_driver() {
     local drv
     drv=$(secaudit_merged_val "log-driver" LoggingDriver)
     [ -n "$drv" ] || drv=$(secaudit_info_get LoggingDriver 2>/dev/null || true)
-    case "$drv" in
-        json-file|"")
-            secaudit_report_fail "$num" "LoggingDriver=${drv:-json-file} is local-only (central/remote driver required)"
-            ;;
-        syslog|journald|gelf|fluentd|awslogs|splunk|etwlogs|gcplogs|logentries|none)
-            secaudit_report_pass "$num" "LoggingDriver=${drv} supports centralized or remote collection"
-            ;;
-        *)
-            secaudit_report_pass "$num" "LoggingDriver=${drv}"
-            ;;
-    esac
+    if [ -z "$drv" ] || secaudit_in_csv "$drv" "$(secaudit_var FORBIDDEN_LOG_DRIVER json-file)"; then
+        secaudit_report_fail "$num" "LoggingDriver=${drv:-json-file} is local-only (central/remote driver required)"
+    else
+        secaudit_report_pass "$num" "LoggingDriver=${drv}"
+    fi
 }
 
 secaudit_check_no_new_priv_daemon() {
@@ -841,12 +858,12 @@ secaudit_check_cert_tree_mode() {
     while IFS= read -r path; do
         [ -n "$path" ] || continue
         mode=$(secaudit_path_mode_octal "$path")
-        secaudit_perm_within "$mode" 444 || bad="${bad} ${mode}:${path}"
+        secaudit_perm_within "$mode" "$_DOCKER_MODE_CERT" || bad="${bad} ${mode}:${path}"
     done < <(secaudit_exec_with_timeout "$_DOCKER_FIND_CAP" find "$_DOCKER_CERTS_DIR" -type f \( -name '*.pem' -o -name '*.crt' -o -name '*.key' \) 2>/dev/null)
     if [ -n "$bad" ]; then
-        secaudit_report_fail "$num" "registry cert modes exceed 444 (${bad# })"
+        secaudit_report_fail "$num" "registry cert modes exceed ${_DOCKER_MODE_CERT} (${bad# })"
     else
-        secaudit_report_pass "$num" "registry cert file modes are <=444"
+        secaudit_report_pass "$num" "registry cert file modes are <=${_DOCKER_MODE_CERT}"
     fi
 }
 
@@ -1114,7 +1131,7 @@ secaudit_check_privileged_ports() {
     fi
     hits=$(secaudit_inspect_fmt '{{.Id}} {{json .NetworkSettings.Ports}} {{json .HostConfig.PortBindings}}' | \
         grep -oE '[0-9]+/tcp|[0-9]+/udp|"HostPort":"[0-9]+"' | \
-        grep -oE '[0-9]+' | awk '$1+0 < 1024 {print}' | tr '\n' ' ')
+        grep -oE '[0-9]+' | awk -v max="$(secaudit_var PRIVILEGED_PORT 1024)" '$1+0 < max {print}' | tr '\n' ' ')
     if [ -n "$hits" ]; then
         secaudit_report_fail "$num" "privileged host ports (<1024) are published (${hits})"
     else
@@ -1647,18 +1664,13 @@ secaudit_check_cgroup_driver() {
     drv=$(secaudit_info_get CgroupDriver 2>/dev/null || true)
     parent=$(secaudit_merged_val "cgroup-parent")
     [ -n "$parent" ] || parent=$(secaudit_daemon_val "cgroup-parent")
-    case "$drv" in
-        systemd|cgroupfs)
-            if [ -z "$parent" ] || [ "$parent" = "null" ]; then
-                secaudit_report_pass "$num" "CgroupDriver=${drv} with default cgroup-parent"
-            else
-                secaudit_report_pass "$num" "CgroupDriver=${drv} cgroup-parent=${parent}"
-            fi
-            ;;
-        *)
-            secaudit_report_fail "$num" "CgroupDriver is unset or unexpected (${drv:-empty})"
-            ;;
-    esac
+    if ! secaudit_in_csv "$drv" "$(secaudit_var CGROUP_DRIVERS "systemd,cgroupfs")"; then
+        secaudit_report_fail "$num" "CgroupDriver is unset or unexpected (${drv:-empty})"
+    elif [ -z "$parent" ] || [ "$parent" = "null" ]; then
+        secaudit_report_pass "$num" "CgroupDriver=${drv} with default cgroup-parent"
+    else
+        secaudit_report_pass "$num" "CgroupDriver=${drv} cgroup-parent=${parent}"
+    fi
 }
 
 secaudit_check_basesize() {
@@ -1831,29 +1843,29 @@ secaudit_run_file_perms() {
     svc="${_DOCKER_SVC_FILE:-/usr/lib/systemd/system/docker.service}"
     sock="${_DOCKER_SOCK_UNIT:-/usr/lib/systemd/system/docker.socket}"
     secaudit_check_path_owner 34 "$svc" root:root "docker.service"
-    secaudit_check_path_mode 35 "$svc" 644 "docker.service"
+    secaudit_check_path_mode 35 "$svc" "$_DOCKER_MODE_UNIT" "docker.service"
     secaudit_check_path_owner 36 "$sock" root:root "docker.socket"
-    secaudit_check_path_mode 37 "$sock" 644 "docker.socket"
+    secaudit_check_path_mode 37 "$sock" "$_DOCKER_MODE_UNIT" "docker.socket"
     secaudit_check_path_owner 38 /etc/docker root:root "/etc/docker" 1
-    secaudit_check_path_mode 39 /etc/docker 755 "/etc/docker" 1
+    secaudit_check_path_mode 39 /etc/docker "$_DOCKER_MODE_DOCKER_DIR" "/etc/docker" 1
     secaudit_check_cert_tree_owner 40
     secaudit_check_cert_tree_mode 41
-    secaudit_check_named_cert 42 ca.pem root:root 444
-    secaudit_check_named_cert 43 ca.pem root:root 444
-    secaudit_check_named_cert 44 cert.pem root:root 444
-    secaudit_check_named_cert 45 cert.pem root:root 444
-    secaudit_check_named_cert 46 key.pem root:root 400
-    secaudit_check_named_cert 47 key.pem root:root 400
+    secaudit_check_named_cert 42 ca.pem root:root "$_DOCKER_MODE_CERT"
+    secaudit_check_named_cert 43 ca.pem root:root "$_DOCKER_MODE_CERT"
+    secaudit_check_named_cert 44 cert.pem root:root "$_DOCKER_MODE_CERT"
+    secaudit_check_named_cert 45 cert.pem root:root "$_DOCKER_MODE_CERT"
+    secaudit_check_named_cert 46 key.pem root:root "$_DOCKER_MODE_KEY"
+    secaudit_check_named_cert 47 key.pem root:root "$_DOCKER_MODE_KEY"
     secaudit_check_path_owner 48 "$_DOCKER_SOCK" root:docker "docker.sock" 1
-    secaudit_check_path_mode 49 "$_DOCKER_SOCK" 660 "docker.sock" 1
+    secaudit_check_path_mode 49 "$_DOCKER_SOCK" "$_DOCKER_MODE_SOCK" "docker.sock" 1
     secaudit_check_path_owner 50 "$_DOCKER_DAEMON_JSON" root:root "daemon.json"
-    secaudit_check_path_mode 51 "$_DOCKER_DAEMON_JSON" 644 "daemon.json"
+    secaudit_check_path_mode 51 "$_DOCKER_DAEMON_JSON" "$_DOCKER_MODE_UNIT" "daemon.json"
     secaudit_check_path_owner 52 /etc/default/docker root:root "/etc/default/docker"
-    secaudit_check_path_mode 53 /etc/default/docker 644 "/etc/default/docker"
-    secaudit_check_path_mode 54 /etc/sysconfig/docker 644 "/etc/sysconfig/docker"
+    secaudit_check_path_mode 53 /etc/default/docker "$_DOCKER_MODE_UNIT" "/etc/default/docker"
+    secaudit_check_path_mode 54 /etc/sysconfig/docker "$_DOCKER_MODE_UNIT" "/etc/sysconfig/docker"
     secaudit_check_path_owner 55 /etc/sysconfig/docker root:root "/etc/sysconfig/docker"
     secaudit_check_path_owner 56 "$_DOCKER_CONTAINERD_SOCK" root:root "containerd.sock"
-    secaudit_check_path_mode 57 "$_DOCKER_CONTAINERD_SOCK" 660 "containerd.sock"
+    secaudit_check_path_mode 57 "$_DOCKER_CONTAINERD_SOCK" "$_DOCKER_MODE_SOCK" "containerd.sock"
 }
 
 secaudit_run_container_runtime() {

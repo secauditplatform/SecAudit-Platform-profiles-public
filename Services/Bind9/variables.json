@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "XFER_CAP",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 100,
+      "description": "Maximum transfers value on a primary. The check fails above this. Remediation writes this value for transfers and transfers-out.",
+      "requirement_ids": [
+        "RULE1"
+      ]
+    },
+    {
+      "name": "XFER_PER_NS_CAP",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 100,
+      "description": "Maximum transfers-per-ns. The check fails above this.",
+      "requirement_ids": [
+        "RULE2"
+      ]
+    },
+    {
+      "name": "XFER_IN_CAP",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 1000,
+      "description": "Maximum transfers-in. The check fails above this.",
+      "requirement_ids": [
+        "RULE3"
+      ]
+    },
+    {
+      "name": "KEY_MAX_AGE_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 3650,
+      "description": "Maximum DNSSEC key age in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE39"
+      ]
+    },
+    {
+      "name": "LOG_VERSIONS_MIN",
+      "type": "int",
+      "default": 3,
+      "min": 1,
+      "max": 100,
+      "description": "Minimum number of log file versions. The check fails below this. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE53"
+      ]
+    },
+    {
+      "name": "PRINT_SEVERITY",
+      "type": "string",
+      "default": "yes",
+      "description": "print-severity value required in logging channels. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE5"
+      ]
+    },
+    {
+      "name": "TSIG_MODES",
+      "type": "string",
+      "default": "600,640,400,440",
+      "description": "Comma-separated modes accepted for TSIG key files.",
+      "requirement_ids": [
+        "RULE12"
+      ]
+    },
+    {
+      "name": "KEYGEN_MODE",
+      "type": "string",
+      "default": "400",
+      "description": "Mode required for dnssec-keygen key files.",
+      "requirement_ids": [
+        "RULE24"
+      ]
+    },
+    {
+      "name": "CONF_MODES",
+      "type": "string",
+      "default": "640,600,440,400",
+      "description": "Comma-separated modes accepted for named.conf.",
+      "requirement_ids": [
+        "RULE40"
+      ]
+    },
+    {
+      "name": "LOG_SEVERITY",
+      "type": "string",
+      "default": "info,dynamic,debug",
+      "description": "Comma-separated logging severities the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE43"
+      ]
+    },
+    {
+      "name": "LISTEN_PORT",
+      "type": "int",
+      "default": 53,
+      "min": 1,
+      "max": 65535,
+      "description": "DNS listen port. The check fails when listen-on uses another port.",
+      "requirement_ids": [
+        "RULE44"
+      ]
+    },
+    {
+      "name": "DNSSEC_MODES",
+      "type": "string",
+      "default": "400,440,600",
+      "description": "Comma-separated modes accepted for DNSSEC key files.",
+      "requirement_ids": [
+        "RULE50"
+      ]
+    }
+  ]
+}

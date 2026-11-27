@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -63,11 +75,16 @@ secaudit_finish() {
 }
 
 secaudit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-tomcat.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ]; then
+        if [ ! -f "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 secaudit_detect_layout() {
@@ -143,9 +160,10 @@ secaudit_remediate_identity_and_shutdown() {
     fi
     secaudit_finish 7 done "Server shutdown command replaced"
     if secaudit_rule_enabled 8; then
-        sed -i -E 's/(<Server[[:space:]][^>]*port=")[^"]*/\1-1/' "$TOMCAT_SERVER_XML"
+        want=$(secaudit_var SHUTDOWN_PORT -1)
+        sed -i -E "s/(<Server[[:space:]][^>]*port=\")[^\"]*/\1${want}/" "$TOMCAT_SERVER_XML"
     fi
-    secaudit_finish 8 done "Server shutdown port set to -1"
+    secaudit_finish 8 done "Server shutdown port set to $(secaudit_var SHUTDOWN_PORT -1)"
 }
 
 secaudit_remediate_permissions() {
@@ -171,25 +189,28 @@ secaudit_remediate_permissions() {
     secaudit_finish 13 done "temp directory owner and mode restricted"
     secaudit_finish 14 done "bin directory owner and mode restricted"
     secaudit_finish 15 done "webapps directory owner and mode restricted"
+    local conf_mode web_mode
+    conf_mode=$(secaudit_var MODE_CONF 600)
+    web_mode=$(secaudit_var MODE_WEBXML 400)
     if secaudit_rule_enabled 16 || secaudit_rule_enabled 17 || secaudit_rule_enabled 18 || secaudit_rule_enabled 19 || secaudit_rule_enabled 20 || secaudit_rule_enabled 21 || secaudit_rule_enabled 23; then
         for file in catalina.properties catalina.policy context.xml logging.properties server.xml tomcat-users.xml jaspic-providers.xml; do
             [ -f "${TOMCAT_CONF}/${file}" ] || continue
             chown "$TOMCAT_OWNER:$TOMCAT_GROUP" "${TOMCAT_CONF}/${file}" >/dev/null 2>&1 || true
-            chmod 600 "${TOMCAT_CONF}/${file}" >/dev/null 2>&1 || true
+            chmod "$conf_mode" "${TOMCAT_CONF}/${file}" >/dev/null 2>&1 || true
         done
     fi
     if secaudit_rule_enabled 22 && [ -f "${TOMCAT_CONF}/web.xml" ]; then
         chown "$TOMCAT_OWNER:$TOMCAT_GROUP" "${TOMCAT_CONF}/web.xml" >/dev/null 2>&1 || true
-        chmod 400 "${TOMCAT_CONF}/web.xml" >/dev/null 2>&1 || true
+        chmod "$web_mode" "${TOMCAT_CONF}/web.xml" >/dev/null 2>&1 || true
     fi
-    secaudit_finish 16 done "catalina.properties mode set to 600"
-    secaudit_finish 17 done "catalina.policy mode set to 600"
-    secaudit_finish 18 done "context.xml mode set to 600"
-    secaudit_finish 19 done "logging.properties mode set to 600"
-    secaudit_finish 20 done "server.xml mode set to 600"
-    secaudit_finish 21 done "tomcat-users.xml mode set to 600"
-    secaudit_finish 22 done "web.xml mode set to 400"
-    secaudit_finish 23 done "jaspic-providers.xml mode set to 600"
+    secaudit_finish 16 done "catalina.properties mode set to ${conf_mode}"
+    secaudit_finish 17 done "catalina.policy mode set to ${conf_mode}"
+    secaudit_finish 18 done "context.xml mode set to ${conf_mode}"
+    secaudit_finish 19 done "logging.properties mode set to ${conf_mode}"
+    secaudit_finish 20 done "server.xml mode set to ${conf_mode}"
+    secaudit_finish 21 done "tomcat-users.xml mode set to ${conf_mode}"
+    secaudit_finish 22 done "web.xml mode set to ${web_mode}"
+    secaudit_finish 23 done "jaspic-providers.xml mode set to ${conf_mode}"
 }
 
 secaudit_set_host_attr() {
@@ -250,19 +271,19 @@ secaudit_remediate_runtime() {
         secaudit_finish 48 done "JreMemoryLeakPreventionListener added"
     fi
     if grep -q 'org.apache.catalina.security.SecurityListener' "$TOMCAT_SERVER_XML"; then
-        if secaudit_rule_enabled 50 && ! grep -q 'minimumUmask="0007"' "$TOMCAT_SERVER_XML"; then
-            sed -i 's/org.apache.catalina.security.SecurityListener"/org.apache.catalina.security.SecurityListener" minimumUmask="0007"/' "$TOMCAT_SERVER_XML"
+        if secaudit_rule_enabled 50 && ! grep -q "minimumUmask=\"$(secaudit_var UMASK 0007)\""  "$TOMCAT_SERVER_XML"; then
+            sed -i "s/org.apache.catalina.security.SecurityListener\"/org.apache.catalina.security.SecurityListener\" minimumUmask=\"$(secaudit_var UMASK 0007)\"/"  "$TOMCAT_SERVER_XML"
         fi
         secaudit_finish 49 done "SecurityListener is configured"
-        secaudit_finish 50 done "SecurityListener minimumUmask is 0007"
+        secaudit_finish 50 done "SecurityListener minimumUmask is $(secaudit_var UMASK 0007)"
     elif secaudit_rule_enabled 49 || secaudit_rule_enabled 50; then
-        listener='<Listener className="org.apache.catalina.security.SecurityListener" minimumUmask="0007" />'
+        listener="<Listener className=\"org.apache.catalina.security.SecurityListener\" minimumUmask=\"$(secaudit_var UMASK 0007)\" />"
         sed -i "s#</Server>#    ${listener}\n</Server>#" "$TOMCAT_SERVER_XML"
         secaudit_finish 49 done "SecurityListener added"
-        secaudit_finish 50 done "SecurityListener minimumUmask is 0007"
+        secaudit_finish 50 done "SecurityListener minimumUmask is $(secaudit_var UMASK 0007)"
     else
         secaudit_finish 49 done "SecurityListener added"
-        secaudit_finish 50 done "SecurityListener minimumUmask is 0007"
+        secaudit_finish 50 done "SecurityListener minimumUmask is $(secaudit_var UMASK 0007)"
     fi
 }
 

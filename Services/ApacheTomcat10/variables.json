@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "MODE_CONF",
+      "type": "string",
+      "default": "600",
+      "description": "Mode required on Tomcat conf files (catalina.properties, catalina.policy, context.xml, logging.properties, server.xml, tomcat-users.xml, jaspic-providers.xml).",
+      "requirement_ids": [
+        "RULE16",
+        "RULE17",
+        "RULE18",
+        "RULE19",
+        "RULE20",
+        "RULE21",
+        "RULE23"
+      ]
+    },
+    {
+      "name": "MODE_WEBXML",
+      "type": "string",
+      "default": "400",
+      "description": "Mode required on conf/web.xml.",
+      "requirement_ids": [
+        "RULE22"
+      ]
+    },
+    {
+      "name": "SHUTDOWN_PORT",
+      "type": "int",
+      "default": -1,
+      "min": -1,
+      "max": 65535,
+      "description": "Server port that disables the Tomcat shutdown listener. The check and remediation use this value.",
+      "requirement_ids": [
+        "RULE8"
+      ]
+    },
+    {
+      "name": "UMASK",
+      "type": "string",
+      "default": "0007",
+      "description": "minimumUmask required on the SecurityListener.",
+      "requirement_ids": [
+        "RULE50"
+      ]
+    }
+  ]
+}

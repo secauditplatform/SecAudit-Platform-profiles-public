@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "MODE_MASK",
+      "type": "string",
+      "default": "077",
+      "description": "Octal mask of permission bits that must be clear on control-plane and kubelet files. 077 means no group or other access.",
+      "requirement_ids": [
+        "RULE1",
+        "RULE3",
+        "RULE5",
+        "RULE7",
+        "RULE9",
+        "RULE11",
+        "RULE13",
+        "RULE15",
+        "RULE17",
+        "RULE20",
+        "RULE21",
+        "RULE72",
+        "RULE74",
+        "RULE76",
+        "RULE78",
+        "RULE80"
+      ]
+    },
+    {
+      "name": "ANONYMOUS_AUTH",
+      "type": "string",
+      "default": "false",
+      "description": "Required anonymous-auth value for the API server and kubelet.",
+      "requirement_ids": [
+        "RULE22",
+        "RULE82"
+      ]
+    },
+    {
+      "name": "PROFILING",
+      "type": "string",
+      "default": "false",
+      "description": "Required --profiling value for the API server, controller-manager, and scheduler.",
+      "requirement_ids": [
+        "RULE36",
+        "RULE52",
+        "RULE58"
+      ]
+    },
+    {
+      "name": "AUDIT_LOG_MAXAGE",
+      "type": "int",
+      "default": 30,
+      "min": 1,
+      "max": 3650,
+      "description": "Minimum audit-log-maxage in days.",
+      "requirement_ids": [
+        "RULE38"
+      ]
+    },
+    {
+      "name": "AUDIT_LOG_MAXBACKUP",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 1000,
+      "description": "Minimum audit-log-maxbackup.",
+      "requirement_ids": [
+        "RULE39"
+      ]
+    },
+    {
+      "name": "AUDIT_LOG_MAXSIZE",
+      "type": "int",
+      "default": 100,
+      "min": 1,
+      "max": 100000,
+      "description": "Minimum audit-log-maxsize in megabytes.",
+      "requirement_ids": [
+        "RULE40"
+      ]
+    },
+    {
+      "name": "STRONG_TLS",
+      "type": "string",
+      "default": "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+      "description": "Space-separated cipher suites treated as strong for the API server and kubelet.",
+      "requirement_ids": [
+        "RULE50",
+        "RULE93"
+      ]
+    },
+    {
+      "name": "POD_GC_MIN",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 100000,
+      "description": "Minimum terminated-pod-gc-threshold.",
+      "requirement_ids": [
+        "RULE51"
+      ]
+    },
+    {
+      "name": "SA_CREDENTIALS",
+      "type": "string",
+      "default": "true",
+      "description": "Required use-service-account-credentials value.",
+      "requirement_ids": [
+        "RULE53"
+      ]
+    },
+    {
+      "name": "BIND_ADDRESS",
+      "type": "string",
+      "default": "127.0.0.1",
+      "description": "Required bind-address for the controller-manager and scheduler.",
+      "requirement_ids": [
+        "RULE57",
+        "RULE59"
+      ]
+    },
+    {
+      "name": "ETCD_CLIENT_CERT_AUTH",
+      "type": "string",
+      "default": "true",
+      "description": "Required etcd client-cert-auth value.",
+      "requirement_ids": [
+        "RULE61"
+      ]
+    },
+    {
+      "name": "ETCD_PEER_CERT_AUTH",
+      "type": "string",
+      "default": "true",
+      "description": "Required etcd peer-client-cert-auth value.",
+      "requirement_ids": [
+        "RULE64"
+      ]
+    },
+    {
+      "name": "SA_BINDING_MAX",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 10000,
+      "description": "ServiceAccount ClusterRoleBinding count above this fails the check.",
+      "requirement_ids": [
+        "RULE68"
+      ]
+    },
+    {
+      "name": "READONLY_PORT",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 65535,
+      "description": "Required kubelet readOnlyPort. An unset port still passes when this is 0.",
+      "requirement_ids": [
+        "RULE85"
+      ]
+    },
+    {
+      "name": "POD_PIDS_MIN",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 1000000,
+      "description": "Minimum kubelet podPidsLimit. Remediation writes 1024 unless this minimum is higher.",
+      "requirement_ids": [
+        "RULE94"
+      ]
+    },
+    {
+      "name": "SECRETS_RBAC_MAX",
+      "type": "int",
+      "default": 5,
+      "min": 0,
+      "max": 10000,
+      "description": "Non-system roles that can read secrets above this count fail the check.",
+      "requirement_ids": [
+        "RULE97"
+      ]
+    },
+    {
+      "name": "WILDCARD_RBAC_MAX",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 10000,
+      "description": "Custom wildcard RBAC roles above this count fail the check.",
+      "requirement_ids": [
+        "RULE98"
+      ]
+    },
+    {
+      "name": "POD_CREATE_MAX",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 10000,
+      "description": "Non-system roles that can create pods above this count fail the check.",
+      "requirement_ids": [
+        "RULE99"
+      ]
+    },
+    {
+      "name": "BIND_RBAC_MAX",
+      "type": "int",
+      "default": 2,
+      "min": 0,
+      "max": 10000,
+      "description": "Custom bind/impersonate/escalate roles above this count fail the check.",
+      "requirement_ids": [
+        "RULE103"
+      ]
+    },
+    {
+      "name": "WEBHOOK_RBAC_MAX",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 10000,
+      "description": "Custom roles that can change webhook configuration above this count fail the check.",
+      "requirement_ids": [
+        "RULE107"
+      ]
+    },
+    {
+      "name": "NAMESPACE_MIN",
+      "type": "int",
+      "default": 4,
+      "min": 0,
+      "max": 10000,
+      "description": "Namespace count must be greater than this.",
+      "requirement_ids": [
+        "RULE127"
+      ]
+    }
+  ]
+}

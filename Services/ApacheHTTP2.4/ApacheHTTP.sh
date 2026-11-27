@@ -22,6 +22,30 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Return 0 when $1 equals one comma-separated token of $2.
+secaudit_in_csv() {
+    local want="$1" list="$2" token
+    local IFS=','
+    for token in $list; do
+        token="${token#"${token%%[![:space:]]*}"}"
+        token="${token%"${token##*[![:space:]]}"}"
+        [ "$want" = "$token" ] && return 0
+    done
+    return 1
+}
+
 if [ -z "${BASH_VERSION:-}" ]; then
     if command -v bash >/dev/null 2>&1; then
         exec bash "$0" "$@"
@@ -894,18 +918,23 @@ secaudit_https_only_assessment() {
 }
 
 secaudit_server_tokens_assessment() {
-    if secaudit_active_grep 'ServerTokens' | grep -qiE 'ServerTokens[[:space:]]+(Prod|ProductOnly)'; then
-        echo "PASS: ServerTokens is Prod or ProductOnly"
+    local tokens
+    tokens=$(secaudit_var SERVER_TOKENS "Prod,ProductOnly")
+    tokens=${tokens//,/|}
+    if secaudit_active_grep 'ServerTokens' | grep -qiE "ServerTokens[[:space:]]+(${tokens})"; then
+        echo "PASS: ServerTokens is ${tokens}"
     else
-        echo "FAIL: ServerTokens is not Prod/ProductOnly"
+        echo "FAIL: ServerTokens is not ${tokens}"
     fi
 }
 
 secaudit_server_signature_assessment() {
-    if secaudit_active_grep 'ServerSignature' | grep -qiE 'ServerSignature[[:space:]]+Off'; then
-        echo "PASS: ServerSignature is Off"
+    local sig
+    sig=$(secaudit_var SERVER_SIGNATURE Off)
+    if secaudit_active_grep 'ServerSignature' | grep -qiE "ServerSignature[[:space:]]+${sig}"; then
+        echo "PASS: ServerSignature is ${sig}"
     else
-        echo "FAIL: ServerSignature is not Off"
+        echo "FAIL: ServerSignature is not ${sig}"
     fi
 }
 
@@ -1104,10 +1133,11 @@ secaudit_ssl_key_assessment() {
     fi
     mode=$(stat -c '%a' "$key" 2>/dev/null)
     owner=$(stat -c '%U:%G' "$key" 2>/dev/null)
-    case "$mode" in
-        400|440|600) echo "PASS: Private key permissions are restricted (${mode} ${owner} ${key})" ;;
-        *) echo "FAIL: Private key permissions are too open (${mode} ${owner} ${key})" ;;
-    esac
+    if secaudit_in_csv "$mode" "$(secaudit_var KEY_MODES "600,400,440")"; then
+        echo "PASS: Private key permissions are restricted (${mode} ${owner} ${key})"
+    else
+        echo "FAIL: Private key permissions are too open (${mode} ${owner} ${key}; accepted $(secaudit_var KEY_MODES "600,400,440"))"
+    fi
 }
 
 secaudit_medium_cipher_assessment() {
@@ -1305,21 +1335,21 @@ secaudit_run_information_leakage() {
 
 secaudit_run_dos() {
 	# RULE65-70
-	secaudit_emit 65 "$(secaudit_numeric_assessment 'TimeOut' le 10 60)"
+	secaudit_emit 65 "$(secaudit_numeric_assessment 'TimeOut' le "$(secaudit_var TIMEOUT 10)" 60)"
 	secaudit_emit 66 "$(secaudit_numeric_assessment 'KeepAlive' eq_on 0 0)"
-	secaudit_emit 67 "$(secaudit_numeric_assessment 'MaxKeepAliveRequests' ge 100 100)"
-	secaudit_emit 68 "$(secaudit_numeric_assessment 'KeepAliveTimeout' le 15 5)"
-	secaudit_emit 69 "$(secaudit_request_timeout_assessment 'header' 40 40)"
-	secaudit_emit 70 "$(secaudit_request_timeout_assessment 'body' 20 20)"
+	secaudit_emit 67 "$(secaudit_numeric_assessment 'MaxKeepAliveRequests' ge "$(secaudit_var MAX_KEEPALIVE_REQUESTS 100)" 100)"
+	secaudit_emit 68 "$(secaudit_numeric_assessment 'KeepAliveTimeout' le "$(secaudit_var KEEPALIVE_TIMEOUT 15)" 5)"
+	secaudit_emit 69 "$(secaudit_request_timeout_assessment 'header' "$(secaudit_var REQUEST_READ_HEADER_MAX 40)" 40)"
+	secaudit_emit 70 "$(secaudit_request_timeout_assessment 'body' "$(secaudit_var REQUEST_READ_BODY_MAX 20)" 20)"
 
 }
 
 secaudit_run_request_limits() {
 	# RULE71-74
-	secaudit_emit 71 "$(secaudit_numeric_assessment 'LimitRequestLine' le 8190 8190)"
-	secaudit_emit 72 "$(secaudit_numeric_assessment 'LimitRequestFields' le 100 100)"
-	secaudit_emit 73 "$(secaudit_numeric_assessment 'LimitRequestFieldsize' le 1024 8190)"
-	secaudit_emit 74 "$(secaudit_numeric_assessment 'LimitRequestBody' le 102400 0)"
+	secaudit_emit 71 "$(secaudit_numeric_assessment 'LimitRequestLine' le "$(secaudit_var LIMIT_REQUEST_LINE 8190)" 8190)"
+	secaudit_emit 72 "$(secaudit_numeric_assessment 'LimitRequestFields' le "$(secaudit_var LIMIT_REQUEST_FIELDS 100)" 100)"
+	secaudit_emit 73 "$(secaudit_numeric_assessment 'LimitRequestFieldsize' le "$(secaudit_var LIMIT_REQUEST_FIELDSIZE 1024)" 8190)"
+	secaudit_emit 74 "$(secaudit_numeric_assessment 'LimitRequestBody' le "$(secaudit_var LIMIT_REQUEST_BODY 102400)" 0)"
 
 }
 

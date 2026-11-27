@@ -22,6 +22,30 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Return 0 when $1 equals one comma-separated token of $2.
+secaudit_in_csv() {
+    local want="$1" list="$2" token
+    local IFS=','
+    for token in $list; do
+        token="${token#"${token%%[![:space:]]*}"}"
+        token="${token%"${token##*[![:space:]]}"}"
+        [ "$want" = "$token" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -42,12 +66,12 @@ _NGINX_FIND_CAP="${NGINX_FIND_CAP:-${SECAUDIT_NGINX_FIND_CAP:-30}}"
 _NGINX_CURL_CAP="${NGINX_CURL_CAP:-${SECAUDIT_NGINX_CURL_CAP:-8}}"
 _NGINX_SUDO_CAP="${NGINX_SUDO_CAP:-${SECAUDIT_NGINX_SUDO_CAP:-5}}"
 _NGINX_RULE_COUNT=66
-_NGINX_AUTHORIZED_HTTP_PORTS="${NGINX_AUTHORIZED_HTTP_PORTS:-${SECAUDIT_NGINX_AUTHORIZED_HTTP_PORTS:-80 443}}"
-_NGINX_HSTS_MIN_AGE="${NGINX_HSTS_MIN_AGE:-${SECAUDIT_NGINX_HSTS_MIN_AGE:-15768000}}"
-_NGINX_TIMEOUT_SOFT_MAX="${NGINX_TIMEOUT_SOFT_MAX:-${SECAUDIT_NGINX_TIMEOUT_SOFT_MAX:-10}}"
-_NGINX_BODY_SIZE_UNLIMITED="${NGINX_BODY_SIZE_UNLIMITED:-${SECAUDIT_NGINX_BODY_SIZE_UNLIMITED:-0}}"
-_NGINX_HEADER_BUF_MAX_BYTES="${NGINX_HEADER_BUF_MAX_BYTES:-${SECAUDIT_NGINX_HEADER_BUF_MAX_BYTES:-32768}}"
-_NGINX_DH_MIN_BITS="${NGINX_DH_MIN_BITS:-${SECAUDIT_NGINX_DH_MIN_BITS:-2048}}"
+_NGINX_AUTHORIZED_HTTP_PORTS=$(secaudit_var AUTHORIZED_HTTP_PORTS "${NGINX_AUTHORIZED_HTTP_PORTS:-${SECAUDIT_NGINX_AUTHORIZED_HTTP_PORTS:-80 443}}")
+_NGINX_HSTS_MIN_AGE=$(secaudit_var HSTS_MIN_AGE "${NGINX_HSTS_MIN_AGE:-${SECAUDIT_NGINX_HSTS_MIN_AGE:-15768000}}")
+_NGINX_TIMEOUT_SOFT_MAX=$(secaudit_var TIMEOUT_SOFT_MAX "${NGINX_TIMEOUT_SOFT_MAX:-${SECAUDIT_NGINX_TIMEOUT_SOFT_MAX:-10}}")
+_NGINX_BODY_SIZE_UNLIMITED=$(secaudit_var BODY_SIZE_UNLIMITED "${NGINX_BODY_SIZE_UNLIMITED:-${SECAUDIT_NGINX_BODY_SIZE_UNLIMITED:-0}}")
+_NGINX_HEADER_BUF_MAX_BYTES=$(secaudit_var HEADER_BUF_MAX_BYTES "${NGINX_HEADER_BUF_MAX_BYTES:-${SECAUDIT_NGINX_HEADER_BUF_MAX_BYTES:-32768}}")
+_NGINX_DH_MIN_BITS=$(secaudit_var DH_MIN_BITS "${NGINX_DH_MIN_BITS:-${SECAUDIT_NGINX_DH_MIN_BITS:-2048}}")
 _NGINX_PRIVILEGED_GROUPS="${NGINX_PRIVILEGED_GROUPS:-${SECAUDIT_NGINX_PRIVILEGED_GROUPS:-root wheel sudo adm disk}}"
 
 # --- runtime state ---
@@ -59,10 +83,10 @@ _NGINX_CONFIG_INDEX=""
 _NGINX_COMPILE_FLAGS=""
 
 # --- bootstrap / reporting ---
-secaudit_report_pass() { printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
-secaudit_report_fail() { printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
-secaudit_report_skip() { printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
-secaudit_report_error() { printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
+secaudit_report_pass() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
+secaudit_report_fail() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
+secaudit_report_skip() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
+secaudit_report_error() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
 
 # --- string / cmd utils ---
 secaudit_have_bin() { command -v "$1" >/dev/null 2>&1; }
@@ -867,7 +891,7 @@ secaudit_check_config_dir_permissions() {
         [ -d "$path" ] || continue
         mode=$(secaudit_path_mode_octal "$path")
         violations="${violations} ${mode}:${path}"
-    done < <(secaudit_exec_with_timeout "$_NGINX_FIND_CAP" find "$_NGINX_CONF_ROOT" -type d -perm /007 2>/dev/null | head -50)
+    done < <(secaudit_exec_with_timeout "$_NGINX_FIND_CAP" find "$_NGINX_CONF_ROOT" -type d -perm /$(secaudit_var OTHER_PERM 007) 2>/dev/null | head -50)
     if [ -n "$violations" ]; then
         secaudit_report_fail "$num" "directories allow other access (${violations# })"
     else
@@ -886,7 +910,7 @@ secaudit_check_config_file_permissions() {
         [ -f "$path" ] || continue
         mode=$(secaudit_path_mode_octal "$path")
         violations="${violations} ${mode}:${path}"
-    done < <(secaudit_exec_with_timeout "$_NGINX_FIND_CAP" find "$_NGINX_CONF_ROOT" -type f -perm /007 2>/dev/null | head -50)
+    done < <(secaudit_exec_with_timeout "$_NGINX_FIND_CAP" find "$_NGINX_CONF_ROOT" -type f -perm /$(secaudit_var OTHER_PERM 007) 2>/dev/null | head -50)
     if [ -n "$violations" ]; then
         secaudit_report_fail "$num" "config files allow other access (${violations# })"
     else
@@ -909,18 +933,15 @@ secaudit_check_pid_file_mode() {
     info=$(secaudit_path_listing "$_NGINX_PID_PATH")
     parent=$(dirname "$_NGINX_PID_PATH")
     pmode=$(secaudit_path_mode_octal "$parent")
-    case "$mode" in
-        400|440|600|640|644)
+    if secaudit_in_csv "$mode" "$(secaudit_var PID_MODES "400,440,600,640,644")"; then
             if [ -n "$pmode" ] && [ "$pmode" != "MISSING" ] && [ $((8#$pmode & 8#002)) -ne 0 ] 2>/dev/null; then
                 secaudit_report_fail "$num" "PID file mode=${mode} but parent '${parent}' is world-writable (${pmode})"
             else
                 secaudit_report_pass "$num" "PID file permissions are restricted (mode=${mode} parent=${pmode} ${info})"
             fi
-            ;;
-        *)
-            secaudit_report_fail "$num" "PID file permissions are too open (mode=${mode:-unknown} ${info})"
-            ;;
-    esac
+    else
+        secaudit_report_fail "$num" "PID file permissions are too open (mode=${mode:-unknown} ${info}; accepted $(secaudit_var PID_MODES "400,440,600,640,644"))"
+    fi
 }
 
 secaudit_check_pid_file_owner() {
@@ -1175,7 +1196,8 @@ secaudit_check_error_log_info() {
         secaudit_report_fail "$num" "error_log is not configured"
         return 0
     fi
-    if echo "$values" | grep -qiE '(^|[[:space:]])(info|debug)([[:space:];]|$)'; then
+    levels=$(secaudit_var ERROR_LOG_LEVELS "info,debug"); levels=${levels//,/|}
+    if echo "$values" | grep -qiE "(^|[[:space:]])(${levels})([[:space:];]|$)"; then
         secaudit_report_pass "$num" "error_log is at info/debug (${values})"
     elif echo "$values" | grep -qiE '(^|[[:space:]])(notice|warn|error|crit|alert|emerg)([[:space:];]|$)'; then
         secaudit_report_fail "$num" "error_log level is below info (${values})"
@@ -1190,7 +1212,8 @@ secaudit_check_logrotate_period() {
         secaudit_report_fail "$num" "nginx logrotate configuration is missing (${_NGINX_LOGROTATE})"
         return 0
     fi
-    if grep -E '^[[:space:]]*(daily|weekly)[[:space:]]*$' "$_NGINX_LOGROTATE" 2>/dev/null | grep -q .; then
+    periods=$(secaudit_var LOGROTATE_PERIODS "daily,weekly"); periods=${periods//,/|}
+    if grep -E "^[[:space:]]*(${periods})[[:space:]]*$" "$_NGINX_LOGROTATE" 2>/dev/null | grep -q .; then
         secaudit_report_pass "$num" "logrotate period is daily/weekly"
     else
         secaudit_report_fail "$num" "logrotate daily/weekly not found in ${_NGINX_LOGROTATE}"
@@ -1208,7 +1231,7 @@ secaudit_check_logrotate_count() {
     grep -qE '^[[:space:]]*compress' "$_NGINX_LOGROTATE" 2>/dev/null && extras="${extras} compress"
     grep -qE '^[[:space:]]*missingok' "$_NGINX_LOGROTATE" 2>/dev/null && extras="${extras} missingok"
     grep -qE 'nginx[[:space:]]+-s[[:space:]]+reload|kill[[:space:]].*USR1' "$_NGINX_LOGROTATE" 2>/dev/null && extras="${extras} postrotate"
-    if [ -n "$rotate_n" ] && [ "$rotate_n" -ge 1 ] 2>/dev/null; then
+    if [ -n "$rotate_n" ] && [ "$rotate_n" -ge "$(secaudit_var LOGROTATE_MIN 1)" ] 2>/dev/null; then
         secaudit_report_pass "$num" "logrotate rotate=${rotate_n} extras=${extras:-none}"
     else
         secaudit_report_fail "$num" "logrotate rotate count is missing"
@@ -1333,16 +1356,13 @@ secaudit_check_private_key_hardening() {
         fi
         mode=$(secaudit_path_mode_octal "$key")
         owner=$(secaudit_path_owner_user "$key")
-        case "$mode" in
-            400|440|600)
+        if secaudit_in_csv "$mode" "$(secaudit_var KEY_MODES "600,400,440")"; then
                 if [ "$owner" != "root" ] && [ "$owner" != "$_NGINX_SVC_ACCOUNT" ]; then
                     bad="${bad} owner:${key}:${owner}"
                 fi
-                ;;
-            *)
-                bad="${bad} mode:${key}:${mode}"
-                ;;
-        esac
+        else
+            bad="${bad} mode:${key}:${mode}"
+        fi
     done < <(secaudit_ssl_private_key_paths)
     if [ "$seen" -eq 0 ]; then
         secaudit_report_fail "$num" "ssl_certificate_key is not configured"
@@ -1631,7 +1651,7 @@ secaudit_check_http_method_filter() {
     local num="$1"
     local hits dangerous
     hits=$(secaudit_grep_live_config 'limit_except|if[[:space:]]*\(\$request_method|\$request_method[[:space:]]*!~' | tr '\n' ' ')
-    dangerous=$(secaudit_grep_live_config 'limit_except' | grep -iE 'TRACE|TRACK|DEBUG' | tr '\n' ' ')
+    dangerous=$(secaudit_grep_live_config 'limit_except' | methods=$(secaudit_var FORBIDDEN_METHODS "TRACE,TRACK,DEBUG"); methods=${methods//,/|}; grep -iE "$methods" | tr '\n' ' ')
     if [ -z "${hits// /}" ]; then
         secaudit_report_fail "$num" "HTTP method restrictions are not configured (limit_except or \$request_method filter required)"
         return 0
@@ -1814,9 +1834,9 @@ secaudit_run_listen_and_vhost() {
 
 secaudit_run_timeouts_and_identity() {
     # RULE17-26
-    secaudit_check_timeout_cap 17 keepalive_timeout le 10
+    secaudit_check_timeout_cap 17 keepalive_timeout le "$_NGINX_TIMEOUT_SOFT_MAX"
     secaudit_check_timeout_cap 18 keepalive_timeout gt 0
-    secaudit_check_timeout_cap 19 send_timeout le 10
+    secaudit_check_timeout_cap 19 send_timeout le "$_NGINX_TIMEOUT_SOFT_MAX"
     secaudit_check_timeout_cap 20 send_timeout gt 0
     secaudit_check_server_tokens_hidden 21
     secaudit_check_default_page_clean 22 "${_NGINX_HTML_ROOT}/index.html"
@@ -1880,10 +1900,10 @@ secaudit_run_access_limits() {
 
 secaudit_run_security_headers() {
     # RULE63-66
-    secaudit_check_security_header 63 'X-Frame-Options' 'DENY|SAMEORIGIN'
-    secaudit_check_security_header 64 'X-Content-Type-Options' 'nosniff'
-    secaudit_check_security_header 65 'Content-Security-Policy' 'default-src'
-    secaudit_check_security_header 66 'Referrer-Policy' '(^|[[:space:]])(no-referrer|strict-origin|strict-origin-when-cross-origin|same-origin)([[:space:]]|$)'
+    secaudit_check_security_header 63 'X-Frame-Options' "$(secaudit_var X_FRAME_OPTIONS 'SAMEORIGIN,DENY' | tr ',' '|')"
+    secaudit_check_security_header 64 'X-Content-Type-Options' "$(secaudit_var X_CONTENT_TYPE_OPTIONS nosniff)"
+    secaudit_check_security_header 65 'Content-Security-Policy' "$(secaudit_var CSP_TOKEN default-src)"
+    secaudit_check_security_header 66 'Referrer-Policy' "$(secaudit_var REFERRER_POLICY '(^|[[:space:]])(no-referrer|strict-origin|strict-origin-when-cross-origin|same-origin)([[:space:]]|$)')"
 }
 
 # --- bootstrap / main ---

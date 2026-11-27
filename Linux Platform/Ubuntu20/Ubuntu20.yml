@@ -1285,6 +1285,24 @@
       ansible.builtin.script: Ubuntu20.sh
       args:
         executable: /bin/bash
+      environment:
+        SECAUDIT_RULES: "{{ SECAUDIT_RULES | default('', true) }}"
+        SECAUDIT_REMEDIATE_RULES: "{{ SECAUDIT_REMEDIATE_RULES | default('', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_IP_FORWARD: "{{ SECAUDIT_VAR_SYSCTL_IPV4_IP_FORWARD | default('0', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESP: "{{ SECAUDIT_VAR_SYSCTL_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESP | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_ICMP_ECHO_IGNORE_BROADCASTS: "{{ SECAUDIT_VAR_SYSCTL_IPV4_ICMP_ECHO_IGNORE_BROADCASTS | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_TCP_SYNCOOKIES: "{{ SECAUDIT_VAR_SYSCTL_IPV4_TCP_SYNCOOKIES | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_KRN_RANDOMIZE_VA_SPACE: "{{ SECAUDIT_VAR_SYSCTL_KRN_RANDOMIZE_VA_SPACE | default('2', true) }}"
+        SECAUDIT_VAR_SYSCTL_FS_SUID_DUMPABLE: "{{ SECAUDIT_VAR_SYSCTL_FS_SUID_DUMPABLE | default('0', true) }}"
+        SECAUDIT_VAR_LOGIN_GRACE_TIME: "{{ SECAUDIT_VAR_LOGIN_GRACE_TIME | default('60', true) }}"
+        SECAUDIT_VAR_MAX_AUTH_TRIES: "{{ SECAUDIT_VAR_MAX_AUTH_TRIES | default('4', true) }}"
+        SECAUDIT_VAR_MAX_SESSIONS: "{{ SECAUDIT_VAR_MAX_SESSIONS | default('10', true) }}"
+        SECAUDIT_VAR_SUDO_TIMESTAMP_TIMEOUT: "{{ SECAUDIT_VAR_SUDO_TIMESTAMP_TIMEOUT | default('15', true) }}"
+        SECAUDIT_VAR_PASS_MIN_DAYS: "{{ SECAUDIT_VAR_PASS_MIN_DAYS | default('1', true) }}"
+        SECAUDIT_VAR_PASS_WARN_AGE: "{{ SECAUDIT_VAR_PASS_WARN_AGE | default('7', true) }}"
+        SECAUDIT_VAR_INACTIVE_DAYS: "{{ SECAUDIT_VAR_INACTIVE_DAYS | default('30', true) }}"
+        SECAUDIT_VAR_CLIENT_ALIVE_INTERVAL: "{{ SECAUDIT_VAR_CLIENT_ALIVE_INTERVAL | default('900', true) }}"
+        SECAUDIT_VAR_MODE_GRUB_CFG: "{{ SECAUDIT_VAR_MODE_GRUB_CFG | default('600', true) }}"
       register: ubuntu20_audit_raw
       changed_when: false
       failed_when: false

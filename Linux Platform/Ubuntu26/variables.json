@@ -1,0 +1,393 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "SYSCTL_KRN_APPARMOR_RESTRICT_UNPRIVILEGED",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of kernel.apparmor_restrict_unprivileged_unconfined. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE57"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV6_ALL_DISABLE_IPV6",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv6.conf.all.disable_ipv6, net.ipv6.conf.default.disable_ipv6. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE137"
+      ]
+    },
+    {
+      "name": "CLIENT_ALIVE_INTERVAL",
+      "type": "int",
+      "default": 900,
+      "min": 1,
+      "max": 86400,
+      "description": "SSH ClientAliveInterval ceiling in seconds. The check fails above this.",
+      "requirement_ids": [
+        "RULE186"
+      ]
+    },
+    {
+      "name": "PASS_MAX_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum password age in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE236"
+      ]
+    },
+    {
+      "name": "PASS_WARN_AGE",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 90,
+      "description": "Days of warning before a password expires. The check fails below this.",
+      "requirement_ids": [
+        "RULE238"
+      ]
+    },
+    {
+      "name": "INACTIVE_DAYS",
+      "type": "int",
+      "default": 30,
+      "min": 1,
+      "max": 90,
+      "description": "Days before an inactive password is locked. The check fails above this.",
+      "requirement_ids": [
+        "RULE240"
+      ]
+    },
+    {
+      "name": "LOGIN_GRACE_TIME",
+      "type": "int",
+      "default": 60,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum SSH LoginGraceTime in seconds.",
+      "requirement_ids": [
+        "RULE193"
+      ]
+    },
+    {
+      "name": "MAX_AUTH_TRIES",
+      "type": "int",
+      "default": 4,
+      "min": 1,
+      "max": 20,
+      "description": "Maximum SSH MaxAuthTries.",
+      "requirement_ids": [
+        "RULE196"
+      ]
+    },
+    {
+      "name": "MAX_SESSIONS",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "description": "Maximum SSH MaxSessions.",
+      "requirement_ids": [
+        "RULE197"
+      ]
+    },
+    {
+      "name": "PASS_MIN_DAYS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 365,
+      "description": "Minimum PASS_MIN_DAYS.",
+      "requirement_ids": [
+        "RULE237"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE40",
+        "RULE46",
+        "RULE80",
+        "RULE81"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR_755",
+      "type": "string",
+      "default": "755",
+      "description": "Maximum octal mode (755). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE41",
+        "RULE42",
+        "RULE44",
+        "RULE45"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR_640",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE43",
+        "RULE256"
+      ]
+    },
+    {
+      "name": "MODE_GRUB_CFG",
+      "type": "string",
+      "default": "600",
+      "description": "Required octal mode (600). Ownership in the check stays unchanged.",
+      "requirement_ids": [
+        "RULE59"
+      ]
+    },
+    {
+      "name": "MODE_MOTD",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE77"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE78"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE_NET",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE79"
+      ]
+    },
+    {
+      "name": "MODE_CRONTAB",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode (600). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE128"
+      ]
+    },
+    {
+      "name": "MODE_CRON_HOURLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE129"
+      ]
+    },
+    {
+      "name": "MODE_CRON_DAILY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE130"
+      ]
+    },
+    {
+      "name": "MODE_CRON_WEEKLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE131"
+      ]
+    },
+    {
+      "name": "MODE_CRON_MONTHLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE132"
+      ]
+    },
+    {
+      "name": "MODE_CRON_YEARLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE133"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR_700",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE134"
+      ]
+    },
+    {
+      "name": "MODE_CRON_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE135"
+      ]
+    },
+    {
+      "name": "MODE_AT_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE136"
+      ]
+    },
+    {
+      "name": "MODE_SSHD_CONFIG",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode (600). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE179"
+      ]
+    },
+    {
+      "name": "MODE_SSHD_CONFIG_700",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode (700). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE180"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY_PUB",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode (600). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE181"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY_PUB_644",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE182"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE328"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE329"
+      ]
+    },
+    {
+      "name": "MODE_GROUP",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE330"
+      ]
+    },
+    {
+      "name": "MODE_GROUP_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE331"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE332"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW_DASH",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE333"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE334"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW_DASH",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode (640). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE335"
+      ]
+    },
+    {
+      "name": "MODE_SHELLS",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode (644). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE336"
+      ]
+    },
+    {
+      "name": "MODE_OPASSWD",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode (600). A stricter mode passes.",
+      "requirement_ids": [
+        "RULE337"
+      ]
+    }
+  ]
+}

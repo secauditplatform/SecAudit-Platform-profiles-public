@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "DEFAULT_HOSTNAMES",
+      "type": "string",
+      "default": "xiaomi,miwifi,mi-wifi,openwrt,xiaoqiang,router,localhost",
+      "description": "Comma-separated hostnames treated as factory defaults. The check fails when the hostname is in this list.",
+      "requirement_ids": ["RULE1"]
+    },
+    {
+      "name": "WIFI_ENCRYPTION",
+      "type": "string",
+      "default": "psk2+ccmp,psk2,psk2+aes,ccmp,sae,sae-mixed,wpa3,wpa3-mixed,wpa2,wpa2+ccmp",
+      "description": "Comma-separated approved wireless encryption modes. Remediation writes the first token unless XM_REMEDIATE_WIFI_ENC is set.",
+      "requirement_ids": ["RULE3"]
+    },
+    {
+      "name": "SSH_WAN_PORT",
+      "type": "int",
+      "default": 22,
+      "min": 1,
+      "max": 65535,
+      "description": "Destination port treated as WAN SSH. The check fails when the firewall accepts it from WAN.",
+      "requirement_ids": ["RULE9"]
+    },
+    {
+      "name": "PORT_FORWARD_MAX",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 100,
+      "description": "Maximum firewall redirects that still pass. The check fails above this count.",
+      "requirement_ids": ["RULE18"]
+    },
+    {
+      "name": "LAN_FACTORY_PREFIX",
+      "type": "string",
+      "default": "192.168.31.",
+      "description": "Factory LAN address prefix. The check fails when network.lan.ipaddr starts with it.",
+      "requirement_ids": ["RULE19"]
+    },
+    {
+      "name": "PMF_VALUES",
+      "type": "string",
+      "default": "1,2",
+      "description": "Comma-separated ieee80211w values accepted as PMF. Remediation writes the first token.",
+      "requirement_ids": ["RULE21"]
+    },
+    {
+      "name": "WEAK_ADMIN_PASSWORDS",
+      "type": "string",
+      "default": "admin,root,password,12345678",
+      "description": "Comma-separated admin password markers. The check fails when a password field equals one of them.",
+      "requirement_ids": ["RULE25"]
+    }
+  ]
+}

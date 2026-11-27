@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -1324,11 +1336,11 @@ sec_audit_debian12_sysctl_multi_rule() {
         want=$2
         shift 2
         if ! sec_audit_sysctl_runtime_equals "$key" "$want"; then
-            echo "RULE${num}= FAIL: ${fail_msg}"
+            sec_audit_report_fail "$num" "${fail_msg}"
             return 0
         fi
     done
-    echo "RULE${num}= PASS: ${pass_msg}"
+    sec_audit_report_pass "$num" "${pass_msg}"
 }
 
 _audit_rules_files_ready=0
@@ -1462,20 +1474,22 @@ sec_audit_sshd_effective_not_equals() {
 sec_audit_sshd_d12_equals() {
     local num=$((10#$1)) key="$2" want="$3" pass_msg="$4" fail_msg="$5"
     if sec_audit_sshd_effective_equals "$key" "$want"; then
-        echo "RULE${num}= PASS: ${pass_msg}"
+        sec_audit_report_pass "$num" "${pass_msg}"
     else
-        echo "RULE${num}= FAIL: ${fail_msg}"
+        sec_audit_report_fail "$num" "${fail_msg}"
     fi
 }
 sec_audit_debian12_mount_opt_rule() {
     local num=$((10#$1)) mp="$2" opt="$3" msg="$4"
     if sec_audit_mount_has_option "$mp" "$opt"; then
-        echo "RULE${num}= PASS: ${msg}"
+        sec_audit_report_pass "$num" "${msg}"
     else
-        echo "RULE${num}= FAIL: ${opt} option not set on ${mp}"
+        sec_audit_report_fail "$num" "${opt} option not set on ${mp}"
     fi
 }
 
+sec_audit_run_kernel_modules() {
+# RULE1-9
 sec_audit_assert_kmod_disabled 1 cramfs "cramfs.ko*"
 sec_audit_assert_kmod_disabled 2 freevxfs "freevxfs.ko*"
 sec_audit_assert_kmod_disabled 3 hfs "hfs.ko*"
@@ -1485,6 +1499,10 @@ sec_audit_assert_kmod_disabled 6 overlay "overlay.ko*" overlay overlayfs
 sec_audit_assert_kmod_disabled 7 squashfs "squashfs.ko*"
 sec_audit_assert_kmod_disabled 8 udf "udf.ko*"
 sec_audit_assert_kmod_disabled 9 usb-storage "usb-storage.ko*" usb_storage "usb-storage"
+}
+
+sec_audit_run_filesystem_partitions() {
+# RULE10-14
 
 if sec_audit_tmp_is_isolated; then
     sec_audit_report_pass 010 "/tmp is mounted on a separate partition"
@@ -1515,6 +1533,10 @@ sec_audit_debian12_mount_opt_rule 27 /var/log noexec "noexec option set on /var/
 sec_audit_debian12_mount_opt_rule 28 /var/log/audit nodev "nodev option set on /var/log/audit partition"
 sec_audit_debian12_mount_opt_rule 29 /var/log/audit nosuid "nosuid option set on /var/log/audit partition"
 sec_audit_debian12_mount_opt_rule 30 /var/log/audit noexec "noexec option set on /var/log/audit partition"
+}
+
+sec_audit_run_package_security() {
+# RULE31-33
 
 if find /etc/apt/trusted.gpg.d/ -name '*.gpg' 2>/dev/null | grep -q . || \
    find /etc/apt/keyrings/ -type f 2>/dev/null | grep -q . || \
@@ -1529,13 +1551,17 @@ if apt-cache policy 2>/dev/null | grep -q "http\|file"; then
 else
   sec_audit_report_fail 032 "requirement not met ()"
 fi
-
 upgradable=$(apt-get -s upgrade 2>/dev/null | grep -c "^Inst " || true)
+
 if [ "$upgradable" -eq 0 ]; then
   sec_audit_report_pass 033 "updates, patches, and security software are installed"
 else
   sec_audit_report_fail 033 "requirement not met ()"
 fi
+}
+
+sec_audit_run_apparmor() {
+# RULE34-35
 
 if dpkg -s apparmor &>/dev/null 2>&1; then
   sec_audit_report_pass 034 "AppArmor package is installed"
@@ -1549,6 +1575,10 @@ if grep -qP '^\s*GRUB_CMDLINE_LINUX\s*=.*\bapparmor=1\b' /etc/default/grub 2>/de
 else
   sec_audit_report_fail 035 "requirement not met ()"
 fi
+}
+
+sec_audit_run_bootloader() {
+# RULE36-37
 
 if grep -qP '^\s*set\s+superusers=' /boot/grub/grub.cfg 2>/dev/null || \
    grep -qP '^\s*password' /boot/grub/grub.cfg 2>/dev/null; then
@@ -1556,36 +1586,44 @@ if grep -qP '^\s*set\s+superusers=' /boot/grub/grub.cfg 2>/dev/null || \
 else
   sec_audit_report_fail 036 "requirement not met ()"
 fi
-
 _perm=$(stat -Lc "%a %u %g" /boot/grub/grub.cfg 2>/dev/null)
 _mode=$(echo "$_perm" | awk '{print $1}')
 _owner=$(echo "$_perm" | awk '{print $2}')
 _group=$(echo "$_perm" | awk '{print $3}')
+
 if [ "$_owner" = "0" ] && [ "$_group" = "0" ] && [[ "$_mode" =~ ^[0-6]00$ ]]; then
   sec_audit_report_pass 037 "bootloader config access restricted"
 else
   sec_audit_report_fail 037 "requirement not met ()"
 fi
+}
 
-if sec_audit_sysctl_runtime_equals kernel.randomize_va_space 2; then
+sec_audit_run_process_hardening() {
+# RULE38-40
+
+if sec_audit_sysctl_runtime_equals kernel.randomize_va_space $(secaudit_var SYSCTL_KRN_RANDOMIZE_VA_SPACE 2); then
   sec_audit_report_pass 038 "ASLR enabled"
 else
   r=$(sec_audit_sysctl_runtime kernel.randomize_va_space)
   sec_audit_report_fail 038 "ASLR not enabled (kernel.randomize_va_space=${r:-?})"
 fi
-
 _ps=$(sec_audit_sysctl_runtime kernel.yama.ptrace_scope)
+
 if [[ "${_ps:-}" =~ ^[123]$ ]]; then
   sec_audit_report_pass 039 "ptrace_scope restricted"
 else
   sec_audit_report_fail 039 "ptrace_scope not restricted (value=${_ps:-unset})"
 fi
 
-if sec_audit_core_dumps_limited && sec_audit_sysctl_runtime_equals fs.suid_dumpable 0; then
+if sec_audit_core_dumps_limited && sec_audit_sysctl_runtime_equals fs.suid_dumpable $(secaudit_var SYSCTL_FS_SUID_DUMPABLE 0); then
   sec_audit_report_pass 040 "core dumps restricted"
 else
   sec_audit_report_fail 040 "core dumps not fully restricted (limits/systemd/sysctl)"
 fi
+}
+
+sec_audit_run_banners() {
+# RULE41-49
 
 if [ -f /etc/motd ]; then
   if ! grep -qPi '(\\\v|\\\r|\\\m|\\\s|debian|ubuntu|linux)' /etc/motd 2>/dev/null; then
@@ -1616,24 +1654,24 @@ if [ -f /etc/issue.net ]; then
 else
   sec_audit_report_fail 043 "requirement not met ()"
 fi
-
 _mp=$(stat -Lc "%a %u %g" /etc/motd 2>/dev/null)
+
 if [ "$(echo "$_mp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_mp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_mp" | awk '{print $1}')" = "644" ]; then
   sec_audit_report_pass 044 "/etc/motd access restricted"
 else
   sec_audit_report_fail 044 "requirement not met ()"
 fi
-
 _ip=$(stat -Lc "%a %u %g" /etc/issue 2>/dev/null)
+
 if [ "$(echo "$_ip" | awk '{print $2}')" = "0" ] && [ "$(echo "$_ip" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_ip" | awk '{print $1}')" = "644" ]; then
   sec_audit_report_pass 045 "/etc/issue access restricted"
 else
   sec_audit_report_fail 045 "requirement not met ()"
 fi
-
 _inp=$(stat -Lc "%a %u %g" /etc/issue.net 2>/dev/null)
+
 if [ "$(echo "$_inp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_inp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_inp" | awk '{print $1}')" = "644" ]; then
   sec_audit_report_pass 046 "/etc/issue.net access restricted"
@@ -1668,6 +1706,10 @@ else
     sec_audit_report_fail 049 "requirement not met ()"
   fi
 fi
+}
+
+sec_audit_run_gdm() {
+# RULE50-56
 
 if ! dpkg -s gdm3 &>/dev/null 2>&1; then
   sec_audit_report_pass 050 "GDM configured to lock screen on idle"
@@ -1724,6 +1766,10 @@ elif ! grep -qP '^\s*Enable\s*=\s*true' /etc/gdm3/custom.conf 2>/dev/null; then
 else
   sec_audit_report_fail 056 "requirement not met ()"
 fi
+}
+
+sec_audit_run_unused_services() {
+# RULE57-68
 
 if ! dpkg -s chargen 2>/dev/null | grep -q "^Status.*installed" && \
    ! systemctl is-enabled chargen 2>/dev/null | grep -q enabled; then
@@ -1804,6 +1850,10 @@ if ! dpkg -s nis 2>/dev/null | grep -q "^Status.*installed"; then
 else
   sec_audit_report_fail 068 "requirement not met ()"
 fi
+}
+
+sec_audit_run_client_tools() {
+# RULE69-72
 
 if ! dpkg -s rsh-client 2>/dev/null | grep -q "^Status.*installed"; then
   sec_audit_report_pass 069 "rsh client not installed"
@@ -1828,6 +1878,10 @@ if ! dpkg -s ldap-utils 2>/dev/null | grep -q "^Status.*installed"; then
 else
   sec_audit_report_fail 072 "requirement not met ()"
 fi
+}
+
+sec_audit_run_chrony() {
+# RULE73-74
 
 if systemctl is-active ntp &>/dev/null || systemctl is-active chrony &>/dev/null || \
    systemctl is-active systemd-timesyncd &>/dev/null; then
@@ -1842,6 +1896,10 @@ if grep -qP '^\s*restrict\s+(-4\s+)?default\s+.*kod' /etc/ntp.conf 2>/dev/null |
 else
   sec_audit_report_fail 074 "requirement not met ()"
 fi
+}
+
+sec_audit_run_unused_services_2() {
+# RULE75-88
 
 if ! dpkg -s xserver-xorg 2>/dev/null | grep -q "^Status.*installed" && \
    ! dpkg -l 'xserver-xorg*' 2>/dev/null | grep -q '^ii'; then
@@ -1893,12 +1951,20 @@ if systemctl is-active auditd &>/dev/null; then
 else
   sec_audit_report_fail 088 "requirement not met ()"
 fi
+}
+
+sec_audit_run_auditd() {
+# RULE89-89
 
 if systemctl is-enabled auditd 2>/dev/null | grep -q "^enabled"; then
   sec_audit_report_pass 089 "auditd service enabled"
 else
   sec_audit_report_fail 089 "requirement not met ()"
 fi
+}
+
+sec_audit_run_bootloader_2() {
+# RULE90-91
 
 if grep -qP '\baudit=1\b' /proc/cmdline 2>/dev/null || \
    grep -qP '^\s*GRUB_CMDLINE_LINUX\s*=.*\baudit=1\b' /etc/default/grub 2>/dev/null; then
@@ -1906,37 +1972,41 @@ if grep -qP '\baudit=1\b' /proc/cmdline 2>/dev/null || \
 else
   sec_audit_report_fail 090 "requirement not met ()"
 fi
-
 _abl=$(grep -oP '\baudit_backlog_limit=\K[0-9]+' /proc/cmdline 2>/dev/null || \
        grep -oP '^\s*GRUB_CMDLINE_LINUX\s*=.*audit_backlog_limit=\K[0-9]+' /etc/default/grub 2>/dev/null | tail -1)
+
 if [ -n "$_abl" ] && [ "$_abl" -ge 8192 ] 2>/dev/null; then
   sec_audit_report_pass 091 "audit_backlog_limit sufficient"
 else
   sec_audit_report_fail 091 "requirement not met ()"
 fi
+}
+
+sec_audit_run_auditd_2() {
+# RULE92-96
 
 if grep -qP '^\s*max_log_file\s*=' /etc/audit/auditd.conf 2>/dev/null; then
   sec_audit_report_pass 092 "audit log storage configured"
 else
   sec_audit_report_fail 092 "requirement not met ()"
 fi
-
 _mla=$(grep -iP '^\s*max_log_file_action\s*=' /etc/audit/auditd.conf 2>/dev/null | awk -F= '{print $2}' | tr -d ' ')
+
 if echo "$_mla" | grep -qiP '^keep_logs$'; then
   sec_audit_report_pass 093 "audit logs retention configured"
 else
   sec_audit_report_fail 093 "requirement not met ()"
 fi
-
 _sla=$(grep -iP '^\s*space_left_action\s*=' /etc/audit/auditd.conf 2>/dev/null | awk -F= '{print $2}' | tr -d ' ' | tr '[:upper:]' '[:lower:]')
 _asla=$(grep -iP '^\s*admin_space_left_action\s*=' /etc/audit/auditd.conf 2>/dev/null | awk -F= '{print $2}' | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+
 if echo "$_asla" | grep -qP '^(halt|single)$'; then
   sec_audit_report_pass 094 "auditd configured to halt or single mode on full"
 else
   sec_audit_report_fail 094 "requirement not met ()"
 fi
-
 _nl=$(grep -iP '^\s*num_logs\s*=' /etc/audit/auditd.conf 2>/dev/null | awk -F= '{print $2}' | tr -d ' ')
+
 if [ -n "$_nl" ] && [ "$_nl" -ge 5 ] 2>/dev/null; then
   sec_audit_report_pass 095 "audit logs rotation configured"
 else
@@ -1948,6 +2018,10 @@ if grep -qP '^\s*-e\s+2' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/de
 else
   sec_audit_report_fail 096 "requirement not met ()"
 fi
+}
+
+sec_audit_run_logging() {
+# RULE97-102
 
 if dpkg -s rsyslog &>/dev/null 2>&1; then
   sec_audit_report_pass 097 "rsyslog installed"
@@ -1984,54 +2058,58 @@ if [ -f /etc/logrotate.conf ] && find /etc/logrotate.d/ -type f 2>/dev/null | gr
 else
   sec_audit_report_fail 102 "requirement not met ()"
 fi
+}
+
+sec_audit_run_cron_at() {
+# RULE103-111
 
 if systemctl is-enabled cron 2>/dev/null | grep -q "^enabled"; then
   sec_audit_report_pass 103 "cron service enabled"
 else
   sec_audit_report_fail 103 "requirement not met ()"
 fi
-
 _cp=$(stat -Lc "%a %u %g" /etc/crontab 2>/dev/null)
+
 if [ "$(echo "$_cp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_cp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_cp" | awk '{print $1}')" = "600" ]; then
   sec_audit_report_pass 104 "/etc/crontab permissions configured"
 else
   sec_audit_report_fail 104 "requirement not met ()"
 fi
-
 _chp=$(stat -Lc "%a %u %g" /etc/cron.hourly 2>/dev/null)
+
 if [ "$(echo "$_chp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_chp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_chp" | awk '{print $1}')" = "700" ]; then
   sec_audit_report_pass 105 "/etc/cron.hourly permissions configured"
 else
   sec_audit_report_fail 105 "requirement not met ()"
 fi
-
 _cdp=$(stat -Lc "%a %u %g" /etc/cron.daily 2>/dev/null)
+
 if [ "$(echo "$_cdp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_cdp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_cdp" | awk '{print $1}')" = "700" ]; then
   sec_audit_report_pass 106 "/etc/cron.daily permissions configured"
 else
   sec_audit_report_fail 106 "requirement not met ()"
 fi
-
 _cwp=$(stat -Lc "%a %u %g" /etc/cron.weekly 2>/dev/null)
+
 if [ "$(echo "$_cwp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_cwp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_cwp" | awk '{print $1}')" = "700" ]; then
   sec_audit_report_pass 107 "/etc/cron.weekly permissions configured"
 else
   sec_audit_report_fail 107 "requirement not met ()"
 fi
-
 _cmp=$(stat -Lc "%a %u %g" /etc/cron.monthly 2>/dev/null)
+
 if [ "$(echo "$_cmp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_cmp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_cmp" | awk '{print $1}')" = "700" ]; then
   sec_audit_report_pass 108 "/etc/cron.monthly permissions configured"
 else
   sec_audit_report_fail 108 "requirement not met ()"
 fi
-
 _cdirp=$(stat -Lc "%a %u %g" /etc/cron.d 2>/dev/null)
+
 if [ "$(echo "$_cdirp" | awk '{print $2}')" = "0" ] && [ "$(echo "$_cdirp" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_cdirp" | awk '{print $1}')" = "700" ]; then
   sec_audit_report_pass 109 "/etc/cron.d permissions configured"
@@ -2052,6 +2130,10 @@ if dpkg -s libpam-pwquality &>/dev/null 2>&1 && \
 else
   sec_audit_report_fail 111 "requirement not met ()"
 fi
+}
+
+sec_audit_run_pam_auth() {
+# RULE112-113
 
 if grep -qP 'pam_faillock|pam_tally2' /etc/pam.d/common-auth /etc/pam.d/common-account 2>/dev/null; then
   sec_audit_report_pass 112 "faillock configured"
@@ -2065,13 +2147,21 @@ if grep -qP 'sha512' /etc/pam.d/common-password 2>/dev/null || \
 else
   sec_audit_report_fail 113 "requirement not met ()"
 fi
-
 _csl=$(cat /etc/securetty 2>/dev/null | grep -cP '^\s*(console|tty[0-9]+)\s*$' || true)
+}
+
+sec_audit_run_sshd() {
+# RULE114-114
+
 if [ "$_csl" -gt 0 ] 2>/dev/null; then
   sec_audit_report_pass 114 "root login restricted to console"
 else
   sec_audit_report_fail 114 "requirement not met ()"
 fi
+}
+
+sec_audit_run_sudo_su() {
+# RULE115-118
 
 if grep -qP '^\s*auth\s+required\s+pam_wheel\.so' /etc/pam.d/su 2>/dev/null; then
   sec_audit_report_pass 115 "su access restricted to wheel group"
@@ -2096,19 +2186,27 @@ if grep -qP '^\s*Defaults\s+.*logfile\s*=' /etc/sudoers /etc/sudoers.d/* 2>/dev/
 else
   sec_audit_report_fail 118 "requirement not met ()"
 fi
+}
+
+sec_audit_run_identity_files() {
+# RULE119-120
 
 if grep -qP '^\s*[^#].*NOPASSWD' /etc/sudoers /etc/sudoers.d/* 2>/dev/null; then
   sec_audit_report_fail 119 "requirement not met ()"
 else
   sec_audit_report_pass 119 "sudo requires password"
 fi
-
 _tto=$(grep -oP 'timestamp_timeout\s*=\s*\K\-?[0-9]+' /etc/sudoers /etc/sudoers.d/* 2>/dev/null | head -1)
+
 if [ "$_tto" = "-1" ]; then
   sec_audit_report_fail 120 "requirement not met ()"
 else
   sec_audit_report_pass 120 "sudo timestamp timeout configured"
 fi
+}
+
+sec_audit_run_sudo_su_2() {
+# RULE121-126
 
 if grep -qP '^\s*Defaults\s+.*listpw\s*=\s*(always|any)|passwd_tries' /etc/sudoers /etc/sudoers.d/* 2>/dev/null || \
    grep -qP '^ENCRYPT_METHOD\s+SHA512' /etc/login.defs 2>/dev/null; then
@@ -2116,30 +2214,30 @@ if grep -qP '^\s*Defaults\s+.*listpw\s*=\s*(always|any)|passwd_tries' /etc/sudoe
 else
   sec_audit_report_pass 121 "sudo authentication uses strong hash"
 fi
-
 _inact=$(useradd -D 2>/dev/null | grep -i INACTIVE | cut -d= -f2)
-if [ -n "$_inact" ] && [ "$_inact" -ge 0 ] && [ "$_inact" -le 30 ] 2>/dev/null; then
+
+if [ -n "$_inact" ] && [ "$_inact" -ge 0 ] && [ "$_inact" -le "$(secaudit_var INACTIVE_DAYS 30)" ] 2>/dev/null; then
   sec_audit_report_pass 122 "inactive password lock configured"
 else
   sec_audit_report_fail 122 "requirement not met ()"
 fi
+_maxd=$(_mx=$(secaudit_var PASS_MAX_DAYS 365); _pv=$(grep -hE '^[[:space:]]*PASS_MAX_DAYS[[:space:]]+[0-9]+' /etc/login.defs 2>/dev/null | awk '{print $2; exit}'); [ -n "$_pv" ] && [ "$_pv" -ge 1 ] && [ "$_pv" -le "$_mx" ] | awk '{print $2}')
 
-_maxd=$(grep -P '^\s*PASS_MAX_DAYS' /etc/login.defs 2>/dev/null | awk '{print $2}')
-if [ -n "$_maxd" ] && [ "$_maxd" -le 365 ] && [ "$_maxd" -ge 1 ] 2>/dev/null; then
+if [ -n "$_maxd" ] && [ "$_maxd" -le "$(secaudit_var PASS_MAX_DAYS 365)" ] && [ "$_maxd" -ge 1 ] 2>/dev/null; then
   sec_audit_report_pass 123 "password expiration configured"
 else
   sec_audit_report_fail 123 "requirement not met ()"
 fi
-
 _warn=$(grep -P '^\s*PASS_WARN_AGE' /etc/login.defs 2>/dev/null | awk '{print $2}')
-if [ -n "$_warn" ] && [ "$_warn" -ge 7 ] 2>/dev/null; then
+
+if [ -n "$_warn" ] && [ "$_warn" -ge "$(secaudit_var PASS_WARN_AGE 7)" ] 2>/dev/null; then
   sec_audit_report_pass 124 "password warning days configured"
 else
   sec_audit_report_fail 124 "requirement not met ()"
 fi
-
 _mind=$(grep -P '^\s*PASS_MIN_DAYS' /etc/login.defs 2>/dev/null | awk '{print $2}')
-if [ -n "$_mind" ] && [ "$_mind" -ge 1 ] 2>/dev/null; then
+
+if [ -n "$_mind" ] && [ "$_mind" -ge "$(secaudit_var PASS_MIN_DAYS 1)" ] 2>/dev/null; then
   sec_audit_report_pass 125 "password minimum days configured"
 else
   sec_audit_report_fail 125 "requirement not met ()"
@@ -2150,56 +2248,71 @@ if grep -qP 'remember\s*=\s*([5-9]|[1-9][0-9]+)' /etc/pam.d/common-password 2>/d
 else
   sec_audit_report_fail 126 "requirement not met ()"
 fi
-
 _no_pw=$(awk -F: '($2 == "" ) {print $1}' /etc/shadow 2>/dev/null | wc -l)
+}
+
+sec_audit_run_identity_files_2() {
+# RULE127-128
+
 if [ "$_no_pw" -eq 0 ]; then
   sec_audit_report_pass 127 "all users have passwords"
 else
   sec_audit_report_fail 127 "requirement not met ()"
 fi
-
 _bad_sys=$(awk -F: '($1!="root" && $1!="sync" && $1!="shutdown" && $1!="halt" && $3<1000 && $7!~/nologin|false/) {print $1}' /etc/passwd 2>/dev/null | wc -l)
+
 if [ "$_bad_sys" -eq 0 ]; then
   sec_audit_report_pass 128 "system accounts secured"
 else
   sec_audit_report_fail 128 "requirement not met ()"
 fi
-
 _rgid=$(grep -P '^root:' /etc/passwd 2>/dev/null | cut -d: -f4)
+}
+
+sec_audit_run_accounts() {
+# RULE129-131
+
 if [ "$_rgid" = "0" ]; then
   sec_audit_report_pass 129 "root default group GID 0"
 else
   sec_audit_report_fail 129 "requirement not met ()"
 fi
-
 _umask_ld=$(grep -P '^\s*UMASK' /etc/login.defs 2>/dev/null | awk '{print $2}')
+
 if echo "$_umask_ld" | grep -qP '^0?[2-7][7]$|^0?027$'; then
   sec_audit_report_pass 130 "umask 027 or stricter configured"
 else
   sec_audit_report_fail 130 "requirement not met ()"
 fi
-
 _tmout=$(grep -rPo '(?<=TMOUT=)[0-9]+' /etc/profile /etc/profile.d/*.sh /etc/bash.bashrc 2>/dev/null | head -1)
+
 if [ -n "$_tmout" ] && [ "$_tmout" -le 900 ] && [ "$_tmout" -gt 0 ] 2>/dev/null; then
   sec_audit_report_pass 131 "shell timeout configured"
 else
   sec_audit_report_fail 131 "requirement not met ()"
 fi
-
 _rootpw=$(grep -P '^root:' /etc/shadow 2>/dev/null | cut -d: -f2)
+}
+
+sec_audit_run_sshd_2() {
+# RULE132-132
+
 if echo "$_rootpw" | grep -qP '^\*|^!'; then
   sec_audit_report_pass 132 "root account secured"
 else
   sec_audit_report_fail 132 "requirement not met ()"
 fi
-
 _dup_uid=$(cut -d: -f3 /etc/passwd 2>/dev/null | sort | uniq -d | wc -l)
+}
+
+sec_audit_run_identity_files_3() {
+# RULE133-135
+
 if [ "$_dup_uid" -eq 0 ]; then
   sec_audit_report_pass 133 "all UIDs unique"
 else
   sec_audit_report_fail 133 "requirement not met ()"
 fi
-
 _missing_homes=0
 while IFS=: read -r _user _ _uid _ _ _home _shell; do
   [ "$_uid" -lt 1000 ] && continue
@@ -2207,12 +2320,12 @@ while IFS=: read -r _user _ _uid _ _ _home _shell; do
   [ "$_shell" = "/bin/false" ] && continue
   [ -d "$_home" ] || _missing_homes=$((_missing_homes+1))
 done < /etc/passwd 2>/dev/null
+
 if [ "$_missing_homes" -eq 0 ]; then
   sec_audit_report_pass 135 "all user home directories exist"
 else
   sec_audit_report_fail 135 "requirement not met ()"
 fi
-
 _not_owned=0
 while IFS=: read -r _user _ _uid _ _ _home _shell; do
   [ "$_uid" -lt 1000 ] && continue
@@ -2222,12 +2335,16 @@ while IFS=: read -r _user _ _uid _ _ _home _shell; do
   _owner=$(stat -Lc "%u" "$_home" 2>/dev/null)
   [ "$_owner" = "$_uid" ] || _not_owned=$((_not_owned+1))
 done < /etc/passwd 2>/dev/null
+}
+
+sec_audit_run_filesystem_integrity() {
+# RULE136-139
+
 if [ "$_not_owned" -eq 0 ]; then
   sec_audit_report_pass 136 "users own their home directories"
 else
   sec_audit_report_fail 136 "requirement not met ()"
 fi
-
 _bad_perms=0
 while IFS=: read -r _user _ _uid _ _ _home _shell; do
   [ "$_uid" -lt 1000 ] && continue
@@ -2238,37 +2355,42 @@ while IFS=: read -r _user _ _uid _ _ _home _shell; do
   _other=$(( 8#$_perm & 7 ))
   if [ "$_other" -gt 0 ]; then _bad_perms=$((_bad_perms+1)); fi
 done < /etc/passwd 2>/dev/null
+
 if [ "$_bad_perms" -eq 0 ]; then
   sec_audit_report_pass 137 "user home directories permissions 750 or stricter"
 else
   sec_audit_report_fail 137 "requirement not met ()"
 fi
-
 _netrc=$(find /home /root -maxdepth 2 -name ".netrc" 2>/dev/null | wc -l)
+
 if [ "$_netrc" -eq 0 ]; then
   sec_audit_report_pass 138 "no .netrc files found"
 else
   sec_audit_report_fail 138 "requirement not met ()"
 fi
-
 _fwd=$(find /home /root -maxdepth 2 -name ".forward" 2>/dev/null | wc -l)
+
 if [ "$_fwd" -eq 0 ]; then
   sec_audit_report_pass 139 "no .forward files present"
 else
   sec_audit_report_fail 139 "requirement not met ()"
 fi
-
 _rh=$(find /home /root -maxdepth 2 -name ".rhosts" 2>/dev/null | wc -l)
+}
+
+sec_audit_run_sshd_3() {
+# RULE140-152
+
 if [ "$_rh" -eq 0 ]; then
   sec_audit_report_pass 140 "no .rhosts files present"
 else
   sec_audit_report_fail 140 "requirement not met ()"
 fi
-
 sec_audit_sshd_d12_equals 141 x11forwarding no "SSH X11 forwarding disabled" "SSH X11 forwarding not disabled"
-
 _mat=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*maxauthtries[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
-if [ -n "$_mat" ] && [ "$_mat" -le 4 ] 2>/dev/null; then
+
+
+if [ -n "$_mat" ] && [ "$_mat" -le "$(secaudit_var MAX_AUTH_TRIES 4)" ] 2>/dev/null; then
   sec_audit_report_pass 142 "SSH MaxAuthTries <= 4"
 else
   sec_audit_report_fail 142 "requirement not met ()"
@@ -2285,8 +2407,8 @@ if [ "$(sec_audit_sshd_config_grep -iE "^[[:space:]]*hostbasedauthentication[[:s
 else
   sec_audit_report_fail 144 "requirement not met ()"
 fi
-
 _rli=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*permitrootlogin[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
+
 if [ "$_rli" = "no" ]; then
   sec_audit_report_pass 145 "SSH root login disabled"
 else
@@ -2304,17 +2426,17 @@ if [ "$(sec_audit_sshd_config_grep -iE "^[[:space:]]*permituserenvironment[[:spa
 else
   sec_audit_report_fail 147 "requirement not met ()"
 fi
-
 _cai=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*clientaliveinterval[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
 _cac=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*clientalivecountmax[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
+
 if [ -n "$_cai" ] && [ "$_cai" -gt 0 ] && [ -n "$_cac" ] && [ "$_cac" -ge 0 ] 2>/dev/null; then
   sec_audit_report_pass 148 "SSH idle timeout configured"
 else
   sec_audit_report_fail 148 "requirement not met ()"
 fi
-
 _lgt=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*logingracetime[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
-if [ -n "$_lgt" ] && [ "$_lgt" -le 60 ] && [ "$_lgt" -gt 0 ] 2>/dev/null; then
+
+if [ -n "$_lgt" ] && [ "$_lgt" -le "$(secaudit_var LOGIN_GRACE_TIME 60)" ] && [ "$_lgt" -gt 0 ] 2>/dev/null; then
   sec_audit_report_pass 149 "SSH LoginGraceTime <= 60"
 else
   sec_audit_report_fail 149 "requirement not met ()"
@@ -2331,8 +2453,8 @@ if [ "$(sec_audit_sshd_config_grep -iE "^[[:space:]]*allowtcpforwarding[[:space:
 else
   sec_audit_report_fail 151 "requirement not met ()"
 fi
-
 _ms=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*maxstartups[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
+
 if [ -n "$_ms" ]; then
   _ms_start=$(echo "$_ms" | cut -d: -f1)
   if [ "$_ms_start" -le 10 ] 2>/dev/null; then
@@ -2343,9 +2465,13 @@ if [ -n "$_ms" ]; then
 else
   sec_audit_report_fail 152 "requirement not met ()"
 fi
-
 _msess=$(sec_audit_sshd_config_grep -iE "^[[:space:]]*maxsessions[[:space:]]+" 2>/dev/null | awk '{print $2}' | head -n1)
-if [ -n "$_msess" ] && [ "$_msess" -le 10 ] 2>/dev/null; then
+}
+
+sec_audit_run_aide() {
+# RULE153-154
+
+if [ -n "$_msess" ] && [ "$_msess" -le "$(secaudit_var MAX_SESSIONS 10)" ] 2>/dev/null; then
   sec_audit_report_pass 153 "SSH MaxSessions <= 10"
 else
   sec_audit_report_fail 153 "requirement not met ()"
@@ -2356,42 +2482,46 @@ if dpkg -s aide aide-common 2>/dev/null | grep -q "^Status.*installed"; then
 else
   sec_audit_report_fail 154 "requirement not met ()"
 fi
-
 _ep=$(stat -Lc "%a %u %g" /etc/passwd 2>/dev/null)
+}
+
+sec_audit_run_identity_files_4() {
+# RULE155-168
+
 if [ "$(echo "$_ep" | awk '{print $2}')" = "0" ] && [ "$(echo "$_ep" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_ep" | awk '{print $1}')" = "644" ]; then
   sec_audit_report_pass 155 "/etc/passwd permissions 644"
 else
   sec_audit_report_fail 155 "requirement not met ()"
 fi
-
 _es=$(stat -Lc "%a %u %g" /etc/shadow 2>/dev/null)
 _es_mode=$(echo "$_es" | awk '{print $1}')
 _es_owner=$(echo "$_es" | awk '{print $2}')
+
 if [ "$_es_owner" = "0" ] && [[ "$_es_mode" =~ ^[0-6][04]0$ ]]; then
   sec_audit_report_pass 156 "/etc/shadow permissions 640 or stricter"
 else
   sec_audit_report_fail 156 "requirement not met ()"
 fi
-
 _eg=$(stat -Lc "%a %u %g" /etc/group 2>/dev/null)
+
 if [ "$(echo "$_eg" | awk '{print $2}')" = "0" ] && [ "$(echo "$_eg" | awk '{print $3}')" = "0" ] && \
    [ "$(echo "$_eg" | awk '{print $1}')" = "644" ]; then
   sec_audit_report_pass 157 "/etc/group permissions 644"
 else
   sec_audit_report_fail 157 "requirement not met ()"
 fi
-
 _gs=$(stat -Lc "%a %u %g" /etc/gshadow 2>/dev/null)
 _gs_mode=$(echo "$_gs" | awk '{print $1}')
 _gs_owner=$(echo "$_gs" | awk '{print $2}')
+
 if [ "$_gs_owner" = "0" ] && [[ "$_gs_mode" =~ ^[0-6][04]0$ ]]; then
   sec_audit_report_pass 158 "/etc/gshadow permissions 640 or stricter"
 else
   sec_audit_report_fail 158 "requirement not met ()"
 fi
-
 _empty_pw=$(awk -F: '($2 == "") {print $1}' /etc/shadow 2>/dev/null | wc -l)
+
 if [ "$_empty_pw" -eq 0 ]; then
   sec_audit_report_pass 159 "all shadow entries have passwords"
 else
@@ -2415,51 +2545,88 @@ if ! grep -qP '^\+' /etc/group 2>/dev/null; then
 else
   sec_audit_report_fail 162 "requirement not met ()"
 fi
-
 _uid0=$(awk -F: '($3 == 0) {print $1}' /etc/passwd 2>/dev/null | grep -v '^root$' | wc -l)
+
 if [ "$_uid0" -eq 0 ]; then
   sec_audit_report_pass 163 "only root has UID 0"
 else
   sec_audit_report_fail 163 "requirement not met ()"
 fi
-
 _gids_passwd=$(cut -d: -f4 /etc/passwd 2>/dev/null | sort -u)
 _gids_group=$(cut -d: -f3 /etc/group 2>/dev/null | sort -u)
 _missing_gid=0
 for _g in $_gids_passwd; do
   echo "$_gids_group" | grep -qx "$_g" || _missing_gid=$((_missing_gid+1))
 done
+
 if [ "$_missing_gid" -eq 0 ]; then
   sec_audit_report_pass 164 "all passwd groups exist in group"
 else
   sec_audit_report_fail 164 "requirement not met ()"
 fi
-
 _dup_uid2=$(cut -d: -f3 /etc/passwd 2>/dev/null | sort | uniq -d | wc -l)
+
 if [ "$_dup_uid2" -eq 0 ]; then
   sec_audit_report_pass 165 "no duplicate UIDs exist"
 else
   sec_audit_report_fail 165 "requirement not met ()"
 fi
-
 _dup_gid=$(cut -d: -f3 /etc/group 2>/dev/null | sort | uniq -d | wc -l)
+
 if [ "$_dup_gid" -eq 0 ]; then
   sec_audit_report_pass 166 "no duplicate GIDs exist"
 else
   sec_audit_report_fail 166 "requirement not met ()"
 fi
-
 _dup_user=$(cut -d: -f1 /etc/passwd 2>/dev/null | sort | uniq -d | wc -l)
+
 if [ "$_dup_user" -eq 0 ]; then
   sec_audit_report_pass 167 "no duplicate usernames exist"
 else
   sec_audit_report_fail 167 "requirement not met ()"
 fi
-
 _dup_grp=$(cut -d: -f1 /etc/group 2>/dev/null | sort | uniq -d | wc -l)
+
 if [ "$_dup_grp" -eq 0 ]; then
   sec_audit_report_pass 168 "no duplicate group names exist"
 else
   sec_audit_report_fail 168 "requirement not met ()"
 fi
+
+}
+
+sec_audit_main() {
+    sec_audit_run_kernel_modules
+    sec_audit_run_filesystem_partitions
+    sec_audit_run_package_security
+    sec_audit_run_apparmor
+    sec_audit_run_bootloader
+    sec_audit_run_process_hardening
+    sec_audit_run_banners
+    sec_audit_run_gdm
+    sec_audit_run_unused_services
+    sec_audit_run_client_tools
+    sec_audit_run_chrony
+    sec_audit_run_unused_services_2
+    sec_audit_run_auditd
+    sec_audit_run_bootloader_2
+    sec_audit_run_auditd_2
+    sec_audit_run_logging
+    sec_audit_run_cron_at
+    sec_audit_run_pam_auth
+    sec_audit_run_sshd
+    sec_audit_run_sudo_su
+    sec_audit_run_identity_files
+    sec_audit_run_sudo_su_2
+    sec_audit_run_identity_files_2
+    sec_audit_run_accounts
+    sec_audit_run_sshd_2
+    sec_audit_run_identity_files_3
+    sec_audit_run_filesystem_integrity
+    sec_audit_run_sshd_3
+    sec_audit_run_aide
+    sec_audit_run_identity_files_4
+}
+
+sec_audit_main "$@"
 

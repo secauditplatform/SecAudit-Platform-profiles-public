@@ -49,38 +49,11 @@ _XM_SHOW_COMMAND = (
     "(bdata show 2>/dev/null || true)"
 )
 
-_XM_SECURE_WIFI = frozenset(
-    {
-        "psk2",
-        "psk2+ccmp",
-        "psk2+aes",
-        "ccmp",
-        "sae",
-        "sae-mixed",
-        "wpa3",
-        "wpa3-mixed",
-        "wpa2",
-        "wpa2+ccmp",
-    }
-)
-
 _XM_WEAK_WIFI_MARKERS = ("wep", "tkip", "psk+", "+tkip")
 
 _XM_DEFAULT_SSID_RE = re.compile(
     r"^(xiaomi|miwifi|mi[\s_-]?router|xiaomi[\s_-]?router)",
     re.IGNORECASE,
-)
-
-_XM_DEFAULT_HOSTNAMES = frozenset(
-    {
-        "xiaomi",
-        "miwifi",
-        "mi-wifi",
-        "openwrt",
-        "xiaoqiang",
-        "router",
-        "localhost",
-    }
 )
 
 _XM_PLATFORM_MARKERS_RE = re.compile(
@@ -117,6 +90,19 @@ def secaudit_skip_all_rules(reason: str) -> None:
 
 def secaudit_trim(value: str | None) -> str:
     return (value or "").strip()
+
+
+def secaudit_var(name: str, fallback: str) -> str:
+    import os
+
+    value = os.environ.get(f"SECAUDIT_VAR_{name}")
+    if value is None or not str(value).strip():
+        return fallback
+    return str(value).strip()
+
+
+def secaudit_var_csv(name: str, fallback: str) -> list[str]:
+    return [part.strip() for part in secaudit_var(name, fallback).split(",") if part.strip()]
 
 
 def secaudit_lower(value: str | None) -> str:
@@ -246,7 +232,14 @@ def secaudit_check_hostname(num: int) -> None:
     if not hosts:
         secaudit_report_fail(num, "hostname not found in config")
         return
-    bad = [h for h in hosts if secaudit_lower(h) in _XM_DEFAULT_HOSTNAMES or not h.strip()]
+    defaults = {
+        item.lower()
+        for item in secaudit_var_csv(
+            "DEFAULT_HOSTNAMES",
+            "xiaomi,miwifi,mi-wifi,openwrt,xiaoqiang,router,localhost",
+        )
+    }
+    bad = [h for h in hosts if secaudit_lower(h) in defaults or not h.strip()]
     if bad:
         secaudit_report_fail(num, f"default/empty hostname: {', '.join(bad)}")
         return
@@ -287,7 +280,14 @@ def secaudit_check_wifi_encryption(num: int) -> None:
         for e in encs
         if e in {"none", "wep", "psk", "open"} or e.startswith("wep")
     ]
-    weakish = [e for e in encs if e not in _XM_SECURE_WIFI and e not in bad]
+    secure = {
+        item.lower()
+        for item in secaudit_var_csv(
+            "WIFI_ENCRYPTION",
+            "psk2+ccmp,psk2,psk2+aes,ccmp,sae,sae-mixed,wpa3,wpa3-mixed,wpa2,wpa2+ccmp",
+        )
+    }
+    weakish = [e for e in encs if e not in secure and e not in bad]
     if bad:
         secaudit_report_fail(num, f"insecure encryption: {', '.join(sorted(set(bad)))}")
         return
@@ -373,7 +373,8 @@ def secaudit_check_pmf(num: int) -> None:
     uses_modern = any(
         e in {"sae", "sae-mixed", "wpa3", "psk2", "psk2+ccmp"} for e in encs
     )
-    if any(v.strip() in {"1", "2"} for v in vals):
+    accepted = set(secaudit_var_csv("PMF_VALUES", "1,2"))
+    if any(v.strip() in accepted for v in vals):
         secaudit_report_pass(num, f"ieee80211w={vals[0]}")
         return
     if uses_modern:
@@ -454,9 +455,14 @@ def secaudit_check_telnet(num: int) -> None:
 
 def secaudit_check_ssh(num: int) -> None:
     ssh_en = secaudit_kv_values("ssh_en") + secaudit_all_values("ssh_en")
+    ssh_port = secaudit_var("SSH_WAN_PORT", "22")
+    if not ssh_port.isdigit():
+        ssh_port = "22"
     wan_ssh = bool(
         re.search(
-            r"(?is)src[=']+wan[\s\S]{0,120}dest_port[=']+22[\s\S]{0,80}(?:ACCEPT|accept)",
+            r"(?is)src[=']+wan[\s\S]{0,120}dest_port[=']+"
+            + re.escape(ssh_port)
+            + r"[\s\S]{0,80}(?:ACCEPT|accept)",
             _XM_BLOB,
         )
     )
@@ -562,9 +568,15 @@ def secaudit_check_admin_password(num: int) -> None:
     if re.search(r"(?mi)(?:admin_password|syspwd|password)\s*=\s*['\"]?$", _XM_BLOB):
         secaudit_report_fail(num, "empty admin password field")
         return
-    if secaudit_blob_has(
-        r"(?mi)password\s*=\s*['\"]?(admin|root|password|12345678)['\"]?$"
-    ):
+    weak_passwords = secaudit_var_csv(
+        "WEAK_ADMIN_PASSWORDS", "admin,root,password,12345678"
+    )
+    weak_pattern = (
+        r"(?mi)password\s*=\s*['\"]?("
+        + "|".join(re.escape(word) for word in weak_passwords)
+        + r")['\"]?$"
+    )
+    if weak_passwords and secaudit_blob_has(weak_pattern):
         secaudit_report_fail(num, "weak/default password marker found")
         return
     if secaudit_blob_has(r"wireless\.|network\.lan"):
@@ -683,7 +695,11 @@ def secaudit_check_port_forwards(num: int) -> None:
     if count == 0:
         secaudit_report_pass(num, "no port forwards configured")
         return
-    if count <= 3:
+    try:
+        port_forward_max = int(secaudit_var("PORT_FORWARD_MAX", "3"))
+    except ValueError:
+        port_forward_max = 3
+    if count <= port_forward_max:
         secaudit_report_pass(num, f"limited port forwards: {count} (review necessity)")
         return
     secaudit_report_fail(num, f"excessive port forwards detected: {count}")
@@ -701,7 +717,8 @@ def secaudit_check_lan_subnet(num: int) -> None:
     if not lan_ips:
         secaudit_report_fail(num, "LAN ipaddr not found")
         return
-    bad = [ip for ip in lan_ips if ip.startswith("192.168.31.")]
+    factory_prefix = secaudit_var("LAN_FACTORY_PREFIX", "192.168.31.")
+    bad = [ip for ip in lan_ips if ip.startswith(factory_prefix)]
     if bad:
         secaudit_report_fail(num, f"factory Xiaomi LAN subnet in use: {bad[0]}")
         return

@@ -22,6 +22,33 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+sec_audit_mode_policy() {
+    local path="$1" max="$2" legacy="$3" kind="$4" legacy_re="$5" got
+    got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+    if [ "$max" = "$legacy" ]; then
+        printf '%s\n' "$got" | grep -qE -- "$legacy_re"
+        return $?
+    fi
+    [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+    if [ "$kind" = "exact" ]; then
+        (( 8#$got == 8#$max ))
+    else
+        (( (8#$got & ~8#$max) == 0 ))
+    fi
+}
+
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -1442,10 +1469,16 @@ sec_audit_pam_auth_stacks_grep_Pi() {
     done <<< "$(sort -u <<< "$paths")"
     return 1
 }
+sec_audit_run_kernel_modules() {
+# RULE1-2
 # RULE1:
 sec_audit_assert_kmod_disabled 1 "cramfs kernel module" cramfs cramfs.ko* "cramfs"
 # RULE2:
 sec_audit_assert_kmod_disabled 2 "freevxfs kernel module" freevxfs freevxfs.ko* "freevxfs"
+}
+
+sec_audit_run_filesystem_partitions() {
+# RULE3-27
 # RULE3:
 sec_audit_assert_kmod_disabled 3 "hfs kernel module" hfs hfs.ko* "hfs"
 # RULE4:
@@ -1642,6 +1675,10 @@ else
     sec_audit_report_fail 27 "nosuid is not set on /var/tmp (or path not resolvable / not an explicit mount per policy)"
 fi
 
+}
+
+sec_audit_run_gdm() {
+# RULE28-28
 # RULE28:
 if sec_audit_mount_resolves /var/tmp && sec_audit_mount_has_option /var/tmp noexec; then
     sec_audit_report_pass 28 "noexec option set on /var/tmp partition"
@@ -1651,6 +1688,10 @@ else
     sec_audit_report_fail 28 "noexec is not set on /var/tmp (or path not resolvable / not an explicit mount per policy)"
 fi
 
+}
+
+sec_audit_run_package_security() {
+# RULE29-31
 # RULE29:
 if sec_audit_path_is_isolated_volume /var/log; then
     if sec_audit_mount_is_persisted /var/log; then
@@ -1679,6 +1720,10 @@ else
     sec_audit_report_fail 31 "nosuid is not set on /var/log (or path not resolvable / not an explicit mount per policy)"
 fi
 
+}
+
+sec_audit_run_aide() {
+# RULE32-33
 # RULE32:
 if sec_audit_mount_resolves /var/log && sec_audit_mount_has_option /var/log noexec; then
     sec_audit_report_pass 32 "noexec option set on /var/log partition"
@@ -1698,6 +1743,10 @@ if sec_audit_path_is_isolated_volume /var/log/audit; then
 else
     sec_audit_report_fail 33 "no compliant dedicated mount for /var/log/audit"
 fi
+}
+
+sec_audit_run_bootloader() {
+# RULE34-35
 # RULE34:
 if sec_audit_mount_resolves /var/log/audit && sec_audit_mount_has_option /var/log/audit nodev; then
     sec_audit_report_pass 34 "nodev option set on /var/log/audit partition"
@@ -1716,6 +1765,10 @@ else
     sec_audit_report_fail 35 "nosuid is not set on /var/log/audit (or path not resolvable / not an explicit mount per policy)"
 fi
 
+}
+
+sec_audit_run_process_hardening() {
+# RULE36-38
 # RULE36:
 if sec_audit_mount_resolves /var/log/audit && sec_audit_mount_has_option /var/log/audit noexec; then
     sec_audit_report_pass 36 "noexec option set on /var/log/audit partition"
@@ -1752,6 +1805,10 @@ else
     sec_audit_report_pass 38 "[main] gpgcheck is not false and no enabled .repo section forces gpgcheck=0"
 fi
 
+}
+
+sec_audit_run_selinux() {
+# RULE39-46
 # RULE39:
 _rule39_main=$(sec_audit_dnf_main_option repo_gpgcheck)
 _rule39_repo=$(sec_audit_yum_repo_list_explicit_repo_gpgcheck0 | head -n1)
@@ -1820,7 +1877,7 @@ else
 fi
 
 # RULE44:
-if grep -Psi '^\h*SELINUXTYPE\h*=\h*(targeted|mls)\b' /etc/selinux/config 2>/dev/null; then
+if _allow=$(secaudit_var SELINUX_POLICY targeted,mls); _got=$(grep -hE '^[[:space:]]*SELINUXTYPE[[:space:]]*=' /etc/selinux/config 2>/dev/null | head -n1 | sed 's/^[^=]*=[[:space:]]*//; s/[[:space:]].*$//'); _ug=$(printf '%s' "$_got" | tr '[:upper:]' '[:lower:]'); _hit=1; IFS=,; for _a in $_allow; do _ua=$(printf '%s' "$_a" | tr '[:upper:]' '[:lower:]'); _ua=${_ua// /}; [ -n "$_ua" ] && [ "$_ug" = "$_ua" ] && _hit=0; done; unset IFS; [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 44 "SELinux policy is configured"
 else
     sec_audit_report_fail 44 "SELinux policy type is not set to targeted or mls in /etc/selinux/config"
@@ -1842,13 +1899,17 @@ fi
 # RULE46:
 _ge46=$(getenforce 2>/dev/null || true)
 _cfg46=$(grep -Pi '^\h*SELINUX=\K\w+' /etc/selinux/config 2>/dev/null | head -n1 || true)
-if [[ "$_ge46" != "Enforcing" ]]; then
+if [[ "$(printf '%s' "$_ge46" | tr '[:upper:]' '[:lower:]')" != "$(secaudit_var SELINUX_MODE enforcing)" ]]; then
     sec_audit_report_fail 46 "getenforce is '${_ge46:-unknown}', expected Enforcing"
-elif [[ "$_cfg46" != "enforcing" ]]; then
+elif [[ "$(printf '%s' "$_cfg46" | tr '[:upper:]' '[:lower:]')" != "$(secaudit_var SELINUX_MODE enforcing)" ]]; then
     sec_audit_report_fail 46 "runtime Enforcing but /etc/selinux/config SELINUX=${_cfg46:-unset} (will revert after reboot)"
 else
     sec_audit_report_pass 46 "the SELinux mode is enforcing (runtime and config)"
 fi
+}
+
+sec_audit_run_banners() {
+# RULE47-53
 # RULE47:
 if ps -eZ 2>/dev/null | grep -q unconfined_service_t; then
     sec_audit_report_fail 47 "Processes running with unconfined_service_t were detected"
@@ -1873,7 +1934,7 @@ fi
 _fail50=1
 while IFS= read -r _gcfg; do
     [[ -f "$_gcfg" ]] || continue
-    if stat -Lc '%a' "$_gcfg" 2>/dev/null | grep -q '^[0-6]00$'; then
+    if sec_audit_mode_policy "$_gcfg" "$(secaudit_var MODE_GRUB_CFG 600)" 600 within '^[0-6]00$'; then
         if stat -Lc '%U:%G' "$_gcfg" 2>/dev/null | grep -q '^root:root$'; then
             _fail50=0
             break
@@ -1895,19 +1956,31 @@ else
 fi
 
 # RULE52:
-sec_audit_assert_sysctl_equals 52 fs.protected_hardlinks 1
+sec_audit_assert_sysctl_equals 52 fs.protected_hardlinks "$(secaudit_var SYSCTL_FS_PROTECTED_HARDLINKS 1)"
 # RULE53:
-sec_audit_assert_sysctl_equals 53 fs.protected_symlinks 1
+sec_audit_assert_sysctl_equals 53 fs.protected_symlinks "$(secaudit_var SYSCTL_FS_PROTECTED_SYMLINKS 1)"
+}
+
+sec_audit_run_gdm_2() {
+# RULE54-56
 # RULE54:
-sec_audit_assert_sysctl_equals 54 fs.suid_dumpable 0
+sec_audit_assert_sysctl_equals 54 fs.suid_dumpable "$(secaudit_var SYSCTL_FS_SUID_DUMPABLE 0)"
 # RULE55:
-sec_audit_assert_sysctl_equals 55 kernel.dmesg_restrict 1
+sec_audit_assert_sysctl_equals 55 kernel.dmesg_restrict "$(secaudit_var SYSCTL_KRN_DMESG_RESTRICT 1)"
 # RULE56:
-sec_audit_assert_sysctl_equals 56 kernel.kptr_restrict 2
+sec_audit_assert_sysctl_equals 56 kernel.kptr_restrict "$(secaudit_var SYSCTL_KRN_KPTR_RESTRICT 2)"
+}
+
+sec_audit_run_crypto_policy() {
+# RULE57-57
 # RULE57:
-sec_audit_assert_sysctl_equals 57 kernel.yama.ptrace_scope 1
+sec_audit_assert_sysctl_equals 57 kernel.yama.ptrace_scope "$(secaudit_var SYSCTL_KRN_YAMA_PTRACE_SCOPE 1)"
+}
+
+sec_audit_run_chrony() {
+# RULE58-59
 # RULE58:
-sec_audit_assert_sysctl_equals 58 kernel.randomize_va_space 2
+sec_audit_assert_sysctl_equals 58 kernel.randomize_va_space "$(secaudit_var SYSCTL_KRN_RANDOMIZE_VA_SPACE 2)"
 # RULE59:
 _rule59_cat=$(systemd-analyze cat-config systemd/coredump.conf 2>/dev/null)
 _rule59_corep=$(sec_audit_sysctl_runtime kernel.core_pattern)
@@ -1921,6 +1994,10 @@ else
     sec_audit_report_fail 59 "merged systemd/coredump.conf does not set ProcessSizeMax=0"
 fi
 
+}
+
+sec_audit_run_unused_services() {
+# RULE60-78
 # RULE60:
 _rule60_cat=$(systemd-analyze cat-config systemd/coredump.conf 2>/dev/null)
 if builtin printf '%s\n' "$_rule60_cat" | grep -Pq '^\h*Storage=\h*none\b'; then
@@ -1979,7 +2056,7 @@ fi
 
 # RULE67:
 if [ -e /etc/motd ]; then
-    if stat -Lc '%a' /etc/motd 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/motd "$(secaudit_var MODE_MOTD 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/motd 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 67 "access to /etc/motd is configured"
         else
@@ -1993,7 +2070,7 @@ else
 fi
 
 # RULE68:
-if stat -Lc '%a' /etc/issue 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/issue "$(secaudit_var MODE_ISSUE 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/issue 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 68 "access to /etc/issue is configured"
     else
@@ -2005,7 +2082,7 @@ fi
 
 # RULE69:
 if [ -e /etc/issue.net ]; then
-    if stat -Lc '%a' /etc/issue.net 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/issue.net "$(secaudit_var MODE_ISSUE_NET 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/issue.net 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 69 "access to /etc/issue.net is configured"
         else
@@ -2075,6 +2152,10 @@ sec_audit_assert_service_unused 76 autofs "autofs services are not in use" "auto
 sec_audit_assert_service_unused 77 avahi "avahi daemon services are not in use" "avahi daemon services are installed and enabled or actively running" "avahi-daemon.socket" "avahi-daemon.service"
 # RULE78:
 sec_audit_assert_service_unused 78 cockpit-ws "cockpit web services are not in use" "cockpit web services are installed and enabled or actively running" "cockpit.socket" "cockpit.service"
+}
+
+sec_audit_run_client_tools() {
+# RULE79-82
 # RULE79:
 sec_audit_assert_service_unused 79 dhcp-server "dhcp server services are not in use" "dhcp server services are installed and enabled or actively running" "dhcpd.service" "dhcpd6.service"
 # RULE80:
@@ -2083,6 +2164,10 @@ sec_audit_assert_service_unused 80 bind "dns server services are not in use" "dn
 sec_audit_assert_service_unused 81 dnsmasq "dnsmasq services are not in use" "dnsmasq services are installed and enabled or actively running" "dnsmasq.service"
 # RULE82:
 sec_audit_assert_service_unused 82 vsftpd "ftp server services are not in use" "ftp server services are installed and enabled or actively running" "vsftpd.service"
+}
+
+sec_audit_run_network_stack() {
+# RULE83-89
 # RULE83:
 if sec_audit_pkg_any_installed dovecot cyrus-imapd; then
     if sec_audit_systemd_unit_live dovecot.socket dovecot.service cyrus-imapd.service; then
@@ -2105,10 +2190,18 @@ sec_audit_assert_service_unused 87 rsync-daemon "rsync services are not in use" 
 sec_audit_assert_service_unused 88 samba "samba file server services are not in use" "samba file server services are installed and enabled or actively running" "smb.service"
 # RULE89:
 sec_audit_assert_service_unused 89 net-snmp "snmp services are not in use" "snmp services are installed and enabled or actively running" "snmpd.service"
+}
+
+sec_audit_run_logging() {
+# RULE90-91
 # RULE90:
 sec_audit_assert_service_unused 90 telnet-server "telnet server services are not in use" "telnet server services are installed and enabled or actively running" "telnet.socket"
 # RULE91:
 sec_audit_assert_service_unused 91 tftp-server "tftp server services are not in use" "tftp server services are installed and enabled or actively running" "tftp.socket" "tftp.service"
+}
+
+sec_audit_run_network_stack_2() {
+# RULE92-93
 # RULE92:
 sec_audit_assert_service_unused 92 squid "web proxy server services are not in use" "web proxy server services are installed and enabled or actively running" "squid.service"
 # RULE93:
@@ -2121,6 +2214,10 @@ if sec_audit_pkg_any_installed httpd nginx; then
 else
     sec_audit_report_pass 93 "web server services are not in use"
 fi
+}
+
+sec_audit_run_auditd() {
+# RULE94-94
 # RULE94:
 if rpm -q gdm &>/dev/null || systemctl is-enabled gdm 2>/dev/null | grep -q 'enabled' || systemctl is-active gdm 2>/dev/null | grep -q '^active'; then
     sec_audit_report_fail 94 "GNOME Display Manager (gdm) package is still installed"
@@ -2128,6 +2225,10 @@ else
     sec_audit_report_pass 94 "GNOME Display Manager is removed"
 fi
 
+}
+
+sec_audit_run_unused_services_2() {
+# RULE95-95
 # RULE95:
 if rpm -q xorg-x11-server-Xwayland &>/dev/null; then
     sec_audit_report_fail 95 "X window server services are installed and enabled or actively running"
@@ -2135,6 +2236,10 @@ else
     sec_audit_report_pass 95 "X window server services are not in use"
 fi
 
+}
+
+sec_audit_run_bootloader_2() {
+# RULE96-96
 # RULE96:
 if rpm -q ftp &>/dev/null; then
     sec_audit_report_fail 96 "ftp client package is installed"
@@ -2142,6 +2247,10 @@ else
     sec_audit_report_pass 96 "ftp client is not installed"
 fi
 
+}
+
+sec_audit_run_auditd_2() {
+# RULE97-118
 # RULE97:
 if rpm -q openldap-clients &>/dev/null; then
     sec_audit_report_fail 97 "ldap client package is installed"
@@ -2210,7 +2319,7 @@ else
 fi
 
 # RULE104:
-if stat -Lc '%a' /etc/crontab 2>/dev/null | grep -q '^[0-6]00$'; then
+if sec_audit_mode_policy /etc/crontab "$(secaudit_var MODE_CRONTAB 600)" 600 within '^[0-6]00$'; then
     if stat -Lc '%U:%G' /etc/crontab 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 104 "access to /etc/crontab is configured"
     else
@@ -2221,7 +2330,7 @@ else
 fi
 
 # RULE105:
-if stat -Lc '%a' /etc/cron.hourly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.hourly "$(secaudit_var MODE_CRON_HOURLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.hourly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 105 "access to /etc/cron.hourly is configured"
     else
@@ -2232,7 +2341,7 @@ else
 fi
 
 # RULE106:
-if stat -Lc '%a' /etc/cron.daily 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.daily "$(secaudit_var MODE_CRON_DAILY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.daily 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 106 "access to /etc/cron.daily is configured"
     else
@@ -2243,7 +2352,7 @@ else
 fi
 
 # RULE107:
-if stat -Lc '%a' /etc/cron.weekly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.weekly "$(secaudit_var MODE_CRON_WEEKLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.weekly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 107 "access to /etc/cron.weekly is configured"
     else
@@ -2254,7 +2363,7 @@ else
 fi
 
 # RULE108:
-if stat -Lc '%a' /etc/cron.monthly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.monthly "$(secaudit_var MODE_CRON_MONTHLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.monthly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 108 "access to /etc/cron.monthly is configured"
     else
@@ -2265,7 +2374,7 @@ else
 fi
 
 # RULE109:
-if stat -Lc '%a' /etc/cron.yearly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.yearly "$(secaudit_var MODE_CRON_YEARLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.yearly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 109 "access to /etc/cron.yearly is configured"
     else
@@ -2276,7 +2385,7 @@ else
 fi
 
 # RULE110:
-if stat -Lc '%a' /etc/cron.d 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.d "$(secaudit_var MODE_AUDIT_LOG_DIR 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.d 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 110 "access to /etc/cron.d is configured"
     else
@@ -2288,7 +2397,7 @@ fi
 
 # RULE111:
 if [ -e /etc/cron.allow ]; then
-    if stat -Lc '%a' /etc/cron.allow 2>/dev/null | grep -qE '^640$'; then
+    if sec_audit_mode_policy /etc/cron.allow "$(secaudit_var MODE_CRON_ALLOW 640)" 640 exact '^640$'; then
         if stat -Lc '%U' /etc/cron.allow 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/cron.allow 2>/dev/null | grep -qE 'root|crontab'; then
                 sec_audit_report_pass 111 "access to crontab is configured"
@@ -2307,7 +2416,7 @@ fi
 
 # RULE112:
 if [ -e /etc/at.allow ]; then
-    if stat -Lc '%a' /etc/at.allow 2>/dev/null | grep -qE '^640$'; then
+    if sec_audit_mode_policy /etc/at.allow "$(secaudit_var MODE_AT_ALLOW 640)" 640 exact '^640$'; then
         if stat -Lc '%U' /etc/at.allow 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/at.allow 2>/dev/null | grep -qE 'daemon|root'; then
                 sec_audit_report_pass 112 "access to at is configured"
@@ -2346,6 +2455,10 @@ sec_audit_assert_kmod_disabled 116 "atm kernel module" atm atm.ko* "atm"
 sec_audit_assert_kmod_disabled 117 "can kernel module" can can.ko* "can"
 # RULE118:
 sec_audit_assert_kmod_disabled 118 "dccp kernel module" dccp dccp.ko* "dccp"
+}
+
+sec_audit_run_logging_2() {
+# RULE119-123
 # RULE119:
 sec_audit_assert_kmod_disabled 119 "tipc kernel module" tipc tipc.ko* "tipc"
 # RULE120:
@@ -2353,25 +2466,29 @@ sec_audit_assert_kmod_disabled 120 "rds kernel module" rds rds.ko* "rds"
 # RULE121:
 sec_audit_assert_kmod_disabled 121 "sctp kernel module" sctp sctp.ko* "sctp"
 # RULE122:
-sec_audit_assert_sysctl_equals 122 net.ipv4.ip_forward 0
+sec_audit_assert_sysctl_equals 122 net.ipv4.ip_forward "$(secaudit_var SYSCTL_IPV4_IP_FORWARD 0)"
 
 # RULE123:
-sec_audit_assert_sysctl_equals 123 net.ipv4.conf.all.forwarding 0
+sec_audit_assert_sysctl_equals 123 net.ipv4.conf.all.forwarding "$(secaudit_var SYSCTL_IPV4_ALL_FORWARDING 0)"
 
+}
+
+sec_audit_run_cron_at() {
+# RULE122-168
 # RULE124:
-sec_audit_assert_sysctl_equals 124 net.ipv4.conf.default.forwarding 0
+sec_audit_assert_sysctl_equals 124 net.ipv4.conf.default.forwarding "$(secaudit_var SYSCTL_IPV4_DEF_FORWARDING 0)"
 
 # RULE125:
-sec_audit_assert_sysctl_equals 125 net.ipv4.conf.all.send_redirects 0
+sec_audit_assert_sysctl_equals 125 net.ipv4.conf.all.send_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SEND_REDIRECTS 0)"
 
 # RULE126:
-sec_audit_assert_sysctl_equals 126 net.ipv4.conf.default.send_redirects 0
+sec_audit_assert_sysctl_equals 126 net.ipv4.conf.default.send_redirects "$(secaudit_var SYSCTL_IPV4_DEF_SEND_REDIRECTS 0)"
 
 # RULE127:
-sec_audit_assert_sysctl_equals 127 net.ipv4.conf.all.accept_redirects 0
+sec_audit_assert_sysctl_equals 127 net.ipv4.conf.all.accept_redirects "$(secaudit_var SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS 0)"
 
 # RULE128:
-sec_audit_assert_sysctl_equals 128 net.ipv4.conf.all.secure_redirects 0
+sec_audit_assert_sysctl_equals 128 net.ipv4.conf.all.secure_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SECURE_REDIRECTS 0)"
 
 if ! sec_audit_sshd_effective_usable; then
     for _sshn in 129 130 131 132 133 134 135 136 137 138 156 157 158 159 160 161 162 163 164 165 166; do
@@ -2379,34 +2496,34 @@ if ! sec_audit_sshd_effective_usable; then
     done
 else
 # RULE129:
-sec_audit_assert_sysctl_equals 129 net.ipv4.conf.all.rp_filter 1
+sec_audit_assert_sysctl_equals 129 net.ipv4.conf.all.rp_filter "$(secaudit_var SYSCTL_IPV4_ALL_RP_FILTER 1)"
 
 # RULE130:
-sec_audit_assert_sysctl_equals 130 net.ipv4.conf.default.rp_filter 1
+sec_audit_assert_sysctl_equals 130 net.ipv4.conf.default.rp_filter "$(secaudit_var SYSCTL_IPV4_DEF_RP_FILTER 1)"
 
 # RULE131:
-sec_audit_assert_sysctl_equals 131 net.ipv4.conf.all.log_martians 1
+sec_audit_assert_sysctl_equals 131 net.ipv4.conf.all.log_martians "$(secaudit_var SYSCTL_IPV4_ALL_LOG_MARTIANS 1)"
 
 # RULE132:
-sec_audit_assert_sysctl_equals 132 net.ipv4.conf.default.log_martians 1
+sec_audit_assert_sysctl_equals 132 net.ipv4.conf.default.log_martians "$(secaudit_var SYSCTL_IPV4_DEF_LOG_MARTIANS 1)"
 
 # RULE133:
-sec_audit_assert_sysctl_equals 133 net.ipv4.tcp_syncookies 1
+sec_audit_assert_sysctl_equals 133 net.ipv4.tcp_syncookies "$(secaudit_var SYSCTL_IPV4_TCP_SYNCOOKIES 1)"
 
 # RULE134:
-sec_audit_assert_sysctl_equals 134 net.ipv6.conf.all.forwarding 0
+sec_audit_assert_sysctl_equals 134 net.ipv6.conf.all.forwarding "$(secaudit_var SYSCTL_IPV6_ALL_FORWARDING 0)"
 
 # RULE135:
-sec_audit_assert_sysctl_equals 135 net.ipv6.conf.default.forwarding 0
+sec_audit_assert_sysctl_equals 135 net.ipv6.conf.default.forwarding "$(secaudit_var SYSCTL_IPV6_DEF_FORWARDING 0)"
 
 # RULE136:
-sec_audit_assert_sysctl_equals 136 net.ipv6.conf.all.accept_redirects 0
+sec_audit_assert_sysctl_equals 136 net.ipv6.conf.all.accept_redirects "$(secaudit_var SYSCTL_IPV6_ALL_ACCEPT_REDIRECTS 0)"
 
 # RULE137:
-sec_audit_assert_sysctl_equals 137 net.ipv6.conf.all.accept_ra 0
+sec_audit_assert_sysctl_equals 137 net.ipv6.conf.all.accept_ra "$(secaudit_var SYSCTL_IPV6_ALL_ACCEPT_RA 0)"
 
 # RULE138:
-sec_audit_assert_sysctl_equals 138 net.ipv6.conf.default.accept_ra 0
+sec_audit_assert_sysctl_equals 138 net.ipv6.conf.default.accept_ra "$(secaudit_var SYSCTL_IPV6_DEF_ACCEPT_RA 0)"
 
 # RULE122:
 if rpm -q firewalld &>/dev/null; then
@@ -2617,7 +2734,7 @@ else
 fi
 
 # RULE158:
-if sec_audit_sshd_config_grep -iq 'loglevel VERBOSE\|loglevel INFO'; then
+if _lv=$(sec_audit_sshd_config_grep -i '^loglevel' | awk '{print toupper($2); exit}'); _allow=$(secaudit_var LOG_LEVEL VERBOSE,INFO); _hit=1; IFS=,; for _a in $_allow; do _ua=$(printf '%s' "$_a" | tr '[:lower:]' '[:upper:]'); _ua=${_ua// /}; [ -n "$_ua" ] && [ "$_lv" = "$_ua" ] && _hit=0; done; unset IFS; [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 158 "sshd LogLevel is configured"
 else
     sec_audit_report_fail 158 "sshd LogLevel does not meet the required policy (see sshd -T)"
@@ -2631,7 +2748,7 @@ else
 fi
 
 # RULE160:
-if sec_audit_sshd_config_grep -Piq 'maxauthtries\s+[1-4]\b'; then
+if _v=$(sec_audit_sshd_config_grep -i '^maxauthtries' | awk '{print $2; exit}'); _mx=$(secaudit_var MAX_AUTH_TRIES 4); [ -n "$_v" ] && [ "$_v" -ge 1 ] && [ "$_v" -le "$_mx" ]; then
     sec_audit_report_pass 160 "sshd MaxAuthTries is configured"
 else
     sec_audit_report_fail 160 "sshd MaxAuthTries does not meet the required policy (see sshd -T)"
@@ -2645,28 +2762,28 @@ else
 fi
 
 # RULE162:
-if sec_audit_sshd_config_grep -Piq 'maxsessions\s+([1-9]|10)\b'; then
+if _v=$(sec_audit_sshd_config_grep -i '^maxsessions' | awk '{print $2; exit}'); _mx=$(secaudit_var MAX_SESSIONS 9); [ -n "$_v" ] && [ "$_v" -ge 1 ] && [ "$_v" -le "$_mx" ]; then
     sec_audit_report_pass 162 "sshd MaxSessions is configured"
 else
     sec_audit_report_fail 162 "sshd MaxSessions does not meet the required policy (see sshd -T)"
 fi
 
 # RULE163:
-if sec_audit_sshd_config_grep -iq 'permitemptypasswords no'; then
+if sec_audit_sshd_config_grep -iq "permitemptypasswords $(secaudit_var SSH_PERMIT_EMPTY_PASSWORDS no)"; then
     sec_audit_report_pass 163 "sshd PermitEmptyPasswords is disabled"
 else
     sec_audit_report_fail 163 "sshd PermitEmptyPasswords is not disabled in effective sshd -T output"
 fi
 
 # RULE164:
-if sec_audit_sshd_config_grep -iq 'permitrootlogin no'; then
+if sec_audit_sshd_config_grep -iq "permitrootlogin $(secaudit_var PERMIT_ROOT_LOGIN no)"; then
     sec_audit_report_pass 164 "sshd PermitRootLogin is disabled"
 else
     sec_audit_report_fail 164 "sshd PermitRootLogin is not disabled in effective sshd -T output"
 fi
 
 # RULE165:
-if sec_audit_sshd_config_grep -iq 'permituserenvironment no'; then
+if sec_audit_sshd_config_grep -iq "permituserenvironment $(secaudit_var SSH_PERMIT_USER_ENV no)"; then
     sec_audit_report_pass 165 "sshd PermitUserEnvironment is disabled"
 else
     sec_audit_report_fail 165 "sshd PermitUserEnvironment is not disabled in effective sshd -T output"
@@ -2704,6 +2821,10 @@ else
     sec_audit_report_fail 168 "sudo is not configured to require a pseudo-terminal (use_pty)"
 fi
 
+}
+
+sec_audit_run_filesystem_integrity() {
+# RULE169-169
 # RULE169:
 if [ "${#_sudoers_files[@]}" -gt 0 ] && grep -Psi "^\h*Defaults\h+([^#]+,\h*)?logfile\h*=\h*(\"|\')?\H+(\"|\')?(,\h*\H+\h*)*\h*(#.*)?$" "${_sudoers_files[@]}" 2>/dev/null | grep -q .; then
     sec_audit_report_pass 169 "sudo log file exists"
@@ -2711,6 +2832,10 @@ else
     sec_audit_report_fail 169 "sudo log file is missing or not configured"
 fi
 
+}
+
+sec_audit_run_identity_files() {
+# RULE170-177
 # RULE170:
 if [ "${#_sudoers_files[@]}" -gt 0 ] && grep -E "^[^#].*NOPASSWD" "${_sudoers_files[@]}" 2>/dev/null | grep -q .; then
     sec_audit_report_fail 170 "NOPASSWD or password-less sudo rules violate escalation policy"
@@ -2789,27 +2914,35 @@ else
     sec_audit_report_fail 177 "pam_unix module is not enabled on the password stack"
 fi
 
+}
+
+sec_audit_run_filesystem_integrity_2() {
+# RULE178-180
 # RULE178:
-if grep -Psi 'deny\h*=\h*[1-5]\b' /etc/security/faillock.conf 2>/dev/null; then
+if _max=$(secaudit_var FAILLOCK_DENY 5); _hit=1; while IFS= read -r _v; do [ "$_v" -ge 1 ] && [ "$_v" -le "$_max" ] 2>/dev/null && _hit=0 && break; done < <(grep -hE '^[[:space:]]*deny[[:space:]]*=[[:space:]]*[0-9]+' /etc/security/faillock.conf 2>/dev/null | sed 's/^[^=]*=[[:space:]]*//'); [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 178 "password failed attempts lockout is configured"
 else
     sec_audit_report_fail 178 "faillock deny threshold is not configured in /etc/security/faillock.conf"
 fi
 
 # RULE179:
-if grep -Psi 'unlock_time\h*=\h*(0|9[0-9][0-9]|[1-9][0-9]{3,})\b' /etc/security/faillock.conf 2>/dev/null; then
+if _min=$(secaudit_var UNLOCK_TIME 900); _hit=1; while IFS= read -r _v; do { [ "$_v" -eq 0 ] || [ "$_v" -ge "$_min" ]; } 2>/dev/null && _hit=0 && break; done < <(grep -hE 'unlock_time[[:space:]]*=[[:space:]]*[0-9]+' /etc/security/faillock.conf 2>/dev/null | sed 's/^[^=]*=[[:space:]]*//'); [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 179 "password unlock time is configured"
 else
     sec_audit_report_fail 179 "faillock unlock_time is not set within the required range"
 fi
 
 # RULE180:
-if grep -Psi '^\h*minlen\h*=\h*(1[4-9]|[2-9][0-9]|[1-9][0-9]{2,})\b' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null; then
+if _min=$(secaudit_var PASSWORD_MINLEN 14); _hit=1; while IFS= read -r _v; do [ "$_v" -ge "$_min" ] 2>/dev/null && _hit=0 && break; done < <(grep -hE '^[[:space:]]*minlen[[:space:]]*=[[:space:]]*[0-9]+' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null | sed 's/^[^=]*=[[:space:]]*//'); [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 180 "password length is configured"
 else
     sec_audit_report_fail 180 "pwquality minlen (or equivalent) is not set to at least 14"
 fi
 
+}
+
+sec_audit_run_auditd_3() {
+# RULE181-183
 # RULE181:
 if grep -Psi '^\h*(minclass|[dulo]credit)\b' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null; then
     sec_audit_report_pass 181 "password complexity is configured"
@@ -2831,6 +2964,10 @@ else
     sec_audit_report_fail 183 "pwquality enforce_for_root is not set"
 fi
 
+}
+
+sec_audit_run_filesystem_integrity_3() {
+# RULE184-187
 # RULE184:
 if grep -Psi 'remember\h*=\h*(2[4-9]|[3-9][0-9]|[1-9][0-9]{2,})\b' /etc/security/pwhistory.conf 2>/dev/null; then
     sec_audit_report_pass 184 "password history remember is configured"
@@ -2866,6 +3003,10 @@ if ! sec_audit_pam_auth_stacks_grep_Pi '^\h*auth\h+.*pam_unix\.so.*nullok'; then
 else
     sec_audit_report_fail 187 "pam_unix still allows nullok in the auth stack"
 fi
+}
+
+sec_audit_run_accounts_2() {
+# RULE188-189
 # RULE188:
 if ! sec_audit_pam_stacks_grep_Pi '^\h*password\h+([^#\n\r]+)\h+pam_unix\.so.*remember='; then
     sec_audit_report_pass 188 "pam_unix does not include remember"
@@ -2878,9 +3019,13 @@ if sec_audit_pam_stacks_grep_P '^\h*password\h+([^#\n\r]+)\h+pam_unix\.so\h+([^#
 else
     sec_audit_report_fail 189 "pam_unix password line lacks use_authtok on password-auth/system-auth stack"
 fi
+}
+
+sec_audit_run_filesystem_integrity_4() {
+# RULE190-191
 # RULE190:
-if grep -Psi '^\h*PASS_MAX_DAYS\h+(36[0-5]|3[0-5][0-9]|[1-2][0-9][0-9]|[1-9][0-9]|[1-9])\b' /etc/login.defs 2>/dev/null; then
-    if ! awk -F: '($2~/^\$.+\$/) {if($5 > 365 || $5 < 1)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
+if _mx=$(secaudit_var PASS_MAX_DAYS 365); _pv=$(grep -hE '^[[:space:]]*PASS_MAX_DAYS[[:space:]]+[0-9]+' /etc/login.defs 2>/dev/null | awk '{print $2; exit}'); [ -n "$_pv" ] && [ "$_pv" -ge 1 ] && [ "$_pv" -le "$_mx" ]; then
+    if ! awk -v limit="$(secaudit_var PASS_MAX_DAYS 365)" -F: '($2~/^\$.+\$/) {if($5+0 > limit+0 || $5+0 < 1)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
         sec_audit_report_pass 190 "password expiration is configured"
     else
         sec_audit_report_fail 190 "PASS_MAX_DAYS or per-user shadow MAX exceeds policy or is unset"
@@ -2892,7 +3037,7 @@ fi
 # RULE191:
 if grep -q "^PASS_MIN_DAYS" /etc/login.defs 2>/dev/null; then
     MIN_DAYS=$(grep "^PASS_MIN_DAYS" /etc/login.defs 2>/dev/null | awk '{print $2}')
-    if [ "$MIN_DAYS" -ge 7 ] 2>/dev/null; then
+    if [ "$MIN_DAYS" -ge "$(secaudit_var PASS_MIN_DAYS 7)" ] 2>/dev/null; then
         sec_audit_report_pass 191 "Minimum password days is configured"
     else
         sec_audit_report_fail 191 "Minimum password days is too low (recommended 7+)"
@@ -2901,9 +3046,13 @@ else
     sec_audit_report_fail 191 "Minimum password days is not configured"
 fi
 
+}
+
+sec_audit_run_logging_4() {
+# RULE192-192
 # RULE192:
-if grep -Psi '^\h*PASS_WARN_AGE\h+([7-9]|[1-9][0-9]+)\b' /etc/login.defs 2>/dev/null; then
-    if ! awk -F: '($2~/^\$.+\$/) {if($6 < 7)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
+if _v=$(grep -hE '^[[:space:]]*PASS_WARN_AGE[[:space:]]+[0-9]+' /etc/login.defs 2>/dev/null | awk '{print $2; exit}'); [ -n "$_v" ] && [ "$_v" -ge "$(secaudit_var PASS_WARN_AGE 7)" ]; then
+    if ! awk -v sa_limit="$(secaudit_var PASS_WARN_AGE 7)" -F: '($2~/^\$.+\$/) {if($6 < sa_limit+0)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
         sec_audit_report_pass 192 "password expiration warning days is configured"
     else
         sec_audit_report_fail 192 "PASS_WARN_AGE is not set within policy in /etc/login.defs"
@@ -2912,16 +3061,20 @@ else
     sec_audit_report_fail 192 "PASS_WARN_AGE is not set within policy in /etc/login.defs"
 fi
 
+}
+
+sec_audit_run_aide_2() {
+# RULE193-194
 # RULE193:
-if grep -Psi '^\h*ENCRYPT_METHOD\h+(SHA512|YESCRYPT)\b' /etc/login.defs 2>/dev/null; then
+if _allow=$(secaudit_var ENCRYPT_METHOD SHA512,YESCRYPT); _got=$(grep -hE '^[[:space:]]*ENCRYPT_METHOD[[:space:]]+' /etc/login.defs 2>/dev/null | awk '{print $2; exit}'); _ug=$(printf '%s' "$_got" | tr '[:lower:]' '[:upper:]'); _hit=1; IFS=,; for _a in $_allow; do _a=${_a// /}; _ua=$(printf '%s' "$_a" | tr '[:lower:]' '[:upper:]'); [ -n "$_ua" ] && [ "$_ug" = "$_ua" ] && _hit=0; done; unset IFS; [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 193 "strong password hashing algorithm is configured"
 else
     sec_audit_report_fail 193 "ENCRYPT_METHOD in /etc/login.defs does not use a strong hashing algorithm"
 fi
 
 # RULE194:
-if useradd -D 2>/dev/null | grep INACTIVE | cut -d= -f2 | grep -qE '^([1-9]|[1-4][0-9]|45)$'; then
-    if ! awk -F: '($2~/^\$.+\$/) {if($7 > 45 || $7 < 0)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
+if _in=$(useradd -D 2>/dev/null | awk -F= '/INACTIVE/{print $2; exit}'); [ -n "$_in" ] && [ "$_in" -ge 1 ] && [ "$_in" -le "$(secaudit_var INACTIVE_DAYS 45)" ]; then
+    if ! awk -v sa_limit="$(secaudit_var INACTIVE_DAYS 45)" -F: '($2~/^\$.+\$/) {if($7 > sa_limit+0 || $7 < 0)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
         sec_audit_report_pass 194 "inactive password lock is configured"
     else
         sec_audit_report_fail 194 "useradd INACTIVE or inactive lock policy is not configured"
@@ -2930,6 +3083,10 @@ else
     sec_audit_report_fail 194 "useradd INACTIVE or inactive lock policy is not configured"
 fi
 
+}
+
+sec_audit_run_chrony_2() {
+# RULE195-195
 # RULE195:
 FAIL195=0
 while IFS=: read -r user pass last_change rest; do
@@ -2946,6 +3103,10 @@ if [ $FAIL195 -eq 0 ]; then
     sec_audit_report_pass 195 "All users last password change date is in the past"
 fi
 
+}
+
+sec_audit_run_filesystem_partitions_2() {
+# RULE196-196
 # RULE196:
 if awk -F: '($3 == 0) { print $1 }' /etc/passwd 2>/dev/null | grep -qx "root"; then
     if [ $(awk -F: '($3 == 0) { print $1 }' /etc/passwd 2>/dev/null | wc -l) -eq 1 ]; then
@@ -2957,6 +3118,10 @@ else
     sec_audit_report_fail 196 "Multiple accounts with UID 0 exist in /etc/passwd"
 fi
 
+}
+
+sec_audit_run_sshd_3() {
+# RULE139-148
 # RULE139:
 if awk -F: '($1 !~ /^(sync|shutdown|halt|operator)/ && $4=="0") {print $1":"$4}' /etc/passwd 2>/dev/null | grep -q "root:0"; then
     if [ $(awk -F: '($1 !~ /^(sync|shutdown|halt|operator)/ && $4=="0") {print}' /etc/passwd 2>/dev/null | wc -l) -eq 1 ]; then
@@ -3056,6 +3221,10 @@ else
     sec_audit_report_fail 148 "Default user umask 027 is not set in /etc/profile or profile.d"
 fi
 
+}
+
+sec_audit_run_sudo_su() {
+# RULE149-155
 # RULE149:
 if rpm -q aide &>/dev/null; then
     _a207_db=""
@@ -3724,13 +3893,12 @@ else
 fi
 
 FAIL276=0
-while IFS=: read -r user pass uid gid rest; do
+while IFS=: read -r user pass uid gid gecos home shell; do
     if [ "$uid" -ge 1000 ] 2>/dev/null && [ "$uid" -lt 65534 ]; then
-        home=$(echo "$rest" | cut -d: -f1)
         for dotfile in "$home/.bashrc" "$home/.bash_profile" "$home/.profile" "$home/.bash_logout"; do
             if [ -f "$dotfile" ]; then
                 perm=$(stat -c '%a' "$dotfile" 2>/dev/null)
-                if [ "${perm:2:1}" -gt 0 ] 2>/dev/null || [ "${perm:1:1}" -gt 0 ] 2>/dev/null; then
+                if [ -n "$perm" ] && { [ $(( ${perm: -1:1} & 2 )) -ne 0 ] || [ $(( ${perm: -2:1} & 2 )) -ne 0 ]; }; then
                     echo "EXTREQ276= FAIL: User $user dot file $dotfile has world/group write permissions ($perm)"
                     FAIL276=1
                 fi
@@ -3740,5 +3908,46 @@ while IFS=: read -r user pass uid gid rest; do
 done < /etc/passwd 2>/dev/null
 [ $FAIL276 -eq 0 ] && echo "EXTREQ276= PASS: Local interactive user dot files access is configured"
 
-exit 0
+}
 
+sec_audit_main() {
+    sec_audit_run_kernel_modules
+    sec_audit_run_filesystem_partitions
+    sec_audit_run_gdm
+    sec_audit_run_package_security
+    sec_audit_run_aide
+    sec_audit_run_bootloader
+    sec_audit_run_process_hardening
+    sec_audit_run_selinux
+    sec_audit_run_banners
+    sec_audit_run_gdm_2
+    sec_audit_run_crypto_policy
+    sec_audit_run_chrony
+    sec_audit_run_unused_services
+    sec_audit_run_client_tools
+    sec_audit_run_network_stack
+    sec_audit_run_logging
+    sec_audit_run_network_stack_2
+    sec_audit_run_auditd
+    sec_audit_run_unused_services_2
+    sec_audit_run_bootloader_2
+    sec_audit_run_auditd_2
+    sec_audit_run_logging_2
+    sec_audit_run_cron_at
+    sec_audit_run_filesystem_integrity
+    sec_audit_run_identity_files
+    sec_audit_run_filesystem_integrity_2
+    sec_audit_run_auditd_3
+    sec_audit_run_filesystem_integrity_3
+    sec_audit_run_accounts_2
+    sec_audit_run_filesystem_integrity_4
+    sec_audit_run_logging_4
+    sec_audit_run_aide_2
+    sec_audit_run_chrony_2
+    sec_audit_run_filesystem_partitions_2
+    sec_audit_run_sshd_3
+    sec_audit_run_sudo_su
+    exit 0
+}
+
+sec_audit_main "$@"

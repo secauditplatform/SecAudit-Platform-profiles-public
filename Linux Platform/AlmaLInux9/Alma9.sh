@@ -22,6 +22,38 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+sec_audit_mode_within_max() {
+    local path="$1" max="$2" got
+    [[ -e $path ]] || return 1
+    got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+    [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+    (( (8#$got & ~8#$max) == 0 ))
+}
+
+# kind=exact keeps an exact octal match. kind=within uses AlmaLinux 10 within_max.
+sec_audit_mode_policy() {
+    local path="$1" max="$2" legacy="$3" kind="${4:-within}" legacy_re="$5" got
+    if [ "$kind" = "exact" ]; then
+        got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+        [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+        (( 8#$got == 8#$max ))
+        return
+    fi
+    sec_audit_mode_within_max "$path" "$max"
+}
+
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -56,6 +88,34 @@ sec_audit_trim_ws() {
 
 sec_audit_to_lower() {
     printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]'
+}
+
+sec_audit_csv_has() {
+    local want="$1" csv="$2" item
+    want=$(sec_audit_to_lower "$want")
+    [ -n "$want" ] || return 1
+    local IFS=,
+    for item in $csv; do
+        item=$(sec_audit_trim_ws "$item")
+        item=$(sec_audit_to_lower "$item")
+        [ -n "$item" ] && [ "$item" = "$want" ] && return 0
+    done
+    return 1
+}
+
+sec_audit_mode_norm() {
+    local v="${1-}"
+    [[ "$v" =~ ^[0-7]+$ ]] || return 1
+    printf '%03d' "$((10#$v))"
+}
+
+sec_audit_umask_strict_enough() {
+    local got="$1" need="$2"
+    sec_audit_mode_norm "$got" >/dev/null || return 1
+    sec_audit_mode_norm "$need" >/dev/null || return 1
+    got=$(sec_audit_mode_norm "$got")
+    need=$(sec_audit_mode_norm "$need")
+    (( (8#$got & 8#$need) == 8#$need ))
 }
 
 sec_audit_exec_with_timeout() {
@@ -1765,6 +1825,8 @@ sec_audit_pam_auth_stacks_grep_Pi() {
     return 1
 }
 
+sec_audit_run_kernel_modules() {
+# RULE1-9
 # RULE1:
 sec_audit_audit_kmod_absent 1 "cramfs kernel module" cramfs cramfs.ko* "cramfs"
 # RULE2:
@@ -1807,6 +1869,10 @@ else
     sec_audit_report_fail 9 "filesystem modules available without effective block:${_bad9}"
 fi
 
+}
+
+sec_audit_run_filesystem_partitions() {
+# RULE10-35
 # RULE10:
 if sec_audit_findmnt_tmp_sec_ok; then
     if sec_audit_mount_persisted /tmp; then
@@ -2010,6 +2076,10 @@ else
     sec_audit_report_fail 35 "noexec is not set on /var/log/audit (or path not resolvable / not an explicit mount per policy)"
 fi
 
+}
+
+sec_audit_run_package_security() {
+# RULE36-40
 # RULE36:
 _rule37_k=$(sec_audit_rpm_gpg_pubkey_pkg_count)
 _rule37_sample=""
@@ -2097,6 +2167,10 @@ else
     fi
 fi
 
+}
+
+sec_audit_run_selinux() {
+# RULE41-48
 # RULE41:
 if rpm -q libselinux &>/dev/null; then
     sec_audit_report_pass 41 "SELinux is installed"
@@ -2114,7 +2188,7 @@ else
 fi
 
 # RULE43:
-if grep -q -Psi '^\h*SELINUXTYPE\h*=\h*(targeted|mls)\b' /etc/selinux/config 2>/dev/null; then
+if _allow=$(secaudit_var SELINUX_POLICY targeted,mls); _got=$(grep -hE '^[[:space:]]*SELINUXTYPE[[:space:]]*=' /etc/selinux/config 2>/dev/null | head -n1 | sed 's/^[^=]*=[[:space:]]*//; s/[[:space:]].*$//'); _ug=$(printf '%s' "$_got" | tr '[:upper:]' '[:lower:]'); _hit=1; IFS=,; for _a in $_allow; do _ua=$(printf '%s' "$_a" | tr '[:upper:]' '[:lower:]'); _ua=${_ua// /}; [ -n "$_ua" ] && [ "$_ug" = "$_ua" ] && _hit=0; done; unset IFS; [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 43 "SELinux policy is configured"
 else
     sec_audit_report_fail 43 "SELinux policy type is not set to targeted or mls in /etc/selinux/config"
@@ -2136,9 +2210,9 @@ fi
 # RULE45:
 _ge46=$(getenforce 2>/dev/null || true)
 _cfg46=$(grep -Pi '^\h*SELINUX=\K\w+' /etc/selinux/config 2>/dev/null | head -n1 || true)
-if [[ "$_ge46" != "Enforcing" ]]; then
+if [[ "$(printf '%s' "$_ge46" | tr '[:upper:]' '[:lower:]')" != "$(secaudit_var SELINUX_MODE enforcing)" ]]; then
     sec_audit_report_fail 45 "getenforce is '${_ge46:-unknown}', expected Enforcing"
-elif [[ "$_cfg46" != "enforcing" ]]; then
+elif [[ "$(printf '%s' "$_cfg46" | tr '[:upper:]' '[:lower:]')" != "$(secaudit_var SELINUX_MODE enforcing)" ]]; then
     sec_audit_report_fail 45 "runtime Enforcing but /etc/selinux/config SELINUX=${_cfg46:-unset} (will revert after reboot)"
 else
     sec_audit_report_pass 45 "the SELinux mode is enforcing (runtime and config)"
@@ -2164,6 +2238,10 @@ else
     sec_audit_report_pass 48 "package setroubleshoot is not installed"
 fi
 
+}
+
+sec_audit_run_bootloader() {
+# RULE49-50
 # RULE49:
 if sec_audit_grub_cfg_grep '^[[:space:]]*set superusers' && sec_audit_grub_cfg_grep 'password_pbkdf2'; then
     sec_audit_report_pass 49 "bootloader password is set (grub.cfg under /boot/grub2 or EFI)"
@@ -2174,7 +2252,7 @@ fi
 _fail50=1
 while IFS= read -r _gcfg; do
     [[ -f "$_gcfg" ]] || continue
-    if stat -Lc '%a' "$_gcfg" 2>/dev/null | grep -q '^[0-6]00$'; then
+    if sec_audit_mode_policy "$_gcfg" "$(secaudit_var MODE_GRUB_CFG 600)" 600 within '^[0-6]00$'; then
         if stat -Lc '%U:%G' "$_gcfg" 2>/dev/null | grep -q '^root:root$'; then
             _fail50=0
             break
@@ -2186,6 +2264,10 @@ if [ "${_fail50:-0}" -eq 0 ]; then
 else
     sec_audit_report_fail 50 "/boot/grub2/grub.cfg (or EFI grub.cfg) owner/mode is not root:root with mode 600"
 fi
+}
+
+sec_audit_run_process_hardening() {
+# RULE51-54
 # RULE51:
 if sec_audit_limits_core_zero_and_systemd_ok; then
     sec_audit_report_pass 51 "limits * hard core 0 present and systemd DefaultLimitCORE does not allow unlimited core dumps"
@@ -2196,11 +2278,15 @@ else
 fi
 
 # RULE52:
-sec_audit_audit_sysctl 52 fs.protected_hardlinks 1
+sec_audit_audit_sysctl 52 fs.protected_hardlinks "$(secaudit_var SYSCTL_FS_PROTECTED_HARDLINKS 1)"
 # RULE53:
-sec_audit_audit_sysctl 53 fs.protected_symlinks 1
+sec_audit_audit_sysctl 53 fs.protected_symlinks "$(secaudit_var SYSCTL_FS_PROTECTED_SYMLINKS 1)"
 # RULE54:
-sec_audit_audit_sysctl 54 fs.suid_dumpable 0
+sec_audit_audit_sysctl 54 fs.suid_dumpable "$(secaudit_var SYSCTL_FS_SUID_DUMPABLE 0)"
+}
+
+sec_audit_run_crypto_policy() {
+# RULE55-61
 # RULE55:
 if grep -q -Pi '^\h*LEGACY\b' /etc/crypto-policies/config 2>/dev/null; then
     sec_audit_report_fail 55 "System-wide crypto policy is LEGACY in /etc/crypto-policies/config"
@@ -2270,6 +2356,10 @@ else
     sec_audit_report_fail 61 "EtM is not disabled for ssh in CURRENT.pol"
 fi
 
+}
+
+sec_audit_run_banners() {
+# RULE62-67
 # RULE62:
 if [ ! -f /etc/motd ]; then
     sec_audit_report_fail 62 "/etc/motd is missing"
@@ -2299,7 +2389,7 @@ fi
 
 # RULE65:
 if [ -e /etc/motd ]; then
-    if stat -Lc '%a' /etc/motd 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/motd "$(secaudit_var MODE_MOTD 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/motd 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 65 "access to /etc/motd is configured"
         else
@@ -2313,7 +2403,7 @@ else
 fi
 
 # RULE66:
-if stat -Lc '%a' /etc/issue 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/issue "$(secaudit_var MODE_ISSUE 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/issue 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 66 "access to /etc/issue is configured"
     else
@@ -2325,7 +2415,7 @@ fi
 
 # RULE67:
 if [ -e /etc/issue.net ]; then
-    if stat -Lc '%a' /etc/issue.net 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/issue.net "$(secaudit_var MODE_ISSUE_NET 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/issue.net 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 67 "access to /etc/issue.net is configured"
         else
@@ -2338,6 +2428,10 @@ else
     sec_audit_report_pass 67 "access to /etc/issue.net is configured (file not found)"
 fi
 
+}
+
+sec_audit_run_gdm() {
+# RULE68-77
 # RULE68:
 if rpm -q gdm &>/dev/null; then
     sec_audit_report_fail 68 "GNOME Display Manager (gdm) package is still installed"
@@ -2444,6 +2538,10 @@ else
     fi
 fi
 
+}
+
+sec_audit_run_unused_services() {
+# RULE78-99
 # RULE78:
 sec_audit_audit_service_idle 78 autofs "autofs services are not in use" "autofs services are installed and enabled or actively running" "autofs.service"
 # RULE79:
@@ -2540,6 +2638,10 @@ else
     fi
 fi
 
+}
+
+sec_audit_run_client_tools() {
+# RULE100-104
 # RULE100:
 if rpm -q ftp &>/dev/null; then
     sec_audit_report_fail 100 "ftp client package is installed"
@@ -2575,6 +2677,10 @@ else
     sec_audit_report_pass 104 "tftp client is not installed"
 fi
 
+}
+
+sec_audit_run_chrony() {
+# RULE105-107
 # RULE105:
 if rpm -q chrony &>/dev/null; then
     if systemctl is-active chronyd.service &>/dev/null; then
@@ -2610,6 +2716,10 @@ else
     sec_audit_report_pass 107 "chrony is not run as the root user"
 fi
 
+}
+
+sec_audit_run_cron_at() {
+# RULE108-116
 # RULE108:
 if ! sec_audit_systemd_usable; then
     sec_audit_report_pass 108 "crond service state not evaluated (systemd not PID 1)"
@@ -2624,7 +2734,7 @@ else
 fi
 
 # RULE109:
-if stat -Lc '%a' /etc/crontab 2>/dev/null | grep -q '^[0-6]00$'; then
+if sec_audit_mode_policy /etc/crontab "$(secaudit_var MODE_CRONTAB 600)" 600 within '^[0-6]00$'; then
     if stat -Lc '%U:%G' /etc/crontab 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 109 "access to /etc/crontab is configured"
     else
@@ -2635,7 +2745,7 @@ else
 fi
 
 # RULE110:
-if stat -Lc '%a' /etc/cron.hourly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.hourly "$(secaudit_var MODE_CRON_HOURLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.hourly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 110 "access to /etc/cron.hourly is configured"
     else
@@ -2646,7 +2756,7 @@ else
 fi
 
 # RULE111:
-if stat -Lc '%a' /etc/cron.daily 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.daily "$(secaudit_var MODE_CRON_DAILY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.daily 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 111 "access to /etc/cron.daily is configured"
     else
@@ -2657,7 +2767,7 @@ else
 fi
 
 # RULE112:
-if stat -Lc '%a' /etc/cron.weekly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.weekly "$(secaudit_var MODE_CRON_WEEKLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.weekly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 112 "access to /etc/cron.weekly is configured"
     else
@@ -2668,7 +2778,7 @@ else
 fi
 
 # RULE113:
-if stat -Lc '%a' /etc/cron.monthly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.monthly "$(secaudit_var MODE_CRON_MONTHLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.monthly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 113 "access to /etc/cron.monthly is configured"
     else
@@ -2679,7 +2789,7 @@ else
 fi
 
 # RULE114:
-if stat -Lc '%a' /etc/cron.yearly 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.yearly "$(secaudit_var MODE_CRON_YEARLY 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.yearly 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 114 "access to /etc/cron.yearly is configured"
     else
@@ -2690,7 +2800,7 @@ else
 fi
 
 # RULE115:
-if stat -Lc '%a' /etc/cron.d 2>/dev/null | grep -q '^700$'; then
+if sec_audit_mode_policy /etc/cron.d "$(secaudit_var MODE_CRON_D 700)" 700 exact '^700$'; then
     if stat -Lc '%U:%G' /etc/cron.d 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 115 "access to /etc/cron.d is configured"
     else
@@ -2702,7 +2812,7 @@ fi
 
 # RULE116:
 if [ -e /etc/at.allow ]; then
-    if stat -Lc '%a' /etc/at.allow 2>/dev/null | grep -qE '^640$'; then
+    if sec_audit_mode_policy /etc/at.allow "$(secaudit_var MODE_AT_ALLOW 640)" 640 exact '^640$'; then
         if stat -Lc '%U' /etc/at.allow 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/at.allow 2>/dev/null | grep -qE 'daemon|root'; then
                 sec_audit_report_pass 116 "access to at is configured"
@@ -2719,6 +2829,10 @@ else
     sec_audit_report_fail 116 "File at permissions or ownership not correct"
 fi
 
+}
+
+sec_audit_run_network_stack() {
+# RULE117-134
 # RULE117:
 if [ -f /proc/sys/net/ipv6/conf/all/disable_ipv6 ]; then
     sec_audit_report_pass 117 "IPv6 status is identified"
@@ -2744,16 +2858,16 @@ sec_audit_audit_kmod_absent 122 "rds kernel module" rds rds.ko* "rds"
 # RULE123:
 sec_audit_audit_kmod_absent 123 "tipc kernel module" tipc tipc.ko* "tipc"
 # RULE124:
-sec_audit_audit_sysctl 124 net.ipv4.conf.all.send_redirects 0
+sec_audit_audit_sysctl 124 net.ipv4.conf.all.send_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SEND_REDIRECTS 0)"
 
 # RULE125:
-sec_audit_audit_sysctl 125 net.ipv4.conf.default.send_redirects 0
+sec_audit_audit_sysctl 125 net.ipv4.conf.default.send_redirects "$(secaudit_var SYSCTL_IPV4_DEF_SEND_REDIRECTS 0)"
 
 # RULE126:
-sec_audit_audit_sysctl 126 net.ipv4.icmp_ignore_bogus_error_responses 1
+sec_audit_audit_sysctl 126 net.ipv4.icmp_ignore_bogus_error_responses "$(secaudit_var SYSCTL_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESP 1)"
 
 # RULE127:
-sec_audit_audit_sysctl 127 net.ipv4.conf.all.accept_redirects 0
+sec_audit_audit_sysctl 127 net.ipv4.conf.all.accept_redirects "$(secaudit_var SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS 0)"
 
 # RULE128:
 _ok128=1
@@ -2767,23 +2881,27 @@ else
 fi
 
 # RULE129:
-sec_audit_audit_sysctl 129 net.ipv4.conf.all.secure_redirects 0
+sec_audit_audit_sysctl 129 net.ipv4.conf.all.secure_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SECURE_REDIRECTS 0)"
 
 # RULE130:
-sec_audit_audit_sysctl 130 net.ipv4.conf.all.rp_filter 1
+sec_audit_audit_sysctl 130 net.ipv4.conf.all.rp_filter "$(secaudit_var SYSCTL_IPV4_ALL_RP_FILTER 1)"
 
 # RULE131:
-sec_audit_audit_sysctl 131 net.ipv4.conf.default.rp_filter 1
+sec_audit_audit_sysctl 131 net.ipv4.conf.default.rp_filter "$(secaudit_var SYSCTL_IPV4_DEF_RP_FILTER 1)"
 
 # RULE132:
-sec_audit_audit_sysctl 132 net.ipv4.conf.default.log_martians 1
+sec_audit_audit_sysctl 132 net.ipv4.conf.default.log_martians "$(secaudit_var SYSCTL_IPV4_DEF_LOG_MARTIANS 1)"
 
 # RULE133:
-sec_audit_audit_sysctl 133 net.ipv4.conf.all.log_martians 1
+sec_audit_audit_sysctl 133 net.ipv4.conf.all.log_martians "$(secaudit_var SYSCTL_IPV4_ALL_LOG_MARTIANS 1)"
 
 # RULE134:
-sec_audit_audit_sysctl 134 net.ipv4.tcp_syncookies 1
+sec_audit_audit_sysctl 134 net.ipv4.tcp_syncookies "$(secaudit_var SYSCTL_IPV4_TCP_SYNCOOKIES 1)"
 
+}
+
+sec_audit_run_firewalld() {
+# RULE135-142
 # RULE135:
 if rpm -q firewalld &>/dev/null; then
     sec_audit_report_pass 135 "firewalld is installed"
@@ -2880,8 +2998,12 @@ else
     sec_audit_report_fail 142 "nftables loopback traffic rule not found"
 fi
 
+}
+
+sec_audit_run_sshd() {
+# RULE143-164
 # RULE143:
-if stat -Lc '%a' /etc/ssh/sshd_config 2>/dev/null | grep -q '^600$'; then
+if sec_audit_mode_policy /etc/ssh/sshd_config "$(secaudit_var MODE_SSHD_CONFIG 600)" 600 exact '^600$'; then
     if stat -Lc '%U:%G' /etc/ssh/sshd_config 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 143 "access to /etc/ssh/sshd_config is configured"
     else
@@ -2901,7 +3023,7 @@ PRIV_KEYS=$(sec_audit_sshd_effective_dump | awk '$1=="hostkey" {print $2}')
 FAIL146=0
 for key in $PRIV_KEYS; do
     if [ -f "$key" ]; then
-        if ! stat -Lc '%a' "$key" 2>/dev/null | grep -q '^600$'; then
+        if ! sec_audit_mode_policy "$key" "$(secaudit_var MODE_SSH_HOSTKEY 600)" 600 exact '^600$'; then
             FAIL146=1
         fi
         if ! stat -Lc '%U:%G' "$key" 2>/dev/null | grep -q '^root:root$'; then
@@ -2922,7 +3044,7 @@ PUB_KEYS=$(sec_audit_sshd_effective_dump | awk '$1=="hostkey" {print $2".pub"}')
 FAIL147=0
 for key in $PUB_KEYS; do
     if [ -f "$key" ]; then
-        if ! stat -Lc '%a' "$key" 2>/dev/null | grep -qE '^[0-6]44$'; then
+        if ! sec_audit_mode_policy "$key" "$(secaudit_var MODE_SSH_HOSTKEY_PUB 644)" 644 within '^[0-6]44$'; then
             FAIL147=1
         fi
         if ! stat -Lc '%U:%G' "$key" 2>/dev/null | grep -q '^root:root$'; then
@@ -2960,43 +3082,26 @@ else
 fi
 
 # RULE149:
-if sec_audit_sshd_t_grep -Piq 'clientaliveinterval\s+([1-9]|[1-9][0-9]+)'; then
-    if sec_audit_sshd_t_grep -Piq 'clientalivecountmax\s+([1-9]|[1-9][0-9]+)'; then
-        sec_audit_report_pass 149 "sshd ClientAliveInterval and ClientAliveCountMax are configured"
-    else
-        sec_audit_report_fail 149 "sshd ClientAliveInterval and ClientAliveCountMax are not configured as required (see sshd -T)"
-    fi
+_cai=$(sec_audit_sshd_int clientaliveinterval)
+_cac=$(sec_audit_sshd_int clientalivecountmax)
+_cai_max=$(secaudit_var CLIENT_ALIVE_INTERVAL 2147483647)
+if [[ -n "$_cai" && "$_cai" -ge 1 && "$_cai" -le "$_cai_max" && -n "$_cac" && "$_cac" -ge 1 ]]; then
+    sec_audit_report_pass 149 "sshd ClientAliveInterval and ClientAliveCountMax are configured"
 else
     sec_audit_report_fail 149 "sshd ClientAliveInterval and ClientAliveCountMax are not configured as required (see sshd -T)"
 fi
 
 # RULE150:
-if sec_audit_sshd_t_grep -iq 'disableforwarding yes'; then
-    sec_audit_report_pass 150 "sshd DisableForwarding is enabled"
-else
-    sec_audit_report_fail 150 "sshd DisableForwarding is not enabled in effective sshd -T output"
-fi
+[[ "$(sec_audit_to_lower "$(sec_audit_sshd_kv disableforwarding)")" == "yes" ]] && sec_audit_report_pass 150 "sshd DisableForwarding is enabled" || sec_audit_report_fail 150 "sshd DisableForwarding is not enabled in effective sshd -T output"
 
 # RULE151:
-if sec_audit_sshd_t_grep -iq 'gssapiauthentication no'; then
-    sec_audit_report_pass 151 "sshd GSSAPIAuthentication is disabled"
-else
-    sec_audit_report_fail 151 "sshd GSSAPIAuthentication is not disabled in effective sshd -T output"
-fi
+[[ "$(sec_audit_to_lower "$(sec_audit_sshd_kv gssapiauthentication)")" == "no" ]] && sec_audit_report_pass 151 "sshd GSSAPIAuthentication is disabled" || sec_audit_report_fail 151 "sshd GSSAPIAuthentication is not disabled in effective sshd -T output"
 
 # RULE152:
-if sec_audit_sshd_t_grep -iq 'hostbasedauthentication no'; then
-    sec_audit_report_pass 152 "sshd HostbasedAuthentication is disabled"
-else
-    sec_audit_report_fail 152 "sshd HostbasedAuthentication is not disabled in effective sshd -T output"
-fi
+[[ "$(sec_audit_to_lower "$(sec_audit_sshd_kv hostbasedauthentication)")" == "no" ]] && sec_audit_report_pass 152 "sshd HostbasedAuthentication is disabled" || sec_audit_report_fail 152 "sshd HostbasedAuthentication is not disabled in effective sshd -T output"
 
 # RULE153:
-if sec_audit_sshd_t_grep -iq 'ignorerhosts yes'; then
-    sec_audit_report_pass 153 "sshd IgnoreRhosts is enabled"
-else
-    sec_audit_report_fail 153 "sshd IgnoreRhosts is not enabled in effective sshd -T output"
-fi
+[[ "$(sec_audit_to_lower "$(sec_audit_sshd_kv ignorerhosts)")" == "yes" ]] && sec_audit_report_pass 153 "sshd IgnoreRhosts is enabled" || sec_audit_report_fail 153 "sshd IgnoreRhosts is not enabled in effective sshd -T output"
 
 # RULE154:
 if sec_audit_sshd_t_grep -Piq 'kexalgorithms\h+([^#\n\r]+,)?(diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1)\b'; then
@@ -3006,14 +3111,16 @@ else
 fi
 
 # RULE155:
-if sec_audit_sshd_t_grep -Piq 'logingracetime\s+([1-9]|[1-5][0-9]|60)\b'; then
+_lgt=$(sec_audit_sshd_int logingracetime)
+_lgt_max=$(secaudit_var LOGIN_GRACE_TIME 60)
+if [[ -n "$_lgt" && "$_lgt" -ge 1 && "$_lgt" -le "$_lgt_max" ]]; then
     sec_audit_report_pass 155 "sshd LoginGraceTime is configured"
 else
     sec_audit_report_fail 155 "sshd LoginGraceTime does not meet the required policy (see sshd -T)"
 fi
 
 # RULE156:
-if sec_audit_sshd_t_grep -iq 'loglevel VERBOSE\|loglevel INFO'; then
+if sec_audit_csv_has "$(sec_audit_sshd_kv loglevel)" "$(secaudit_var SSH_LOG_LEVEL verbose,info)"; then
     sec_audit_report_pass 156 "sshd LogLevel is configured"
 else
     sec_audit_report_fail 156 "sshd LogLevel does not meet the required policy (see sshd -T)"
@@ -3027,46 +3134,46 @@ else
 fi
 
 # RULE158:
-if sec_audit_sshd_t_grep -Piq 'maxauthtries\s+[1-4]\b'; then
+_mat=$(sec_audit_sshd_int maxauthtries)
+_mat_max=$(secaudit_var MAX_AUTH_TRIES 4)
+if [[ -n "$_mat" && "$_mat" -ge 1 && "$_mat" -le "$_mat_max" ]]; then
     sec_audit_report_pass 158 "sshd MaxAuthTries is configured"
 else
     sec_audit_report_fail 158 "sshd MaxAuthTries does not meet the required policy (see sshd -T)"
 fi
 
 # RULE159:
-if sec_audit_sshd_t_awk '$1 ~ /^\s*maxstartups/{split($2, a, ":");{if(a[1] <= 10 && a[2] <= 30 && a[3] <= 60) print "ok"}}' | grep -q "ok"; then
+_msu=$(sec_audit_sshd_kv maxstartups)
+_ms_pol=$(secaudit_var MAX_STARTUPS 10:30:60)
+IFS=: read -r _lim1 _lim2 _lim3 <<<"$_ms_pol"
+IFS=: read -r _ms1 _ms2 _ms3 <<<"$_msu"
+if [[ -n "$_msu" && "$_lim1" =~ ^[0-9]+$ && "$_lim2" =~ ^[0-9]+$ && "$_lim3" =~ ^[0-9]+$     && "${_ms1:-}" =~ ^[0-9]+$ && "${_ms2:-}" =~ ^[0-9]+$ && "${_ms3:-}" =~ ^[0-9]+$     && "${_ms1}" -le "$_lim1" && "${_ms2}" -le "$_lim2" && "${_ms3}" -le "$_lim3" ]]; then
     sec_audit_report_pass 159 "sshd MaxStartups is configured"
 else
     sec_audit_report_fail 159 "sshd MaxStartups does not meet the required policy (see sshd -T)"
 fi
 
 # RULE160:
-if sec_audit_sshd_t_grep -Piq 'maxsessions\s+([1-9]|10)\b'; then
+_msess=$(sec_audit_sshd_int maxsessions)
+_msess_max=$(secaudit_var MAX_SESSIONS 10)
+if [[ -n "$_msess" && "$_msess" -ge 1 && "$_msess" -le "$_msess_max" ]]; then
     sec_audit_report_pass 160 "sshd MaxSessions is configured"
 else
     sec_audit_report_fail 160 "sshd MaxSessions does not meet the required policy (see sshd -T)"
 fi
 
 # RULE161:
-if sec_audit_sshd_t_grep -iq 'permitemptypasswords no'; then
-    sec_audit_report_pass 161 "sshd PermitEmptyPasswords is disabled"
-else
-    sec_audit_report_fail 161 "sshd PermitEmptyPasswords is not disabled in effective sshd -T output"
-fi
+[[ "$(sec_audit_to_lower "$(sec_audit_sshd_kv permitemptypasswords)")" == "no" ]] && sec_audit_report_pass 161 "sshd PermitEmptyPasswords is disabled" || sec_audit_report_fail 161 "sshd PermitEmptyPasswords is not disabled in effective sshd -T output"
 
 # RULE162:
-if sec_audit_sshd_t_grep -iq 'permitrootlogin no'; then
+if sec_audit_csv_has "$(sec_audit_sshd_kv permitrootlogin)" "$(secaudit_var SSH_PERMIT_ROOT no,prohibit-password,without-password)"; then
     sec_audit_report_pass 162 "sshd PermitRootLogin is disabled"
 else
     sec_audit_report_fail 162 "sshd PermitRootLogin is not disabled in effective sshd -T output"
 fi
 
 # RULE163:
-if sec_audit_sshd_t_grep -iq 'permituserenvironment no'; then
-    sec_audit_report_pass 163 "sshd PermitUserEnvironment is disabled"
-else
-    sec_audit_report_fail 163 "sshd PermitUserEnvironment is not disabled in effective sshd -T output"
-fi
+[[ "$(sec_audit_to_lower "$(sec_audit_sshd_kv permituserenvironment)")" == "no" ]] && sec_audit_report_pass 163 "sshd PermitUserEnvironment is disabled" || sec_audit_report_fail 163 "sshd PermitUserEnvironment is not disabled in effective sshd -T output"
 
 # RULE164:
 if sec_audit_sshd_t_grep -iq 'usepam yes'; then
@@ -3077,6 +3184,10 @@ fi
 
 fi
 
+}
+
+sec_audit_run_sudo_su() {
+# RULE165-171
 # RULE165:
 if rpm -q sudo &>/dev/null; then
     sec_audit_report_pass 165 "sudo is installed"
@@ -3119,8 +3230,9 @@ fi
 # RULE170:
 TIMEOUT=$(sudo -V 2>/dev/null | grep "Authentication timestamp timeout:" | awk '{print $4}')
 TIMEOUT_INT=${TIMEOUT%%.*}
+_sto=$(secaudit_var SUDO_TIMESTAMP_TIMEOUT 15)
 if [ -n "$TIMEOUT_INT" ]; then
-    if [ "$TIMEOUT_INT" -ge 0 ] && [ "$TIMEOUT_INT" -le 15 ]; then
+    if [ "$TIMEOUT_INT" -ge 0 ] && [ "$TIMEOUT_INT" -le "$_sto" ]; then
         sec_audit_report_pass 170 "sudo timestamp_timeout is configured"
     else
         sec_audit_report_fail 170 "sudo timestamp_timeout is not set within the required range"
@@ -3145,6 +3257,10 @@ else
     sec_audit_report_fail 171 "su is not restricted to the wheel group in PAM configuration"
 fi
 
+}
+
+sec_audit_run_pam_auth() {
+# RULE172-196
 # RULE172:
 ACTIVE_PROFILE=$(head -1 /etc/authselect/authselect.conf 2>/dev/null)
 if [ -z "$ACTIVE_PROFILE" ]; then
@@ -3216,14 +3332,16 @@ else
 fi
 
 # RULE180:
-if grep -q -Psi 'deny\h*=\h*[1-5]\b' /etc/security/faillock.conf 2>/dev/null; then
+_deny=$(awk -F= '/^[[:space:]]*deny[[:space:]]*=/{gsub(/[[:space:]]/,"",$2); print $2; exit}' /etc/security/faillock.conf 2>/dev/null)
+_deny_max=$(secaudit_var FAILLOCK_DENY 5)
+if [[ "$_deny" =~ ^[0-9]+$ ]] && [ "$_deny" -ge 1 ] && [ "$_deny" -le "$_deny_max" ]; then
     sec_audit_report_pass 180 "password failed attempts lockout is configured"
 else
     sec_audit_report_fail 180 "faillock deny threshold is not configured in /etc/security/faillock.conf"
 fi
 
 # RULE181:
-if grep -q -Psi 'unlock_time\h*=\h*(0|9[0-9][0-9]|[1-9][0-9]{3,})\b' /etc/security/faillock.conf 2>/dev/null; then
+if _min=$(secaudit_var FAILLOCK_UNLOCK_TIME 900); _hit=1; while IFS= read -r _v; do { [ "$_v" -eq 0 ] || [ "$_v" -ge "$_min" ]; } 2>/dev/null && _hit=0 && break; done < <(grep -hE 'unlock_time[[:space:]]*=[[:space:]]*[0-9]+' /etc/security/faillock.conf 2>/dev/null | sed 's/^[^=]*=[[:space:]]*//'); [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 181 "password unlock time is configured"
 else
     sec_audit_report_fail 181 "faillock unlock_time is not set within the required range"
@@ -3244,7 +3362,7 @@ else
 fi
 
 # RULE184:
-if grep -q -Psi '^\h*minlen\h*=\h*(1[4-9]|[2-9][0-9]|[1-9][0-9]{2,})\b' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null; then
+if _min=$(secaudit_var PASSWORD_MINLEN 14); _hit=1; while IFS= read -r _v; do [ "$_v" -ge "$_min" ] 2>/dev/null && _hit=0 && break; done < <(grep -hE '^[[:space:]]*minlen[[:space:]]*=[[:space:]]*[0-9]+' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null | sed 's/^[^=]*=[[:space:]]*//'); [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 184 "password length is configured"
 else
     sec_audit_report_fail 184 "pwquality minlen (or equivalent) is not set to at least 14"
@@ -3327,7 +3445,8 @@ else
     sec_audit_report_fail 194 "pam_unix password line still uses remember="
 fi
 # RULE195:
-if grep -q -Psi '^\h*ENCRYPT_METHOD\h+(SHA512|YESCRYPT)\b' /etc/login.defs 2>/dev/null; then
+_enc=$(awk '/^[[:space:]]*ENCRYPT_METHOD[[:space:]]+/{print $2; exit}' /etc/login.defs 2>/dev/null)
+if sec_audit_csv_has "$_enc" "$(secaudit_var ENCRYPT_METHOD sha512,yescrypt)"; then
     sec_audit_report_pass 195 "strong password hashing algorithm configured in login.defs"
 elif sec_audit_pam_stack_grep 'pam_unix\.so.*\b(sha512|yescrypt)\b'; then
     sec_audit_report_pass 195 "pam_unix uses sha512 or yescrypt"
@@ -3341,9 +3460,13 @@ if sec_audit_pam_stacks_grep_P '^\h*password\h+([^#\n\r]+)\h+pam_unix\.so\h+([^#
 else
     sec_audit_report_fail 196 "pam_unix password line lacks use_authtok on password-auth/system-auth stack"
 fi
+}
+
+sec_audit_run_accounts() {
+# RULE197-213
 # RULE197:
-if grep -q -Psi '^\h*PASS_MAX_DAYS\h+(36[0-5]|3[0-5][0-9]|[1-2][0-9][0-9]|[1-9][0-9]|[1-9])\b' /etc/login.defs 2>/dev/null; then
-    if ! awk -F: '($2~/^\$.+\$/) {if($5 > 365 || $5 < 1)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
+if awk -v limit="$(secaudit_var PASS_MAX_DAYS 365)" 'BEGIN{ok=0} /^[[:space:]]*PASS_MAX_DAYS[[:space:]]+/ { if ($2+0<=limit+0 && $2+0>0) ok=1 } END{exit !ok}' /etc/login.defs 2>/dev/null; then
+    if ! awk -v limit="$(secaudit_var PASS_MAX_DAYS 365)" -F: '($2~/^\$.+\$/) {if($5+0 > limit+0 || $5+0 < 1)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
         sec_audit_report_pass 197 "password expiration is configured"
     else
         sec_audit_report_fail 197 "PASS_MAX_DAYS or per-user shadow MAX exceeds policy or is unset"
@@ -3355,7 +3478,7 @@ fi
 # RULE198:
 if grep -q "^PASS_MIN_DAYS" /etc/login.defs 2>/dev/null; then
     MIN_DAYS=$(grep "^PASS_MIN_DAYS" /etc/login.defs 2>/dev/null | awk '{print $2}')
-    if [ "$MIN_DAYS" -ge 7 ] 2>/dev/null; then
+    if [ "$MIN_DAYS" -ge "$(secaudit_var PASS_MIN_DAYS 7)" ] 2>/dev/null; then
         sec_audit_report_pass 198 "Minimum password days is configured"
     else
         sec_audit_report_fail 198 "Minimum password days is too low (recommended 7+)"
@@ -3365,8 +3488,10 @@ else
 fi
 
 # RULE199:
-if grep -q -Psi '^\h*PASS_WARN_AGE\h+([7-9]|[1-9][0-9]+)\b' /etc/login.defs 2>/dev/null; then
-    if ! awk -F: '($2~/^\$.+\$/) {if($6 < 7)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
+_warn=$(awk '/^[[:space:]]*PASS_WARN_AGE[[:space:]]+/{print $2; exit}' /etc/login.defs 2>/dev/null)
+_warn_min=$(secaudit_var PASS_WARN_AGE 7)
+if [[ "$_warn" =~ ^[0-9]+$ ]] && [ "$_warn" -ge "$_warn_min" ]; then
+    if ! awk -v sa_limit="$(secaudit_var PASS_WARN_AGE 7)" -F: '($2~/^\$.+\$/) {if($6 < sa_limit+0)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
         sec_audit_report_pass 199 "password expiration warning days is configured"
     else
         sec_audit_report_fail 199 "PASS_WARN_AGE is not set within policy in /etc/login.defs"
@@ -3376,15 +3501,16 @@ else
 fi
 
 # RULE200:
-if grep -q -Psi '^\h*ENCRYPT_METHOD\h+(SHA512|YESCRYPT)\b' /etc/login.defs 2>/dev/null; then
+_enc=$(awk '/^[[:space:]]*ENCRYPT_METHOD[[:space:]]+/{print $2; exit}' /etc/login.defs 2>/dev/null)
+if sec_audit_csv_has "$_enc" "$(secaudit_var ENCRYPT_METHOD sha512,yescrypt)"; then
     sec_audit_report_pass 200 "strong password hashing algorithm is configured"
 else
     sec_audit_report_fail 200 "ENCRYPT_METHOD in /etc/login.defs does not use a strong hashing algorithm"
 fi
 
 # RULE201:
-if useradd -D 2>/dev/null | grep INACTIVE | cut -d= -f2 | grep -qE '^([1-9]|[1-4][0-9]|45)$'; then
-    if ! awk -F: '($2~/^\$.+\$/) {if($7 > 45 || $7 < 0)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
+if _in=$(useradd -D 2>/dev/null | awk -F= '/INACTIVE/{print $2; exit}'); [ -n "$_in" ] && [ "$_in" -ge 1 ] && [ "$_in" -le "$(secaudit_var INACTIVE_DAYS 45)" ]; then
+    if ! awk -v sa_limit="$(secaudit_var INACTIVE_DAYS 45)" -F: '($2~/^\$.+\$/) {if($7 > sa_limit+0 || $7 < 0)print}' /etc/shadow 2>/dev/null | grep -q '.'; then
         sec_audit_report_pass 201 "inactive password lock is configured"
     else
         sec_audit_report_fail 201 "useradd INACTIVE or inactive lock policy is not configured"
@@ -3465,10 +3591,27 @@ if [ $FAIL207 -eq 0 ]; then
 fi
 
 # RULE208:
-if ! grep -Psi '^\h*umask\h+((\d{1,2}(\d[^7]|[^2-7]\d)\b)|(u=[rwx]{1,3},)?(((g=[rx]?[rx]?w[rx]?[rx]?\b)(,o=[rwx]{1,3})?)|((g=[wrx]{1,3},)?o=[wrx]{1,3}\b)))' /root/.bash_profile /root/.bashrc 2>/dev/null; then
-    sec_audit_report_pass 208 "root user umask is configured"
+_umask_need=$(secaudit_var UMASK 027)
+_umask_norm=$(sec_audit_mode_norm "$_umask_need" 2>/dev/null || true)
+if [ "$_umask_norm" = "027" ] || [ -z "$_umask_norm" ]; then
+    if ! grep -Psi '^\h*umask\h+((\d{1,2}(\d[^7]|[^2-7]\d)\b)|(u=[rwx]{1,3},)?(((g=[rx]?[rx]?w[rx]?[rx]?\b)(,o=[rwx]{1,3})?)|((g=[wrx]{1,3},)?o=[wrx]{1,3}\b)))' /root/.bash_profile /root/.bashrc 2>/dev/null; then
+        sec_audit_report_pass 208 "root user umask is configured"
+    else
+        sec_audit_report_fail 208 "root umask is not 027 (or stricter) in profile scripts"
+    fi
 else
-    sec_audit_report_fail 208 "root umask is not 027 (or stricter) in profile scripts"
+    _umask_bad=0
+    _umask_seen=0
+    while IFS= read -r _uv; do
+        [ -n "$_uv" ] || continue
+        _umask_seen=1
+        sec_audit_umask_strict_enough "$_uv" "$_umask_norm" || _umask_bad=1
+    done < <(grep -hPoi '^\h*umask\h+\K[0-7]+' /root/.bash_profile /root/.bashrc 2>/dev/null || true)
+    if [ "$_umask_seen" -eq 0 ] || [ "$_umask_bad" -eq 0 ]; then
+        sec_audit_report_pass 208 "root user umask is configured"
+    else
+        sec_audit_report_fail 208 "root umask is not ${_umask_norm} (or stricter) in profile scripts"
+    fi
 fi
 
 # RULE209:
@@ -3502,23 +3645,45 @@ else
 fi
 
 # RULE212:
-if grep -q -Psi '^([^#\n\r]+)?\bTMOUT=(9[0-9]{1,2}|[1-9][0-9]|[1-9])\b' /etc/*bashrc /etc/profile /etc/profile.d/*.sh 2>/dev/null; then
+_tmout_max=$(secaudit_var TMOUT 999)
+_tmout_ok=0
+while IFS= read -r _tv; do
+    [[ "$_tv" =~ ^[0-9]+$ ]] || continue
+    if [ "$_tv" -ge 1 ] && [ "$_tv" -le "$_tmout_max" ]; then
+        _tmout_ok=1
+        break
+    fi
+done < <(grep -hPo '^([^#\n\r]+)?\bTMOUT=\K[0-9]+' /etc/*bashrc /etc/profile /etc/profile.d/*.sh 2>/dev/null || true)
+if [ "$_tmout_ok" -eq 1 ]; then
     sec_audit_report_pass 212 "default user shell timeout is configured"
 else
     sec_audit_report_fail 212 "TMOUT is not set for interactive shells in /etc/profile or profile.d"
 fi
 
 # RULE213:
-if grep -q -Psi '^\h*umask\h+0?(?:[0-7][2-7]7)\b' /etc/login.defs 2>/dev/null; then
-    if grep -q -Psi '^\h*umask\h+0?027\b' /etc/profile.d/*.sh 2>/dev/null; then
-        sec_audit_report_pass 213 "default user umask is configured"
-    else
-        sec_audit_report_fail 213 "Default user umask 027 is not set in /etc/profile or profile.d"
-    fi
+_umask_need=$(secaudit_var UMASK 027)
+_umask_norm=$(sec_audit_mode_norm "$_umask_need" 2>/dev/null || true)
+_umask_login=0
+_umask_prof=0
+if [ -n "$_umask_norm" ]; then
+    while IFS= read -r _uv; do
+        sec_audit_umask_strict_enough "$_uv" "$_umask_norm" && _umask_login=1 && break
+    done < <(grep -hPoi '^\h*umask\h+\K[0-7]+' /etc/login.defs 2>/dev/null || true)
+    while IFS= read -r _uv; do
+        _un=$(sec_audit_mode_norm "$_uv" 2>/dev/null || true)
+        [ "$_un" = "$_umask_norm" ] && _umask_prof=1 && break
+    done < <(grep -hPoi '^\h*umask\h+\K[0-7]+' /etc/profile.d/*.sh 2>/dev/null || true)
+fi
+if [ "$_umask_login" -eq 1 ] && [ "$_umask_prof" -eq 1 ]; then
+    sec_audit_report_pass 213 "default user umask is configured"
 else
-    sec_audit_report_fail 213 "Default user umask 027 is not set in /etc/profile or profile.d"
+    sec_audit_report_fail 213 "Default user umask ${_umask_norm:-${_umask_need}} is not set in /etc/login.defs and profile.d"
 fi
 
+}
+
+sec_audit_run_aide() {
+# RULE214-216
 # RULE214:
 if rpm -q aide &>/dev/null; then
     _a207_db=""
@@ -3558,6 +3723,10 @@ else
     sec_audit_report_fail 216 "AIDE does not monitor audit binaries in /etc/aide.conf"
 fi
 
+}
+
+sec_audit_run_logging() {
+# RULE217-236
 # RULE217:
 if ! sec_audit_systemd_usable; then
     sec_audit_report_pass 217 "journald service state not evaluated (systemd not PID 1)"
@@ -3664,7 +3833,8 @@ else
 fi
 
 # RULE227:
-if systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -E '^Storage=persistent' | head -1 | grep -q "Storage=persistent"; then
+_jstor=$(secaudit_var JOURNALD_STORAGE persistent)
+if systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -Eiq "^Storage=${_jstor}"; then
     sec_audit_report_pass 227 "journald Storage is configured"
 else
     sec_audit_report_fail 227 "journald Storage=persistent (or required value) is not set in merged config"
@@ -3756,8 +3926,12 @@ for logfile in /var/log/messages /var/log/secure /var/log/maillog /var/log/cron 
         fi
     fi
 done
-[ $FAIL225 -eq 0 ] && echo "RULE236= PASS: Access to all logfiles has been configured"
+[ $FAIL225 -eq 0 ] && sec_audit_report_pass 236 "Access to all logfiles has been configured"
 
+}
+
+sec_audit_run_auditd() {
+# RULE237-275
 # RULE237:
 if rpm -q audit audit-libs &>/dev/null; then
     sec_audit_report_pass 237 "auditd packages are installed"
@@ -3802,7 +3976,8 @@ else
 fi
 
 # RULE242:
-if grep -q -Pi '^\h*max_log_file_action\h*=\h*keep_logs\b' /etc/audit/auditd.conf 2>/dev/null; then
+_mla=$(secaudit_var AUDIT_MAX_LOG_FILE_ACTION keep_logs)
+if grep -q -Pi "^\h*max_log_file_action\h*=\h*${_mla}\b" /etc/audit/auditd.conf 2>/dev/null; then
     sec_audit_report_pass 242 "audit logs are not automatically deleted"
 else
     sec_audit_report_fail 242 "max_log_file_action or keep_logs policy allows silent deletion"
@@ -4004,7 +4179,7 @@ fi
 if [ -f /etc/audit/auditd.conf ]; then
     LOG_DIR=$(dirname "$(awk -F= '/^\s*log_file\s*/{print $2}' /etc/audit/auditd.conf | xargs)")
     if [ -d "$LOG_DIR" ]; then
-        if stat -Lc '%a' "$LOG_DIR" 2>/dev/null | grep -qE '^750$'; then
+        if sec_audit_mode_policy "$LOG_DIR" "$(secaudit_var MODE_AUDIT_LOG_DIR_750 750)" 750 exact '^750$'; then
             sec_audit_report_pass 266 "the audit log file directory mode is configured"
         else
             sec_audit_report_fail 266 "Audit log directory mode is not 750 or directory missing"
@@ -4052,9 +4227,15 @@ fi
 if [ -f /etc/audit/auditd.conf ]; then
     LOG_DIR=$(dirname "$(awk -F= '/^\s*log_file\s*/{print $2}' /etc/audit/auditd.conf | xargs)")
     LOG_GROUP=$(awk -F= '/^\s*log_group\s*/{print $2}' /etc/audit/auditd.conf | xargs)
-    if [ "$LOG_GROUP" = "root" ] || [ "$LOG_GROUP" = "adm" ]; then
+    _lg_ok=$(secaudit_var AUDIT_LOG_GROUP root,adm)
+    if sec_audit_csv_has "$LOG_GROUP" "$_lg_ok"; then
         if [ -d "$LOG_DIR" ]; then
-            if sec_audit_low_impact_find --timeout=10 "$LOG_DIR" -xdev -ignore_readdir_race -maxdepth 1 -type f \( ! -group root -a ! -group adm \) 2>/dev/null | grep -q '.'; then
+            _lg_bad=0
+            while IFS= read -r _af; do
+                [ -n "$_af" ] || continue
+                sec_audit_csv_has "$(stat -Lc '%G' "$_af" 2>/dev/null)" "$_lg_ok" || _lg_bad=1
+            done < <(sec_audit_low_impact_find --timeout=10 "$LOG_DIR" -xdev -ignore_readdir_race -maxdepth 1 -type f 2>/dev/null || true)
+            if [ "$_lg_bad" -eq 1 ]; then
                 sec_audit_report_fail 269 "Audit log files group ownership does not match log_group policy"
             else
                 sec_audit_report_pass 269 "audit log files group owner is configured"
@@ -4135,8 +4316,12 @@ else
     sec_audit_report_fail 275 "One or more /sbin/audit* tools have incorrect group ownership"
 fi
 
+}
+
+sec_audit_run_identity_files() {
+# RULE276-285
 # RULE276:
-if stat -Lc '%a' /etc/passwd 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/passwd "$(secaudit_var MODE_PASSWD 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/passwd 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 276 "access to /etc/passwd is configured"
     else
@@ -4148,7 +4333,7 @@ fi
 
 # RULE277:
 if [ -e /etc/passwd- ]; then
-    if stat -Lc '%a' /etc/passwd- 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/passwd- "$(secaudit_var MODE_PASSWD_DASH 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/passwd- 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 277 "access to /etc/passwd- is configured"
         else
@@ -4162,7 +4347,7 @@ else
 fi
 
 # RULE278:
-if stat -Lc '%a' /etc/group 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/group "$(secaudit_var MODE_GROUP 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/group 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 278 "access to /etc/group is configured"
     else
@@ -4174,7 +4359,7 @@ fi
 
 # RULE279:
 if [ -e /etc/group- ]; then
-    if stat -Lc '%a' /etc/group- 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/group- "$(secaudit_var MODE_GROUP_DASH 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/group- 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 279 "access to /etc/group- is configured"
         else
@@ -4188,7 +4373,7 @@ else
 fi
 
 # RULE280:
-if stat -Lc '%a' /etc/shadow 2>/dev/null | grep -qE '^[0-6]40$'; then
+if sec_audit_mode_policy /etc/shadow "$(secaudit_var MODE_SHADOW 640)" 640 within '^[0-6]40$'; then
     if stat -Lc '%U' /etc/shadow 2>/dev/null | grep -q 'root'; then
         if stat -Lc '%G' /etc/shadow 2>/dev/null | grep -qE 'root|shadow'; then
             sec_audit_report_pass 280 "access to /etc/shadow is configured"
@@ -4204,7 +4389,7 @@ fi
 
 # RULE281:
 if [ -e /etc/shadow- ]; then
-    if stat -Lc '%a' /etc/shadow- 2>/dev/null | grep -qE '^[0-6]40$'; then
+    if sec_audit_mode_policy /etc/shadow- "$(secaudit_var MODE_SHADOW_DASH 640)" 640 within '^[0-6]40$'; then
         if stat -Lc '%U' /etc/shadow- 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/shadow- 2>/dev/null | grep -qE 'root|shadow'; then
                 sec_audit_report_pass 281 "access to /etc/shadow- is configured"
@@ -4223,7 +4408,7 @@ fi
 
 # RULE282:
 if [ -e /etc/gshadow ]; then
-    if stat -Lc '%a' /etc/gshadow 2>/dev/null | grep -qE '^[0-6]40$'; then
+    if sec_audit_mode_policy /etc/gshadow "$(secaudit_var MODE_GSHADOW 640)" 640 within '^[0-6]40$'; then
         if stat -Lc '%U' /etc/gshadow 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/gshadow 2>/dev/null | grep -qE 'root|shadow'; then
                 sec_audit_report_pass 282 "access to /etc/gshadow is configured"
@@ -4242,7 +4427,7 @@ fi
 
 # RULE283:
 if [ -e /etc/gshadow- ]; then
-    if stat -Lc '%a' /etc/gshadow- 2>/dev/null | grep -qE '^[0-6]40$'; then
+    if sec_audit_mode_policy /etc/gshadow- "$(secaudit_var MODE_GSHADOW_DASH 640)" 640 within '^[0-6]40$'; then
         if stat -Lc '%U' /etc/gshadow- 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/gshadow- 2>/dev/null | grep -qE 'root|shadow'; then
                 sec_audit_report_pass 283 "access to /etc/gshadow- is configured"
@@ -4260,7 +4445,7 @@ else
 fi
 
 # RULE284:
-if stat -Lc '%a' /etc/shells 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/shells "$(secaudit_var MODE_SHELLS 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/shells 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 284 "access to /etc/shells is configured"
     else
@@ -4272,7 +4457,7 @@ fi
 
 # RULE285:
 if [ -e /etc/security/opasswd ]; then
-    if stat -Lc '%a' /etc/security/opasswd 2>/dev/null | grep -q '^600$'; then
+    if sec_audit_mode_policy /etc/security/opasswd "$(secaudit_var MODE_OPASSWD 600)" 600 exact '^600$'; then
         if stat -Lc '%U:%G' /etc/security/opasswd 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 285 "access to /etc/security/opasswd is configured"
         else
@@ -4285,6 +4470,10 @@ else
     sec_audit_report_pass 285 "/etc/security/opasswd is absent (optional file; permission check skipped)"
 fi
 
+}
+
+sec_audit_run_filesystem_integrity() {
+# RULE286-297
 # RULE286:
 CRITICAL_PATHS="/bin /sbin /usr/bin /usr/sbin /etc /var /home"
 if sec_audit_low_impact_find_timed_out sec_audit_low_impact_find --timeout=10 $CRITICAL_PATHS -xdev -ignore_readdir_race -maxdepth 2 -type f -perm -0002 -print; then
@@ -4351,7 +4540,7 @@ while IFS=: read -r user pass uid gid rest; do
         FAIL291=1
     fi
 done < /etc/passwd 2>/dev/null
-[ $FAIL291 -eq 0 ] && echo "RULE291= PASS: All groups in /etc/passwd exist in /etc/group"
+[ $FAIL291 -eq 0 ] && sec_audit_report_pass 291 "All groups in /etc/passwd exist in /etc/group"
 
 # RULE292:
 if cut -f3 -d":" /etc/passwd 2>/dev/null | sort -n | uniq -c | while read -r count uid; do [ "$count" -gt 1 ] && echo "found"; done | grep -q "found"; then
@@ -4385,24 +4574,23 @@ fi
 FAIL296=0
 while IFS=: read -r user _ uid _ _ home shell; do
     [[ "$uid" -ge 1000 && "$uid" -lt 65534 ]] || continue
-    [[ -n "$home" && "$home" != "/" ]] || { echo "RULE296= FAIL: User $user has invalid home"; FAIL296=1; continue; }
+    [[ -n "$home" && "$home" != "/" ]] || { sec_audit_report_fail 296 "User $user has invalid home"; FAIL296=1; continue; }
     if [[ ! -d "$home" ]]; then
-        echo "RULE296= FAIL: User $user home $home does not exist"; FAIL296=1
+        sec_audit_report_fail 296 "User $user home $home does not exist"; FAIL296=1
     elif [[ "$(stat -c '%U' "$home" 2>/dev/null)" != "$user" ]]; then
-        echo "RULE296= FAIL: User $user does not own home $home"; FAIL296=1
+        sec_audit_report_fail 296 "User $user does not own home $home"; FAIL296=1
     fi
 done < /etc/passwd
-[[ $FAIL296 -eq 0 ]] && echo "RULE296= PASS: local interactive user home directories are configured"
+[[ $FAIL296 -eq 0 ]] && sec_audit_report_pass 296 "local interactive user home directories are configured"
 
 # RULE297:
 FAIL297=0
-while IFS=: read -r user pass uid gid rest; do
+while IFS=: read -r user pass uid gid gecos home shell; do
     if [ "$uid" -ge 1000 ] 2>/dev/null && [ "$uid" -lt 65534 ]; then
-        home=$(echo "$rest" | cut -d: -f1)
         for dotfile in "$home/.bashrc" "$home/.bash_profile" "$home/.profile" "$home/.bash_logout"; do
             if [ -f "$dotfile" ]; then
                 perm=$(stat -c '%a' "$dotfile" 2>/dev/null)
-                if [ "${perm:2:1}" -gt 0 ] 2>/dev/null || [ "${perm:1:1}" -gt 0 ] 2>/dev/null; then
+                if [ -n "$perm" ] && { [ $(( ${perm: -1:1} & 2 )) -ne 0 ] || [ $(( ${perm: -2:1} & 2 )) -ne 0 ]; }; then
                     sec_audit_report_fail 297 "User $user dot file $dotfile has world/group write permissions ($perm)"
                     FAIL297=1
                 fi
@@ -4410,5 +4598,35 @@ while IFS=: read -r user pass uid gid rest; do
         done
     fi
 done < /etc/passwd 2>/dev/null
-[ $FAIL297 -eq 0 ] && echo "RULE297= PASS: Local interactive user dot files access is configured"
+[ $FAIL297 -eq 0 ] && sec_audit_report_pass 297 "Local interactive user dot files access is configured"
 
+}
+
+sec_audit_main() {
+    sec_audit_run_kernel_modules
+    sec_audit_run_filesystem_partitions
+    sec_audit_run_package_security
+    sec_audit_run_selinux
+    sec_audit_run_bootloader
+    sec_audit_run_process_hardening
+    sec_audit_run_crypto_policy
+    sec_audit_run_banners
+    sec_audit_run_gdm
+    sec_audit_run_unused_services
+    sec_audit_run_client_tools
+    sec_audit_run_chrony
+    sec_audit_run_cron_at
+    sec_audit_run_network_stack
+    sec_audit_run_firewalld
+    sec_audit_run_sshd
+    sec_audit_run_sudo_su
+    sec_audit_run_pam_auth
+    sec_audit_run_accounts
+    sec_audit_run_aide
+    sec_audit_run_logging
+    sec_audit_run_auditd
+    sec_audit_run_identity_files
+    sec_audit_run_filesystem_integrity
+}
+
+sec_audit_main "$@"

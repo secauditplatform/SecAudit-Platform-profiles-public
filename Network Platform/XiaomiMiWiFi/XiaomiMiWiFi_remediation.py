@@ -94,6 +94,18 @@ def secaudit_skip_all_rules(reason: str) -> None:
         secaudit_remediate_skip(n, reason)
 
 
+def secaudit_var(name: str, fallback: str) -> str:
+    value = os.environ.get(f"SECAUDIT_VAR_{name}")
+    if value is None or not str(value).strip():
+        return fallback
+    return str(value).strip()
+
+
+def secaudit_var_token(name: str, fallback: str) -> str:
+    token = secaudit_var(name, fallback).split(",")[0].strip()
+    return token or fallback.split(",")[0].strip()
+
+
 def secaudit_env(*names: str, default: str = "") -> str:
     for name in names:
         val = os.environ.get(name)
@@ -322,7 +334,13 @@ def secaudit_remediate_firmware(num: int) -> None:
 
 
 def secaudit_remediate_wifi_encryption(num: int) -> None:
-    enc = secaudit_env("XM_REMEDIATE_WIFI_ENC", default="psk2+ccmp")
+    enc = secaudit_env(
+        "XM_REMEDIATE_WIFI_ENC",
+        default=secaudit_var_token(
+            "WIFI_ENCRYPTION",
+            "psk2+ccmp,psk2,psk2+aes,ccmp,sae,sae-mixed,wpa3,wpa3-mixed,wpa2,wpa2+ccmp",
+        ),
+    )
     sections = secaudit_wifi_iface_sections() or ["@wifi-iface[0]"]
     for sec in sections:
         secaudit_queue(f"uci set wireless.{sec}.encryption={secaudit_shell_quote(enc)}")
@@ -455,7 +473,13 @@ def secaudit_remediate_guest_network(num: int) -> None:
     if not guest_ssid:
         secaudit_remediate_skip(num, "set XM_REMEDIATE_GUEST_SSID to apply")
         return
-    enc = secaudit_env("XM_REMEDIATE_WIFI_ENC", default="psk2+ccmp")
+    enc = secaudit_env(
+        "XM_REMEDIATE_WIFI_ENC",
+        default=secaudit_var_token(
+            "WIFI_ENCRYPTION",
+            "psk2+ccmp,psk2,psk2+aes,ccmp,sae,sae-mixed,wpa3,wpa3-mixed,wpa2,wpa2+ccmp",
+        ),
+    )
     secaudit_queue(
         "uci -q get network.guest >/dev/null || uci set network.guest=interface"
     )
@@ -606,7 +630,8 @@ def secaudit_remediate_lan_subnet(num: int) -> None:
             for ip in secaudit_uci_values("ipaddr")
             if re.match(r"\d+\.\d+\.\d+\.\d+$", ip) and not ip.startswith("127.")
         ]
-    if lan_ips and not lan_ips[0].startswith("192.168.31."):
+    factory_prefix = secaudit_var("LAN_FACTORY_PREFIX", "192.168.31.")
+    if lan_ips and not lan_ips[0].startswith(factory_prefix):
         secaudit_remediate_done(num, f"LAN IP already non-factory ({lan_ips[0]})")
         return
     secaudit_queue(f"uci set network.lan.ipaddr={secaudit_shell_quote(lan_ip)}")
@@ -617,7 +642,13 @@ def secaudit_remediate_lan_subnet(num: int) -> None:
 
 
 def secaudit_remediate_weak_ciphers(num: int) -> None:
-    enc = secaudit_env("XM_REMEDIATE_WIFI_ENC", default="psk2+ccmp")
+    enc = secaudit_env(
+        "XM_REMEDIATE_WIFI_ENC",
+        default=secaudit_var_token(
+            "WIFI_ENCRYPTION",
+            "psk2+ccmp,psk2,psk2+aes,ccmp,sae,sae-mixed,wpa3,wpa3-mixed,wpa2,wpa2+ccmp",
+        ),
+    )
     sections = secaudit_wifi_iface_sections() or ["@wifi-iface[0]"]
     for sec in sections:
         secaudit_queue(f"uci set wireless.{sec}.encryption={secaudit_shell_quote(enc)}")
@@ -625,10 +656,11 @@ def secaudit_remediate_weak_ciphers(num: int) -> None:
 
 
 def secaudit_remediate_pmf(num: int) -> None:
+    pmf = secaudit_var_token("PMF_VALUES", "1,2")
     sections = secaudit_wifi_iface_sections() or ["@wifi-iface[0]"]
     for sec in sections:
-        secaudit_queue(f"uci set wireless.{sec}.ieee80211w='1'")
-    secaudit_remediate_done(num, "ieee80211w=1 (PMF)")
+        secaudit_queue(f"uci set wireless.{sec}.ieee80211w={secaudit_shell_quote(pmf)}")
+    secaudit_remediate_done(num, f"ieee80211w={pmf} (PMF)")
 
 
 def secaudit_remediate_cloud_remote(num: int) -> None:

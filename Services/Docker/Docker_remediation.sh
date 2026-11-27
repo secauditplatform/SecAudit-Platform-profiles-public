@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -43,6 +55,11 @@ _DOCKER_SOCK="${DOCKER_SOCK:-${SECAUDIT_DOCKER_SOCK:-/var/run/docker.sock}}"
 _DOCKER_CONTAINERD_SOCK="${CONTAINERD_SOCK:-${SECAUDIT_CONTAINERD_SOCK:-/run/containerd/containerd.sock}}"
 _DOCKER_AUDIT_RULES="${DOCKER_AUDIT_RULES:-/etc/audit/rules.d/99-secaudit-docker.rules}"
 _DOCKER_RULE_COUNT=98
+_DOCKER_MODE_UNIT=$(secaudit_var MODE_UNIT 644)
+_DOCKER_MODE_DOCKER_DIR=$(secaudit_var MODE_DOCKER_DIR 755)
+_DOCKER_MODE_CERT=$(secaudit_var MODE_CERT 444)
+_DOCKER_MODE_KEY=$(secaudit_var MODE_KEY 400)
+_DOCKER_MODE_SOCK=$(secaudit_var MODE_SOCK 660)
 _DOCKER_REMEDIATE_APPLY_DAEMON="${DOCKER_REMEDIATE_APPLY_DAEMON:-1}"
 _DOCKER_REMEDIATE_APPLY_AUDIT="${DOCKER_REMEDIATE_APPLY_AUDIT:-1}"
 _DOCKER_REMEDIATE_APPLY_PERMS="${DOCKER_REMEDIATE_APPLY_PERMS:-1}"
@@ -83,11 +100,16 @@ secaudit_exec_with_timeout() {
 }
 
 secaudit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-docker.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ]; then
+        if [ ! -f "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 secaudit_harden_path() {
@@ -335,7 +357,7 @@ secaudit_remediate_daemon_config() {
 
     local merge_args=(
         icc false
-        "log-level" '"info"'
+        "log-level" "\"$(secaudit_var LOG_LEVEL info)\""
         iptables true
         "userland-proxy" false
         "no-new-privileges" true
@@ -395,27 +417,27 @@ secaudit_remediate_file_perms() {
     mkdir -p /etc/docker 2>/dev/null || true
 
     if [ -n "$svc" ] && [ -e "$svc" ]; then
-        secaudit_harden_path "$svc" 644 "root:root"
+        secaudit_harden_path "$svc" "$_DOCKER_MODE_UNIT" "root:root"
         secaudit_remediate_done 34 "docker.service owner root:root"
-        secaudit_remediate_done 35 "docker.service mode 644"
+        secaudit_remediate_done 35 "docker.service mode ${_DOCKER_MODE_UNIT}"
     else
         secaudit_remediate_skip 34 "docker.service unit file not found"
         secaudit_remediate_skip 35 "docker.service unit file not found"
     fi
 
     if [ -n "$sock" ] && [ -e "$sock" ]; then
-        secaudit_harden_path "$sock" 644 "root:root"
+        secaudit_harden_path "$sock" "$_DOCKER_MODE_UNIT" "root:root"
         secaudit_remediate_done 36 "docker.socket owner root:root"
-        secaudit_remediate_done 37 "docker.socket mode 644"
+        secaudit_remediate_done 37 "docker.socket mode ${_DOCKER_MODE_UNIT}"
     else
         secaudit_remediate_skip 36 "docker.socket unit file not found"
         secaudit_remediate_skip 37 "docker.socket unit file not found"
     fi
 
     if [ -d /etc/docker ]; then
-        secaudit_harden_path /etc/docker 755 "root:root"
+        secaudit_harden_path /etc/docker "$_DOCKER_MODE_DOCKER_DIR" "root:root"
         secaudit_remediate_done 38 "/etc/docker owner root:root"
-        secaudit_remediate_done 39 "/etc/docker mode 755"
+        secaudit_remediate_done 39 "/etc/docker mode ${_DOCKER_MODE_DOCKER_DIR}"
     else
         secaudit_remediate_skip 38 "/etc/docker missing"
         secaudit_remediate_skip 39 "/etc/docker missing"
@@ -427,12 +449,12 @@ secaudit_remediate_file_perms() {
             [ -n "$p" ] || continue
             base=$(basename "$p")
             case "$base" in
-                *.key|key.pem|private.pem) secaudit_harden_path "$p" 400 "root:root" ;;
-                *) secaudit_harden_path "$p" 444 "root:root" ;;
+                *.key|key.pem|private.pem) secaudit_harden_path "$p" "$_DOCKER_MODE_KEY" "root:root" ;;
+                *) secaudit_harden_path "$p" "$_DOCKER_MODE_CERT" "root:root" ;;
             esac
         done < <(find "$_DOCKER_CERTS_DIR" -type f \( -name '*.pem' -o -name '*.crt' -o -name '*.key' \) 2>/dev/null)
         secaudit_remediate_done 40 "registry cert tree ownership root:root"
-        secaudit_remediate_done 41 "registry cert modes tightened (<=444 / keys 400)"
+        secaudit_remediate_done 41 "registry cert modes tightened (<=${_DOCKER_MODE_CERT} / keys ${_DOCKER_MODE_KEY})"
         secaudit_remediate_done 42 "ca.pem ownership/mode where present"
         secaudit_remediate_done 43 "ca.pem ownership/mode where present"
         secaudit_remediate_done 44 "cert.pem ownership/mode where present"
@@ -448,39 +470,39 @@ secaudit_remediate_file_perms() {
 
     if [ -S "$_DOCKER_SOCK" ] || [ -e "$_DOCKER_SOCK" ]; then
         if getent group docker >/dev/null 2>&1; then
-            secaudit_harden_path "$_DOCKER_SOCK" 660 "root:docker"
+            secaudit_harden_path "$_DOCKER_SOCK" "$_DOCKER_MODE_SOCK" "root:docker"
             secaudit_remediate_done 48 "docker.sock owner root:docker"
         else
-            secaudit_harden_path "$_DOCKER_SOCK" 660 "root:root"
-            secaudit_remediate_skip 48 "docker group missing; sock left root:root mode 660"
+            secaudit_harden_path "$_DOCKER_SOCK" "$_DOCKER_MODE_SOCK" "root:root"
+            secaudit_remediate_skip 48 "docker group missing; sock left root:root mode ${_DOCKER_MODE_SOCK}"
         fi
-        secaudit_remediate_done 49 "docker.sock mode 660"
+        secaudit_remediate_done 49 "docker.sock mode ${_DOCKER_MODE_SOCK}"
     else
         secaudit_remediate_skip 48 "docker.sock not present at ${_DOCKER_SOCK}"
         secaudit_remediate_skip 49 "docker.sock not present at ${_DOCKER_SOCK}"
     fi
 
     if [ -f "$_DOCKER_DAEMON_JSON" ]; then
-        secaudit_harden_path "$_DOCKER_DAEMON_JSON" 644 "root:root"
+        secaudit_harden_path "$_DOCKER_DAEMON_JSON" "$_DOCKER_MODE_UNIT" "root:root"
         secaudit_remediate_done 50 "daemon.json owner root:root"
-        secaudit_remediate_done 51 "daemon.json mode 644"
+        secaudit_remediate_done 51 "daemon.json mode ${_DOCKER_MODE_UNIT}"
     else
         secaudit_remediate_done 50 "daemon.json absent"
         secaudit_remediate_done 51 "daemon.json absent"
     fi
 
     if [ -f /etc/default/docker ]; then
-        secaudit_harden_path /etc/default/docker 644 "root:root"
+        secaudit_harden_path /etc/default/docker "$_DOCKER_MODE_UNIT" "root:root"
         secaudit_remediate_done 52 "/etc/default/docker owner root:root"
-        secaudit_remediate_done 53 "/etc/default/docker mode 644"
+        secaudit_remediate_done 53 "/etc/default/docker mode ${_DOCKER_MODE_UNIT}"
     else
         secaudit_remediate_done 52 "/etc/default/docker absent"
         secaudit_remediate_done 53 "/etc/default/docker absent"
     fi
 
     if [ -f /etc/sysconfig/docker ]; then
-        secaudit_harden_path /etc/sysconfig/docker 644 "root:root"
-        secaudit_remediate_done 54 "/etc/sysconfig/docker mode 644"
+        secaudit_harden_path /etc/sysconfig/docker "$_DOCKER_MODE_UNIT" "root:root"
+        secaudit_remediate_done 54 "/etc/sysconfig/docker mode ${_DOCKER_MODE_UNIT}"
         secaudit_remediate_done 55 "/etc/sysconfig/docker owner root:root"
     else
         secaudit_remediate_done 54 "/etc/sysconfig/docker absent"
@@ -488,9 +510,9 @@ secaudit_remediate_file_perms() {
     fi
 
     if [ -e "$_DOCKER_CONTAINERD_SOCK" ]; then
-        secaudit_harden_path "$_DOCKER_CONTAINERD_SOCK" 660 "root:root"
+        secaudit_harden_path "$_DOCKER_CONTAINERD_SOCK" "$_DOCKER_MODE_SOCK" "root:root"
         secaudit_remediate_done 56 "containerd.sock owner root:root"
-        secaudit_remediate_done 57 "containerd.sock mode 660"
+        secaudit_remediate_done 57 "containerd.sock mode ${_DOCKER_MODE_SOCK}"
     else
         secaudit_remediate_skip 56 "containerd.sock not present at ${_DOCKER_CONTAINERD_SOCK}"
         secaudit_remediate_skip 57 "containerd.sock not present at ${_DOCKER_CONTAINERD_SOCK}"
@@ -613,7 +635,7 @@ secaudit_main() {
     secaudit_remediate_swarm_and_host
 
     if [ "$_DOCKER_DAEMON_CHANGED" -eq 1 ]; then
-        [ -f "$_DOCKER_DAEMON_JSON" ] && secaudit_harden_path "$_DOCKER_DAEMON_JSON" 644 "root:root"
+        [ -f "$_DOCKER_DAEMON_JSON" ] && secaudit_harden_path "$_DOCKER_DAEMON_JSON" "$_DOCKER_MODE_UNIT" "root:root"
         secaudit_maybe_restart_docker
     fi
 

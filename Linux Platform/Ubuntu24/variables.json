@@ -1,0 +1,301 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "CLIENT_ALIVE_INTERVAL",
+      "type": "int",
+      "default": 900,
+      "min": 1,
+      "max": 86400,
+      "description": "SSH ClientAliveInterval ceiling in seconds. The check fails above this.",
+      "requirement_ids": [
+        "RULE149"
+      ]
+    },
+    {
+      "name": "PASS_MINLEN",
+      "type": "int",
+      "default": 14,
+      "min": 1,
+      "max": 72,
+      "description": "Minimum password length. The check fails below this.",
+      "requirement_ids": [
+        "RULE182"
+      ]
+    },
+    {
+      "name": "PASS_MAX_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum password age in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE195"
+      ]
+    },
+    {
+      "name": "PASS_WARN_AGE",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 90,
+      "description": "Days of warning before a password expires. The check fails below this.",
+      "requirement_ids": [
+        "RULE196"
+      ]
+    },
+    {
+      "name": "INACTIVE_DAYS",
+      "type": "int",
+      "default": 30,
+      "min": 1,
+      "max": 90,
+      "description": "Days before an inactive password is locked. The check fails above this.",
+      "requirement_ids": [
+        "RULE198"
+      ]
+    },
+    {
+      "name": "LOGIN_GRACE_TIME",
+      "type": "int",
+      "default": 60,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum SSH LoginGraceTime in seconds.",
+      "requirement_ids": [
+        "RULE155"
+      ]
+    },
+    {
+      "name": "MAX_AUTH_TRIES",
+      "type": "int",
+      "default": 4,
+      "min": 1,
+      "max": 20,
+      "description": "Maximum SSH MaxAuthTries.",
+      "requirement_ids": [
+        "RULE158"
+      ]
+    },
+    {
+      "name": "MAX_SESSIONS",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "description": "Maximum SSH MaxSessions.",
+      "requirement_ids": [
+        "RULE159"
+      ]
+    },
+    {
+      "name": "MODE_GRUB_CFG",
+      "type": "string",
+      "default": "600",
+      "description": "Required octal mode (600). Ownership in the check stays unchanged.",
+      "requirement_ids": [
+        "RULE40"
+      ]
+    },
+    {
+      "name": "MODE_MOTD",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE48"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE49"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE_NET",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE50"
+      ]
+    },
+    {
+      "name": "MODE_CRONTAB",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE94"
+      ]
+    },
+    {
+      "name": "MODE_CRON_HOURLY",
+      "type": "string",
+      "default": "700",
+      "description": "Octal mode ceiling (700). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE95"
+      ]
+    },
+    {
+      "name": "MODE_CRON_DAILY",
+      "type": "string",
+      "default": "700",
+      "description": "Octal mode ceiling (700). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE96"
+      ]
+    },
+    {
+      "name": "MODE_CRON_WEEKLY",
+      "type": "string",
+      "default": "700",
+      "description": "Octal mode ceiling (700). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE97"
+      ]
+    },
+    {
+      "name": "MODE_CRON_MONTHLY",
+      "type": "string",
+      "default": "700",
+      "description": "Octal mode ceiling (700). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE98"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR",
+      "type": "string",
+      "default": "700",
+      "description": "Octal mode ceiling (700). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE99"
+      ]
+    },
+    {
+      "name": "MODE_CRON_ALLOW",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE100"
+      ]
+    },
+    {
+      "name": "MODE_AT_ALLOW",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE101"
+      ]
+    },
+    {
+      "name": "MODE_SSHD_CONFIG",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE143"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD",
+      "type": "string",
+      "default": "644",
+      "description": "Required octal mode (644). Ownership in the check stays unchanged.",
+      "requirement_ids": [
+        "RULE258"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE259"
+      ]
+    },
+    {
+      "name": "MODE_GROUP",
+      "type": "string",
+      "default": "644",
+      "description": "Required octal mode (644). Ownership in the check stays unchanged.",
+      "requirement_ids": [
+        "RULE260"
+      ]
+    },
+    {
+      "name": "MODE_GROUP_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE261"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE262"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW_DASH",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE263"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE264"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW_DASH",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE265"
+      ]
+    },
+    {
+      "name": "MODE_SHELLS",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE266"
+      ]
+    },
+    {
+      "name": "MODE_OPASSWD",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes. Ownership stays unchanged.",
+      "requirement_ids": [
+        "RULE267"
+      ]
+    }
+  ]
+}

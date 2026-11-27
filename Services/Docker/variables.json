@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "MODE_UNIT",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum mode on docker.service, docker.socket, daemon.json, /etc/default/docker, and /etc/sysconfig/docker. Each digit is a ceiling. Remediation sets the file to this mode.",
+      "requirement_ids": [
+        "RULE35",
+        "RULE37",
+        "RULE51",
+        "RULE53",
+        "RULE54"
+      ]
+    },
+    {
+      "name": "MODE_DOCKER_DIR",
+      "type": "string",
+      "default": "755",
+      "description": "Maximum mode on /etc/docker. Each digit is a ceiling. Remediation sets the directory to this mode.",
+      "requirement_ids": [
+        "RULE39"
+      ]
+    },
+    {
+      "name": "MODE_CERT",
+      "type": "string",
+      "default": "444",
+      "description": "Maximum mode on registry certificate files.",
+      "requirement_ids": [
+        "RULE41",
+        "RULE42",
+        "RULE43",
+        "RULE44",
+        "RULE45"
+      ]
+    },
+    {
+      "name": "MODE_KEY",
+      "type": "string",
+      "default": "400",
+      "description": "Maximum mode on registry private keys.",
+      "requirement_ids": [
+        "RULE46",
+        "RULE47"
+      ]
+    },
+    {
+      "name": "MODE_SOCK",
+      "type": "string",
+      "default": "660",
+      "description": "Maximum mode on docker.sock and containerd.sock. Each digit is a ceiling. Remediation sets the socket to this mode.",
+      "requirement_ids": [
+        "RULE49",
+        "RULE57"
+      ]
+    },
+    {
+      "name": "ENGINE_MIN_MAJOR",
+      "type": "int",
+      "default": 20,
+      "min": 1,
+      "max": 99,
+      "description": "Minimum Docker server major version.",
+      "requirement_ids": [
+        "RULE20"
+      ]
+    },
+    {
+      "name": "LOG_LEVEL",
+      "type": "string",
+      "default": "info",
+      "description": "Daemon log-level the check accepts. An unset level still passes. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE23"
+      ]
+    },
+    {
+      "name": "FORBIDDEN_STORAGE",
+      "type": "string",
+      "default": "aufs",
+      "description": "Storage driver that fails the check.",
+      "requirement_ids": [
+        "RULE26"
+      ]
+    },
+    {
+      "name": "FORBIDDEN_LOG_DRIVER",
+      "type": "string",
+      "default": "json-file",
+      "description": "Logging driver that fails the check. An empty driver also fails.",
+      "requirement_ids": [
+        "RULE29"
+      ]
+    },
+    {
+      "name": "PRIVILEGED_PORT",
+      "type": "int",
+      "default": 1024,
+      "min": 1,
+      "max": 65535,
+      "description": "Published host ports below this value fail the check.",
+      "requirement_ids": [
+        "RULE66"
+      ]
+    },
+    {
+      "name": "CGROUP_DRIVERS",
+      "type": "string",
+      "default": "systemd,cgroupfs",
+      "description": "Comma-separated cgroup drivers the check accepts.",
+      "requirement_ids": [
+        "RULE93"
+      ]
+    }
+  ]
+}

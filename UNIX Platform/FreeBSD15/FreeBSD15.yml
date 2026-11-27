@@ -684,6 +684,38 @@
       ansible.builtin.script: FreeBSD15.sh
       args:
         executable: /bin/sh
+      environment:
+        SECAUDIT_RULES: "{{ SECAUDIT_RULES | default('', true) }}"
+        SECAUDIT_REMEDIATE_RULES: "{{ SECAUDIT_REMEDIATE_RULES | default('', true) }}"
+        SECAUDIT_VAR_PASS_MINLEN: "{{ SECAUDIT_VAR_PASS_MINLEN | default('14', true) }}"
+        SECAUDIT_VAR_PASS_MAX_DAYS: "{{ SECAUDIT_VAR_PASS_MAX_DAYS | default('365', true) }}"
+        SECAUDIT_VAR_PASS_WARN_AGE: "{{ SECAUDIT_VAR_PASS_WARN_AGE | default('7', true) }}"
+        SECAUDIT_VAR_SUDO_TIMESTAMP_TIMEOUT: "{{ SECAUDIT_VAR_SUDO_TIMESTAMP_TIMEOUT | default('15', true) }}"
+        SECAUDIT_VAR_LOGIN_GRACE_TIME: "{{ SECAUDIT_VAR_LOGIN_GRACE_TIME | default('60', true) }}"
+        SECAUDIT_VAR_SSH_LOG_LEVEL: "{{ SECAUDIT_VAR_SSH_LOG_LEVEL | default('INFO,VERBOSE', true) }}"
+        SECAUDIT_VAR_MAX_AUTH_TRIES: "{{ SECAUDIT_VAR_MAX_AUTH_TRIES | default('4', true) }}"
+        SECAUDIT_VAR_MAX_SESSIONS: "{{ SECAUDIT_VAR_MAX_SESSIONS | default('10', true) }}"
+        SECAUDIT_VAR_MAX_STARTUPS: "{{ SECAUDIT_VAR_MAX_STARTUPS | default('10:30:60', true) }}"
+        SECAUDIT_VAR_SSH_PERMIT_ROOT: "{{ SECAUDIT_VAR_SSH_PERMIT_ROOT | default('no', true) }}"
+        SECAUDIT_VAR_SYSCTL_ASLR: "{{ SECAUDIT_VAR_SYSCTL_ASLR | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_ACCEPT_SOURCEROUTE: "{{ SECAUDIT_VAR_SYSCTL_ACCEPT_SOURCEROUTE | default('0', true) }}"
+        SECAUDIT_VAR_SYSCTL_TCP_SYNCOOKIES: "{{ SECAUDIT_VAR_SYSCTL_TCP_SYNCOOKIES | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_ACCEPT_RTADV: "{{ SECAUDIT_VAR_SYSCTL_ACCEPT_RTADV | default('0', true) }}"
+        SECAUDIT_VAR_MODE_LOADER: "{{ SECAUDIT_VAR_MODE_LOADER | default('600', true) }}"
+        SECAUDIT_VAR_MODE_MOTD: "{{ SECAUDIT_VAR_MODE_MOTD | default('644', true) }}"
+        SECAUDIT_VAR_MODE_ISSUE: "{{ SECAUDIT_VAR_MODE_ISSUE | default('644', true) }}"
+        SECAUDIT_VAR_MODE_CRON_ALLOW: "{{ SECAUDIT_VAR_MODE_CRON_ALLOW | default('640', true) }}"
+        SECAUDIT_VAR_MODE_AT_ALLOW: "{{ SECAUDIT_VAR_MODE_AT_ALLOW | default('640', true) }}"
+        SECAUDIT_VAR_MODE_SSHD_CONFIG: "{{ SECAUDIT_VAR_MODE_SSHD_CONFIG | default('644', true) }}"
+        SECAUDIT_VAR_MODE_SSH_HOSTKEY: "{{ SECAUDIT_VAR_MODE_SSH_HOSTKEY | default('600', true) }}"
+        SECAUDIT_VAR_MODE_SSH_HOSTKEY_PUB: "{{ SECAUDIT_VAR_MODE_SSH_HOSTKEY_PUB | default('644', true) }}"
+        SECAUDIT_VAR_MODE_VAR_LOG: "{{ SECAUDIT_VAR_MODE_VAR_LOG | default('640', true) }}"
+        SECAUDIT_VAR_MODE_AUDIT_LOG_DIR: "{{ SECAUDIT_VAR_MODE_AUDIT_LOG_DIR | default('750', true) }}"
+        SECAUDIT_VAR_MODE_AUDIT_LOGS: "{{ SECAUDIT_VAR_MODE_AUDIT_LOGS | default('640', true) }}"
+        SECAUDIT_VAR_MODE_PASSWD: "{{ SECAUDIT_VAR_MODE_PASSWD | default('644', true) }}"
+        SECAUDIT_VAR_MODE_GROUP: "{{ SECAUDIT_VAR_MODE_GROUP | default('644', true) }}"
+        SECAUDIT_VAR_MODE_MASTER_PASSWD: "{{ SECAUDIT_VAR_MODE_MASTER_PASSWD | default('600', true) }}"
+        SECAUDIT_VAR_MODE_SHELLS: "{{ SECAUDIT_VAR_MODE_SHELLS | default('644', true) }}"
       register: freebsd_15_audit_raw
       changed_when: false
       failed_when: false

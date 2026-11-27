@@ -22,6 +22,30 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Return 0 when $1 equals one comma-separated token of $2.
+secaudit_in_csv() {
+    local want="$1" list="$2" token
+    local IFS=','
+    for token in $list; do
+        token="${token#"${token%%[![:space:]]*}"}"
+        token="${token%"${token##*[![:space:]]}"}"
+        [ "$want" = "$token" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -60,10 +84,10 @@ declare -A _PG_GUC_UNIT=()
 declare -A _PG_GUC_PENDING=()
 
 # --- reporting ---
-secaudit_report_pass() { printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
-secaudit_report_fail() { printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
-secaudit_report_skip() { printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
-secaudit_report_error() { printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
+secaudit_report_pass() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
+secaudit_report_fail() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
+secaudit_report_skip() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
+secaudit_report_error() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
 
 # --- utils ---
 secaudit_have_bin() { command -v "$1" >/dev/null 2>&1; }
@@ -626,7 +650,7 @@ secaudit_check_cluster() {
         secaudit_report_fail "$num" "PG_VERSION missing at ${dir}"
         return 0
     fi
-    if [ "$mode" != "700" ] || [ "$owner" != "postgres" ]; then
+    if [ "$(secaudit_mode_norm "$mode")" != "$(secaudit_mode_norm "$(secaudit_var MODE_PGDATA 700)")" ] || [ "$owner" != "postgres" ]; then
         secaudit_report_fail "$num" "cluster ${dir} mode=${mode} owner=${owner} (expected 700 postgres) PG_VERSION=${ver}"
         return 0
     fi
@@ -649,11 +673,16 @@ secaudit_check_umask() {
         raw=$(secaudit_exec_with_timeout 5 runuser -u postgres -- sh -c 'umask' 2>/dev/null)
         src="runuser"
     fi
-    case "$(secaudit_trim "$raw")" in
-        077|0077|77) secaudit_report_pass "$num" "postgres umask=${raw} (${src})" ;;
-        "") secaudit_report_fail "$num" "postgres umask is not configured (expected 077)" ;;
-        *) secaudit_report_fail "$num" "postgres umask=${raw} (expected 077)" ;;
-    esac
+    local want got
+    want=$(secaudit_mode_norm "$(secaudit_var UMASK 077)")
+    got=$(secaudit_mode_norm "$raw")
+    if [ -z "$raw" ]; then
+        secaudit_report_fail "$num" "postgres umask is not configured (expected $(secaudit_var UMASK 077))"
+    elif [ "$got" = "$want" ]; then
+        secaudit_report_pass "$num" "postgres umask=${raw} (${src})"
+    else
+        secaudit_report_fail "$num" "postgres umask=${raw} (expected $(secaudit_var UMASK 077))"
+    fi
 }
 
 secaudit_check_wheel() {
@@ -698,52 +727,53 @@ secaudit_check_log_file_mode() {
     local num="$1" v n
     v=$(secaudit_guc_get log_file_mode)
     n=$(secaudit_mode_norm "$v")
-    case "$n" in
-        600|640) secaudit_report_pass "$num" "log_file_mode=${v}" ;;
-        *) secaudit_report_fail "$num" "log_file_mode='${v:-unset}' (expected 0600/0640)" ;;
-    esac
+    local token ok=0
+    local IFS=','
+    for token in $(secaudit_var LOG_FILE_MODE "0600,0640"); do
+        [ "$n" = "$(secaudit_mode_norm "$token")" ] && ok=1
+    done
+    if [ "$ok" -eq 1 ]; then
+        secaudit_report_pass "$num" "log_file_mode=${v}"
+    else
+        secaudit_report_fail "$num" "log_file_mode='${v:-unset}' (expected $(secaudit_var LOG_FILE_MODE "0600,0640"))"
+    fi
 }
 
 secaudit_check_syslog_facility() {
     local num="$1" v dest
     v=$(secaudit_guc_get syslog_facility)
     dest=$(secaudit_guc_get log_destination)
-    case "$(secaudit_lower "$v")" in
-        local0|local1|local2|local3|local4|local5|local6|local7)
-            if printf '%s' "$dest" | grep -q syslog && ! secaudit_syslog_daemon_ok; then
-                secaudit_report_fail "$num" "syslog_facility=${v} but rsyslog/syslog-ng is not active"
-            else
-                secaudit_report_pass "$num" "syslog_facility=${v} dest=${dest}"
-            fi
-            ;;
-        *)
-            secaudit_report_fail "$num" "syslog_facility='${v:-unset}' (expected local0-local7)"
-            ;;
-    esac
+    if secaudit_in_csv "$(secaudit_lower "$v")" "$(secaudit_lower "$(secaudit_var SYSLOG_FACILITY "local0,local1,local2,local3,local4,local5,local6,local7")")"; then
+        if printf '%s' "$dest" | grep -q syslog && ! secaudit_syslog_daemon_ok; then
+            secaudit_report_fail "$num" "syslog_facility=${v} but rsyslog/syslog-ng is not active"
+        else
+            secaudit_report_pass "$num" "syslog_facility=${v} dest=${dest}"
+        fi
+    else
+        secaudit_report_fail "$num" "syslog_facility='${v:-unset}' (expected $(secaudit_var SYSLOG_FACILITY "local0,local1,local2,local3,local4,local5,local6,local7"))"
+    fi
 }
 
 secaudit_check_min_messages() {
     local num="$1" v
     v=$(secaudit_lower "$(secaudit_guc_get log_min_messages)")
     [ -z "$v" ] && v="warning"
-    case "$v" in
-        debug5|debug4|debug3|debug2|debug1|info|notice|log|warning)
-            secaudit_report_pass "$num" "log_min_messages=${v}"
-            ;;
-        *)
-            secaudit_report_fail "$num" "log_min_messages=${v}"
-            ;;
-    esac
+    if secaudit_in_csv "$v" "$(secaudit_lower "$(secaudit_var LOG_MIN_MESSAGES "warning,log,notice,info,debug1,debug2,debug3,debug4,debug5")")"; then
+        secaudit_report_pass "$num" "log_min_messages=${v}"
+    else
+        secaudit_report_fail "$num" "log_min_messages=${v} (expected $(secaudit_var LOG_MIN_MESSAGES "warning,log,notice,info,debug1,debug2,debug3,debug4,debug5"))"
+    fi
 }
 
 secaudit_check_error_verbosity() {
     local num="$1" v
     v=$(secaudit_lower "$(secaudit_guc_get log_error_verbosity)")
     [ -z "$v" ] && v="default"
-    case "$v" in
-        default|verbose) secaudit_report_pass "$num" "log_error_verbosity=${v}" ;;
-        *) secaudit_report_fail "$num" "log_error_verbosity=${v} (expected default/verbose)" ;;
-    esac
+    if secaudit_in_csv "$v" "$(secaudit_lower "$(secaudit_var ERROR_VERBOSITY "default,verbose")")"; then
+        secaudit_report_pass "$num" "log_error_verbosity=${v}"
+    else
+        secaudit_report_fail "$num" "log_error_verbosity=${v} (expected $(secaudit_var ERROR_VERBOSITY "default,verbose"))"
+    fi
 }
 
 secaudit_check_timezone() {
@@ -756,16 +786,13 @@ secaudit_check_timezone() {
         secaudit_report_fail "$num" "log_timezone unset"
         return 0
     fi
-    case "$(secaudit_lower "$tz")" in
-        gmt|utc|etc/utc) secaudit_report_pass "$num" "log_timezone=${tz}" ;;
-        *)
-            if [ "$tz" = "$os" ]; then
-                secaudit_report_pass "$num" "log_timezone=${tz} matches OS"
-            else
-                secaudit_report_fail "$num" "log_timezone=${tz} OS=${os:-n/a}"
-            fi
-            ;;
-    esac
+    if secaudit_in_csv "$(secaudit_lower "$tz")" "$(secaudit_lower "$(secaudit_var TIMEZONE "UTC,GMT,Etc/UTC")")"; then
+        secaudit_report_pass "$num" "log_timezone=${tz}"
+    elif [ "$tz" = "$os" ]; then
+        secaudit_report_pass "$num" "log_timezone=${tz} matches OS"
+    else
+        secaudit_report_fail "$num" "log_timezone=${tz} OS=${os:-n/a} (expected $(secaudit_var TIMEZONE "UTC,GMT,Etc/UTC") or the OS zone)"
+    fi
 }
 
 secaudit_check_pgaudit() {
@@ -856,20 +883,18 @@ EOF
 }
 
 secaudit_check_hba_host_auth() {
-    local num="$1" type method weak="" scram="" md5="" other=""
+    local num="$1" type method method_l weak="" scram="" md5="" other=""
     if [ -z "$_PG_HBA_RULES" ]; then
         secaudit_report_fail "$num" "no host rules available"
         return 0
     fi
     while IFS='|' read -r type _ _ _ method; do
         printf '%s' "$type" | grep -q '^host' || continue
-        case "$(secaudit_lower "$method")" in
-            trust|password)
-                weak="${weak} ${method}"
-                ;;
-            ident)
-                weak="${weak} ident"
-                ;;
+        method_l=$(secaudit_lower "$method")
+        if secaudit_in_csv "$method_l" "$(secaudit_lower "$(secaudit_var WEAK_HBA "trust,password,ident")")"; then
+            weak="${weak} ${method}"
+        else
+        case "$method_l" in
             scram-sha-256)
                 scram="${scram} scram"
                 ;;
@@ -880,11 +905,12 @@ secaudit_check_hba_host_auth() {
                 other="${other} ${method}"
                 ;;
         esac
+        fi
     done <<EOF
 ${_PG_HBA_RULES}
 EOF
     if [ -n "${weak// /}" ]; then
-        secaudit_report_fail "$num" "host pg_hba uses trust/password/ident (${weak# })"
+        secaudit_report_fail "$num" "host pg_hba uses $(secaudit_var WEAK_HBA "trust,password,ident") (${weak# })"
         return 0
     fi
     if [ -n "${scram// /}" ]; then
@@ -981,7 +1007,7 @@ secaudit_check_ssl_ciphers() {
     # Ignore OpenSSL exclusion tokens like !DES / !MD5 / !NULL so negated weak
     # suites do not false-positive the substring match.
     cleaned=$(printf '%s' "$v" | sed -E 's/![A-Za-z0-9_+-]+//g')
-    if printf '%s' "$cleaned" | grep -qiE '(^|:)(RC4|MD5|NULL|EXPORT|DES|3DES)(:|$)'; then
+    if printf '%s' "$cleaned" | weak=$(secaudit_var WEAK_CIPHERS "RC4,MD5,NULL,EXPORT,DES,3DES"); weak=${weak//,/|}; grep -qiE "(^|:)(${weak})(:|$)"; then
         secaudit_report_fail "$num" "ssl_ciphers weak tokens (${v})"
         return 0
     fi
@@ -993,10 +1019,16 @@ secaudit_check_unix_perm() {
     v=$(secaudit_guc_get unix_socket_permissions)
     [ -z "$v" ] && v="0777"
     n=$(secaudit_mode_norm "$v")
-    case "$n" in
-        770|700|750) secaudit_report_pass "$num" "unix_socket_permissions=${v}" ;;
-        *) secaudit_report_fail "$num" "unix_socket_permissions=${v} (expected 0770, not 0777)" ;;
-    esac
+    local token ok=0
+    local IFS=','
+    for token in $(secaudit_var UNIX_SOCKET_MODE "0770,0700,0750"); do
+        [ "$n" = "$(secaudit_mode_norm "$token")" ] && ok=1
+    done
+    if [ "$ok" -eq 1 ]; then
+        secaudit_report_pass "$num" "unix_socket_permissions=${v}"
+    else
+        secaudit_report_fail "$num" "unix_socket_permissions=${v} (expected $(secaudit_var UNIX_SOCKET_MODE "0770,0700,0750"), not 0777)"
+    fi
 }
 
 secaudit_check_unix_group() {
@@ -1030,8 +1062,8 @@ secaudit_check_autovacuum_log() {
     local num="$1" v
     v=$(secaudit_guc_get log_autovacuum_min_duration)
     [ -z "$v" ] && v="-1"
-    if [ "$v" = "-1" ]; then
-        secaudit_report_fail "$num" "log_autovacuum_min_duration=-1"
+    if [ "$v" = "$(secaudit_var AUTOVACUUM_LOG_OFF -1)" ]; then
+        secaudit_report_fail "$num" "log_autovacuum_min_duration=${v}"
     else
         secaudit_report_pass "$num" "log_autovacuum_min_duration=${v} unit=${_PG_GUC_UNIT[log_autovacuum_min_duration]:-ms}"
     fi
@@ -1041,8 +1073,8 @@ secaudit_check_rotation_age() {
     local num="$1" v
     v=$(secaudit_guc_get log_rotation_age)
     [ -z "$v" ] && v="1440"
-    if [ "$v" = "0" ]; then
-        secaudit_report_fail "$num" "log_rotation_age=0"
+    if [ "$v" = "$(secaudit_var ROTATION_AGE_OFF 0)" ]; then
+        secaudit_report_fail "$num" "log_rotation_age=${v}"
     else
         secaudit_report_pass "$num" "log_rotation_age=${v} unit=${_PG_GUC_UNIT[log_rotation_age]:-min}"
     fi
@@ -1051,29 +1083,19 @@ secaudit_check_rotation_age() {
 secaudit_check_password_encryption() {
     local num="$1" v
     v=$(secaudit_guc_get password_encryption)
-    case "$(secaudit_lower "$v")" in
-        scram-sha-256)
-            secaudit_report_pass "$num" "password_encryption=scram-sha-256 (PG${_PG_MAJOR:-})"
-            ;;
-        md5|on)
-            if secaudit_major_ge 10; then
-                secaudit_report_pass "$num" "password_encryption=${v} (md5 accepted on PG${_PG_MAJOR}; scram-sha-256 preferred)"
-            else
-                secaudit_report_pass "$num" "password_encryption=${v} (md5 expected on PG${_PG_MAJOR:-9})"
-            fi
-            ;;
-        *)
-            secaudit_report_fail "$num" "password_encryption='${v:-unset}'"
-            ;;
-    esac
+    if secaudit_in_csv "$(secaudit_lower "$v")" "$(secaudit_lower "$(secaudit_var PASSWORD_ENCRYPTION "scram-sha-256,md5,on")")"; then
+        secaudit_report_pass "$num" "password_encryption=${v} (PG${_PG_MAJOR:-})"
+    else
+        secaudit_report_fail "$num" "password_encryption='${v:-unset}' (expected $(secaudit_var PASSWORD_ENCRYPTION "scram-sha-256,md5,on"))"
+    fi
 }
 
 secaudit_check_idle_tx() {
     local num="$1" v
     v=$(secaudit_guc_get idle_in_transaction_session_timeout)
     [ -z "$v" ] && v="0"
-    if [ "$v" = "0" ]; then
-        secaudit_report_fail "$num" "idle_in_transaction_session_timeout=0"
+    if [ "$v" = "$(secaudit_var IDLE_TX_OFF 0)" ]; then
+        secaudit_report_fail "$num" "idle_in_transaction_session_timeout=${v}"
     else
         secaudit_report_pass "$num" "idle_in_transaction_session_timeout=${v}"
     fi
@@ -1205,8 +1227,8 @@ secaudit_check_rotation_size() {
     local num="$1" v
     v=$(secaudit_guc_get log_rotation_size)
     [ -z "$v" ] && v="10240"
-    if [ "$v" = "0" ]; then
-        secaudit_report_fail "$num" "log_rotation_size=0 disables size rotation"
+    if [ "$v" = "$(secaudit_var ROTATION_SIZE_OFF 0)" ]; then
+        secaudit_report_fail "$num" "log_rotation_size=${v} disables size rotation"
     else
         secaudit_report_pass "$num" "log_rotation_size=${v}"
     fi
@@ -1249,16 +1271,17 @@ secaudit_check_backslash() {
     local num="$1" v
     v=$(secaudit_lower "$(secaudit_guc_get backslash_quote)")
     [ -z "$v" ] && v="safe_encoding"
-    case "$v" in
-        safe_encoding|off) secaudit_report_pass "$num" "backslash_quote=${v}" ;;
-        *) secaudit_report_fail "$num" "backslash_quote=${v}" ;;
-    esac
+    if secaudit_in_csv "$v" "$(secaudit_lower "$(secaudit_var BACKSLASH_QUOTE "safe_encoding,off")")"; then
+        secaudit_report_pass "$num" "backslash_quote=${v}"
+    else
+        secaudit_report_fail "$num" "backslash_quote=${v} (expected $(secaudit_var BACKSLASH_QUOTE "safe_encoding,off"))"
+    fi
 }
 
 secaudit_check_isolation() {
     local num="$1" v
     v=$(secaudit_lower "$(secaudit_guc_get default_transaction_isolation)")
-    if printf '%s' "$v" | grep -q 'read committed'; then
+    if printf '%s' "$v" | grep -q "$(secaudit_var ISOLATION "read committed")"; then
         secaudit_report_pass "$num" "default_transaction_isolation=${v}"
     else
         secaudit_report_fail "$num" "default_transaction_isolation='${v:-unset}'"
@@ -1308,8 +1331,8 @@ secaudit_check_ssl_ecdh() {
     local num="$1" v
     v=$(secaudit_guc_get ssl_ecdh_curve)
     [ -z "$v" ] && v="prime256v1"
-    if [ "$(secaudit_lower "$v")" = "none" ]; then
-        secaudit_report_fail "$num" "ssl_ecdh_curve=none"
+    if [ "$(secaudit_lower "$v")" = "$(secaudit_lower "$(secaudit_var ECDH_DISABLED none)")" ]; then
+        secaudit_report_fail "$num" "ssl_ecdh_curve=${v}"
     else
         secaudit_report_pass "$num" "ssl_ecdh_curve=${v}"
     fi
@@ -1383,7 +1406,7 @@ secaudit_run_crypto_and_layout() {
 secaudit_run_backend_detail() {
     secaudit_check_guc_on 40 log_connections
     secaudit_check_guc_on 41 log_disconnections
-    secaudit_check_guc_eq 42 post_auth_delay 0
+    secaudit_check_guc_eq 42 post_auth_delay "$(secaudit_var POST_AUTH_DELAY 0)"
 }
 
 secaudit_run_postmaster_detail() {

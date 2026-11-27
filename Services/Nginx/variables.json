@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "AUTHORIZED_HTTP_PORTS",
+      "type": "string",
+      "default": "80 443",
+      "description": "Space-separated listen ports accepted for HTTP and HTTPS.",
+      "requirement_ids": [
+        "RULE14"
+      ]
+    },
+    {
+      "name": "TIMEOUT_SOFT_MAX",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum keepalive_timeout, send_timeout, client_header_timeout, and client_body_timeout in seconds. Remediation writes 5 unless this ceiling is lower.",
+      "requirement_ids": [
+        "RULE17",
+        "RULE19",
+        "RULE56"
+      ]
+    },
+    {
+      "name": "DH_MIN_BITS",
+      "type": "int",
+      "default": 2048,
+      "min": 1024,
+      "max": 8192,
+      "description": "Minimum ssl_dhparam size in bits. Remediation generates a parameter of this size.",
+      "requirement_ids": [
+        "RULE43"
+      ]
+    },
+    {
+      "name": "HSTS_MIN_AGE",
+      "type": "int",
+      "default": 15768000,
+      "min": 0,
+      "max": 63072000,
+      "description": "Minimum Strict-Transport-Security max-age in seconds. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE46"
+      ]
+    },
+    {
+      "name": "HEADER_BUF_MAX_BYTES",
+      "type": "int",
+      "default": 32768,
+      "min": 1024,
+      "max": 1048576,
+      "description": "Maximum large_client_header_buffers size in bytes. The check fails above this.",
+      "requirement_ids": [
+        "RULE58"
+      ]
+    },
+    {
+      "name": "OTHER_PERM",
+      "type": "string",
+      "default": "007",
+      "description": "find -perm mask for config directories and files. Other permission bits in this mask fail the check.",
+      "requirement_ids": [
+        "RULE10",
+        "RULE11"
+      ]
+    },
+    {
+      "name": "PID_MODES",
+      "type": "string",
+      "default": "400,440,600,640,644",
+      "description": "Comma-separated modes accepted for the nginx PID file.",
+      "requirement_ids": [
+        "RULE12"
+      ]
+    },
+    {
+      "name": "ERROR_LOG_LEVELS",
+      "type": "string",
+      "default": "info,debug",
+      "description": "Comma-separated error_log levels the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE29"
+      ]
+    },
+    {
+      "name": "LOGROTATE_PERIODS",
+      "type": "string",
+      "default": "daily,weekly",
+      "description": "Comma-separated logrotate periods the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE30"
+      ]
+    },
+    {
+      "name": "LOGROTATE_MIN",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 1000,
+      "description": "Minimum logrotate rotate count. Remediation writes 14 unless this minimum is higher.",
+      "requirement_ids": [
+        "RULE31"
+      ]
+    },
+    {
+      "name": "KEY_MODES",
+      "type": "string",
+      "default": "600,400,440",
+      "description": "Comma-separated modes accepted for ssl_certificate_key. Remediation applies the first value.",
+      "requirement_ids": [
+        "RULE38"
+      ]
+    },
+    {
+      "name": "FORBIDDEN_METHODS",
+      "type": "string",
+      "default": "TRACE,TRACK,DEBUG",
+      "description": "Comma-separated HTTP methods that must not appear in limit_except.",
+      "requirement_ids": [
+        "RULE55"
+      ]
+    },
+    {
+      "name": "BODY_SIZE_UNLIMITED",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1099511627776,
+      "description": "client_max_body_size in bytes that means the limit is disabled. The check fails when the configured size equals this.",
+      "requirement_ids": [
+        "RULE57"
+      ]
+    },
+    {
+      "name": "X_FRAME_OPTIONS",
+      "type": "string",
+      "default": "SAMEORIGIN,DENY",
+      "description": "Comma-separated X-Frame-Options values the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE63"
+      ]
+    },
+    {
+      "name": "X_CONTENT_TYPE_OPTIONS",
+      "type": "string",
+      "default": "nosniff",
+      "description": "X-Content-Type-Options value the check requires. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE64"
+      ]
+    },
+    {
+      "name": "CSP_TOKEN",
+      "type": "string",
+      "default": "default-src",
+      "description": "Substring required in Content-Security-Policy.",
+      "requirement_ids": [
+        "RULE65"
+      ]
+    },
+    {
+      "name": "REFERRER_POLICY",
+      "type": "string",
+      "default": "(^|[[:space:]])(no-referrer|strict-origin|strict-origin-when-cross-origin|same-origin)([[:space:]]|$)",
+      "description": "Regular expression the Referrer-Policy value must match.",
+      "requirement_ids": [
+        "RULE66"
+      ]
+    }
+  ]
+}

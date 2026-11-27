@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "TIMEOUT",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum TimeOut in seconds. The check fails above this. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE65"
+      ]
+    },
+    {
+      "name": "MAX_KEEPALIVE_REQUESTS",
+      "type": "int",
+      "default": 100,
+      "min": 1,
+      "max": 100000,
+      "description": "Minimum MaxKeepAliveRequests. The check fails below this. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE67"
+      ]
+    },
+    {
+      "name": "KEEPALIVE_TIMEOUT",
+      "type": "int",
+      "default": 15,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum KeepAliveTimeout in seconds. The check fails above this. Remediation writes 5 unless this ceiling is lower.",
+      "requirement_ids": [
+        "RULE68"
+      ]
+    },
+    {
+      "name": "REQUEST_READ_HEADER_MAX",
+      "type": "int",
+      "default": 40,
+      "min": 1,
+      "max": 600,
+      "description": "Maximum RequestReadTimeout header seconds. The check fails above this.",
+      "requirement_ids": [
+        "RULE69"
+      ]
+    },
+    {
+      "name": "REQUEST_READ_BODY_MAX",
+      "type": "int",
+      "default": 20,
+      "min": 1,
+      "max": 600,
+      "description": "Maximum RequestReadTimeout body seconds. The check fails above this.",
+      "requirement_ids": [
+        "RULE70"
+      ]
+    },
+    {
+      "name": "LIMIT_REQUEST_LINE",
+      "type": "int",
+      "default": 8190,
+      "min": 1,
+      "max": 65535,
+      "description": "Maximum LimitRequestLine. The check fails above this. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE71"
+      ]
+    },
+    {
+      "name": "LIMIT_REQUEST_FIELDS",
+      "type": "int",
+      "default": 100,
+      "min": 1,
+      "max": 1000,
+      "description": "Maximum LimitRequestFields. The check fails above this. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE72"
+      ]
+    },
+    {
+      "name": "LIMIT_REQUEST_FIELDSIZE",
+      "type": "int",
+      "default": 1024,
+      "min": 1,
+      "max": 65535,
+      "description": "Maximum LimitRequestFieldsize. The check fails above this. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE73"
+      ]
+    },
+    {
+      "name": "LIMIT_REQUEST_BODY",
+      "type": "int",
+      "default": 102400,
+      "min": 1,
+      "max": 2147483647,
+      "description": "Maximum LimitRequestBody in bytes. The check fails above this or when the body limit is unlimited. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE74"
+      ]
+    },
+    {
+      "name": "KEY_MODES",
+      "type": "string",
+      "default": "600,400,440",
+      "description": "Comma-separated modes accepted for the TLS private key. Remediation applies the first value.",
+      "requirement_ids": [
+        "RULE51"
+      ]
+    },
+    {
+      "name": "SERVER_TOKENS",
+      "type": "string",
+      "default": "Prod,ProductOnly",
+      "description": "Comma-separated ServerTokens values the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE61"
+      ]
+    },
+    {
+      "name": "SERVER_SIGNATURE",
+      "type": "string",
+      "default": "Off",
+      "description": "ServerSignature value the check requires. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE62"
+      ]
+    }
+  ]
+}

@@ -22,6 +22,19 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -1274,7 +1287,7 @@ sec_audit_count_ntp_servers() {
             '' | null) count=0 ;;
             *[!0-9]*) count=0 ;;
         esac
-        if [ "$count" -ge 2 ]; then
+        if [ "$count" -ge "$(secaudit_var NTP_MIN_SERVERS 2)" ]; then
             printf '%s' "$count"
             return 0
         fi
@@ -1346,7 +1359,7 @@ sec_audit_check_rule4() {
  sec_audit_require_talosctl 4 " 2.1 NTP" || return
 
     count=$(sec_audit_count_ntp_servers)
-    if [ "${count:-0}" -ge 2 ]; then
+    if [ "${count:-0}" -ge "$(secaudit_var NTP_MIN_SERVERS 2)" ]; then
         if [ "$YQ_OK" -eq 1 ] && [ -n "$TIMESERVER_YAML" ]; then
             servers=$(printf '%s' "$TIMESERVER_YAML" | yq '.spec.timeServers // [] | join(", ")' 2>/dev/null)
             sec_audit_report_pass 4 "At least 2 NTP servers are configured (${count} servers: ${servers:-see talosctl get timeserver})"
@@ -1354,7 +1367,7 @@ sec_audit_check_rule4() {
             sec_audit_report_pass 4 "At least 2 NTP servers are configured (${count} entries found in TimeServer resource)"
         fi
     else
- sec_audit_report_fail 4 "Less than 2 NTP servers are configured (found ${count:-0}; recommends >=2 timeServers in machine.time.servers or TimeServer resource; default single server time.cloudflare.com is insufficient)"
+ sec_audit_report_fail 4 "Fewer NTP servers than NTP_MIN_SERVERS are configured (found ${count:-0}; recommends >=2 timeServers in machine.time.servers or TimeServer resource; default single server time.cloudflare.com is insufficient)"
     fi
 }
 
@@ -1383,7 +1396,7 @@ sec_audit_check_rule6() {
     policy=$(sec_audit_trim "$policy")
     policy_lc=$(printf '%s' "$policy" | tr '[:upper:]' '[:lower:]')
 
-    if [ "$policy_lc" = "restricted" ]; then
+    if [ "$policy_lc" = "$(secaudit_var POD_SECURITY_ENFORCE restricted)" ]; then
         sec_audit_report_pass 6 "Pod Security Standards policy is set to restricted (admission-control defaults.enforce=restricted)"
     else
         sec_audit_report_fail 6 "Pod Security Standards policy is not set to restricted (current: ${policy:-<unset>}; configure admission-control plugin defaults.enforce to restricted)"
@@ -1412,7 +1425,7 @@ sec_audit_check_rule8() {
     all_val=$(sec_audit_talos_proc_value 'net.ipv4.conf.all.send_redirects')
     default_val=$(sec_audit_talos_proc_value 'net.ipv4.conf.default.send_redirects')
 
-    if [ "$all_val" = "0" ] && [ "$default_val" = "0" ]; then
+    if [ "$all_val" = "$(secaudit_var SYSCTL_IPV4_SEND_REDIRECTS 0)" ] && [ "$default_val" = "$(secaudit_var SYSCTL_IPV4_SEND_REDIRECTS 0)" ]; then
         sec_audit_report_pass 8 "Packet redirect sending is disabled (net.ipv4.conf.all.send_redirects=0, net.ipv4.conf.default.send_redirects=0)"
     else
         sec_audit_report_fail 8 "Packet redirect sending is not disabled (all=${all_val:-?}, default=${default_val:-?}; expected 0 on host-only Talos nodes)"
@@ -1430,7 +1443,7 @@ sec_audit_check_rule9() {
 
     for pair in "all/ipv4=$v4a" "default/ipv4=$v4d" "all/ipv6=$v6a" "default/ipv6=$v6d"; do
         val=${pair#*=}
-        [ "$val" = "0" ] || bad+="${pair%=*}=${val:-?} "
+        [ "$val" = "$(secaudit_var SYSCTL_ACCEPT_SOURCE_ROUTE 0)" ] || bad+="${pair%=*}=${val:-?} "
     done
 
     if [ -z "$bad" ]; then
@@ -1451,7 +1464,7 @@ sec_audit_check_rule10() {
 
     for pair in "all/ipv4=$v4a" "default/ipv4=$v4d" "all/ipv6=$v6a" "default/ipv6=$v6d"; do
         val=${pair#*=}
-        [ "$val" = "0" ] || bad+="${pair%=*}=${val:-?} "
+        [ "$val" = "$(secaudit_var SYSCTL_ACCEPT_REDIRECTS 0)" ] || bad+="${pair%=*}=${val:-?} "
     done
 
     if [ -z "$bad" ]; then
@@ -1468,7 +1481,7 @@ sec_audit_check_rule11() {
     all_val=$(sec_audit_talos_proc_value 'net.ipv4.conf.all.secure_redirects')
     default_val=$(sec_audit_talos_proc_value 'net.ipv4.conf.default.secure_redirects')
 
-    if [ "$all_val" = "0" ] && [ "$default_val" = "0" ]; then
+    if [ "$all_val" = "$(secaudit_var SYSCTL_IPV4_SECURE_REDIRECTS 0)" ] && [ "$default_val" = "$(secaudit_var SYSCTL_IPV4_SECURE_REDIRECTS 0)" ]; then
         sec_audit_report_pass 11 "Secure ICMP redirects are not accepted (net.ipv4.conf.all.secure_redirects=0, default=0)"
     else
         sec_audit_report_fail 11 "Secure ICMP redirects acceptance is not disabled (all=${all_val:-?}, default=${default_val:-?}; expected 0)"
@@ -1482,7 +1495,7 @@ sec_audit_check_rule12() {
     all_val=$(sec_audit_talos_proc_value 'net.ipv4.conf.all.log_martians')
     default_val=$(sec_audit_talos_proc_value 'net.ipv4.conf.default.log_martians')
 
-    if [ "$all_val" = "1" ] && [ "$default_val" = "1" ]; then
+    if [ "$all_val" = "$(secaudit_var SYSCTL_IPV4_LOG_MARTIANS 1)" ] && [ "$default_val" = "$(secaudit_var SYSCTL_IPV4_LOG_MARTIANS 1)" ]; then
         sec_audit_report_pass 12 "Suspicious (martian) packets are logged (log_martians=1 on all and default interfaces)"
     else
         sec_audit_report_fail 12 "Suspicious (martian) packets logging is not enabled (all=${all_val:-?}, default=${default_val:-?}; expected 1)"
@@ -1494,7 +1507,7 @@ sec_audit_check_rule13() {
  sec_audit_require_talosctl 13 " 5.2.5 icmp_echo_ignore_broadcasts" || return
 
     val=$(sec_audit_talos_proc_value 'net.ipv4.icmp_echo_ignore_broadcasts')
-    if [ "$val" = "1" ]; then
+    if [ "$val" = "$(secaudit_var SYSCTL_IPV4_ICMP_ECHO_IGN_BCAST 1)" ]; then
         sec_audit_report_pass 13 "Broadcast ICMP requests are ignored (net.ipv4.icmp_echo_ignore_broadcasts=1; mitigates Smurf amplification)"
     else
         sec_audit_report_fail 13 "Broadcast ICMP requests are not ignored (net.ipv4.icmp_echo_ignore_broadcasts=${val:-?}; expected 1)"
@@ -1506,7 +1519,7 @@ sec_audit_check_rule14() {
  sec_audit_require_talosctl 14 " 5.2.6 icmp_ignore_bogus_error_responses" || return
 
     val=$(sec_audit_talos_proc_value 'net.ipv4.icmp_ignore_bogus_error_responses')
-    if [ "$val" = "1" ]; then
+    if [ "$val" = "$(secaudit_var SYSCTL_IPV4_ICMP_IGN_BOGUS 1)" ]; then
         sec_audit_report_pass 14 "Bogus ICMP responses are ignored (net.ipv4.icmp_ignore_bogus_error_responses=1)"
     else
         sec_audit_report_fail 14 "Bogus ICMP responses are not ignored (net.ipv4.icmp_ignore_bogus_error_responses=${val:-?}; expected 1)"
@@ -1518,7 +1531,7 @@ sec_audit_check_rule15() {
  sec_audit_require_talosctl 15 " 5.2.7 tcp_syncookies" || return
 
     val=$(sec_audit_talos_proc_value 'net.ipv4.tcp_syncookies')
-    if [ "$val" = "1" ]; then
+    if [ "$val" = "$(secaudit_var SYSCTL_IPV4_TCP_SYNCOOKIES 1)" ]; then
         sec_audit_report_pass 15 "TCP SYN Cookies is enabled (net.ipv4.tcp_syncookies=1; protects against SYN-flood DoS)"
     else
         sec_audit_report_fail 15 "TCP SYN Cookies is not enabled (net.ipv4.tcp_syncookies=${val:-?}; expected 1)"
@@ -1622,16 +1635,33 @@ sec_audit_check_rule21() {
     fi
 }
 
-sec_audit_run_all_checks() {
+sec_audit_run_bootloader() {
+# RULE1-2
     sec_audit_init_talos_env
 
     sec_audit_check_rule1
     sec_audit_check_rule2
+}
+
+sec_audit_run_package_security() {
+# RULE3-3
     sec_audit_check_rule3
+}
+
+sec_audit_run_chrony() {
+# RULE4-4
     sec_audit_check_rule4
+}
+
+sec_audit_run_unused_services() {
+# RULE5-7
     sec_audit_check_rule5
     sec_audit_check_rule6
     sec_audit_check_rule7
+}
+
+sec_audit_run_network_stack() {
+# RULE8-16
     sec_audit_check_rule8
     sec_audit_check_rule9
     sec_audit_check_rule10
@@ -1641,15 +1671,38 @@ sec_audit_run_all_checks() {
     sec_audit_check_rule14
     sec_audit_check_rule15
     sec_audit_check_rule16
+}
+
+sec_audit_run_firewalld() {
+# RULE17-18
     sec_audit_check_rule17
     sec_audit_check_rule18
+}
+
+sec_audit_run_network_stack_2() {
+# RULE19-19
     sec_audit_check_rule19
+}
+
+sec_audit_run_unused_services_2() {
+# RULE20-21
     sec_audit_check_rule20
     sec_audit_check_rule21
 
     printf 'SUMMARY: PASS=%d FAIL=%d\n' "$CHK_PASS" "$CHK_FAIL"
 }
 
-sec_audit_run_all_checks
-exit 0
+sec_audit_main() {
+    sec_audit_run_bootloader
+    sec_audit_run_package_security
+    sec_audit_run_chrony
+    sec_audit_run_unused_services
+    sec_audit_run_network_stack
+    sec_audit_run_firewalld
+    sec_audit_run_network_stack_2
+    sec_audit_run_unused_services_2
+    exit 0
+}
+
+sec_audit_main "$@"
 

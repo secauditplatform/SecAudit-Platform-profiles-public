@@ -1,0 +1,478 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "SYSCTL_FS_PROTECTED_HARDLINKS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of fs.protected_hardlinks. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE55"
+      ]
+    },
+    {
+      "name": "SYSCTL_FS_PROTECTED_SYMLINKS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of fs.protected_symlinks. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE56"
+      ]
+    },
+    {
+      "name": "SYSCTL_FS_SUID_DUMPABLE",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2,
+      "description": "Required value of fs.suid_dumpable. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE57"
+      ]
+    },
+    {
+      "name": "SYSCTL_KRN_DMESG_RESTRICT",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of kernel.dmesg_restrict. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE58"
+      ]
+    },
+    {
+      "name": "SYSCTL_KRN_RANDOMIZE_VA_SPACE",
+      "type": "int",
+      "default": 2,
+      "min": 0,
+      "max": 2,
+      "description": "Required value of kernel.randomize_va_space. The check fails when a listed key differs.",
+      "requirement_ids": [
+        "RULE61"
+      ]
+    },
+    {
+      "name": "FAILLOCK_DENY",
+      "type": "int",
+      "default": 5,
+      "min": 1,
+      "max": 25,
+      "description": "faillock deny ceiling. The check fails when deny is unset or above this.",
+      "requirement_ids": [
+        "RULE195"
+      ]
+    },
+    {
+      "name": "PASSWORD_MINLEN",
+      "type": "int",
+      "default": 14,
+      "min": 1,
+      "max": 72,
+      "description": "Minimum password length. The check fails below this.",
+      "requirement_ids": [
+        "RULE199"
+      ]
+    },
+    {
+      "name": "ENCRYPT_METHOD",
+      "type": "string",
+      "default": "SHA512,YESCRYPT",
+      "description": "Allowed ENCRYPT_METHOD values, comma-separated. The check fails when login.defs uses another algorithm.",
+      "requirement_ids": [
+        "RULE215"
+      ]
+    },
+    {
+      "name": "AUDIT_MAX_LOG_FILE_ACTION",
+      "type": "enum",
+      "default": "keep_logs",
+      "enum": [
+        "keep_logs",
+        "rotate",
+        "ignore",
+        "syslog",
+        "suspend"
+      ],
+      "description": "auditd max_log_file_action. The check fails when the setting differs.",
+      "requirement_ids": [
+        "RULE257"
+      ]
+    },
+    {
+      "name": "PASS_MAX_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum password age in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE212"
+      ]
+    },
+    {
+      "name": "PASS_MIN_DAYS",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 365,
+      "description": "Minimum days between password changes. The check fails below this.",
+      "requirement_ids": [
+        "RULE213"
+      ]
+    },
+    {
+      "name": "SELINUX_POLICY",
+      "type": "string",
+      "default": "targeted,mls",
+      "description": "Comma-separated SELINUXTYPE values that pass.",
+      "requirement_ids": [
+        "RULE46"
+      ]
+    },
+    {
+      "name": "MODE_GRUB_CFG",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE53"
+      ]
+    },
+    {
+      "name": "MODE_MOTD",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE71"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE72"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE_NET",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE73"
+      ]
+    },
+    {
+      "name": "MODE_CRONTAB",
+      "type": "string",
+      "default": "600",
+      "description": "Octal mode ceiling (600). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE110"
+      ]
+    },
+    {
+      "name": "MODE_CRON_HOURLY",
+      "type": "string",
+      "default": "700",
+      "description": "Required octal mode (700). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE111"
+      ]
+    },
+    {
+      "name": "MODE_CRON_DAILY",
+      "type": "string",
+      "default": "700",
+      "description": "Required octal mode (700). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE112"
+      ]
+    },
+    {
+      "name": "MODE_CRON_WEEKLY",
+      "type": "string",
+      "default": "700",
+      "description": "Required octal mode (700). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE113"
+      ]
+    },
+    {
+      "name": "MODE_CRON_MONTHLY",
+      "type": "string",
+      "default": "700",
+      "description": "Required octal mode (700). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE114"
+      ]
+    },
+    {
+      "name": "MODE_CRON_YEARLY",
+      "type": "string",
+      "default": "700",
+      "description": "Required octal mode (700). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE115"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR",
+      "type": "string",
+      "default": "700",
+      "description": "Required octal mode (700). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE116"
+      ]
+    },
+    {
+      "name": "MODE_CRON_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Required octal mode (640). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE117"
+      ]
+    },
+    {
+      "name": "MODE_AT_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Required octal mode (640). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE118"
+      ]
+    },
+    {
+      "name": "MODE_SSHD_CONFIG",
+      "type": "string",
+      "default": "600",
+      "description": "Required octal mode (600). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE161"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY",
+      "type": "string",
+      "default": "600",
+      "description": "Required octal mode (600). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE162"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY_PUB",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE163"
+      ]
+    },
+    {
+      "name": "SSH_DISABLE_FORWARDING",
+      "type": "string",
+      "default": "yes",
+      "description": "Required sshd disableforwarding value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE168"
+      ]
+    },
+    {
+      "name": "SSH_GSSAPI_AUTH",
+      "type": "string",
+      "default": "no",
+      "description": "Required sshd gssapiauthentication value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE169"
+      ]
+    },
+    {
+      "name": "SSH_HOSTBASED_AUTH",
+      "type": "string",
+      "default": "no",
+      "description": "Required sshd hostbasedauthentication value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE170"
+      ]
+    },
+    {
+      "name": "SSH_IGNORE_RHOSTS",
+      "type": "string",
+      "default": "yes",
+      "description": "Required sshd ignorerhosts value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE171"
+      ]
+    },
+    {
+      "name": "SSH_PERMIT_EMPTY_PASSWORDS",
+      "type": "string",
+      "default": "no",
+      "description": "Required sshd permitemptypasswords value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE179"
+      ]
+    },
+    {
+      "name": "PERMIT_ROOT_LOGIN",
+      "type": "string",
+      "default": "no",
+      "description": "Required sshd permitrootlogin value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE180"
+      ]
+    },
+    {
+      "name": "SSH_PERMIT_USER_ENV",
+      "type": "string",
+      "default": "no",
+      "description": "Required sshd permituserenvironment value. Compared case-insensitively.",
+      "requirement_ids": [
+        "RULE181"
+      ]
+    },
+    {
+      "name": "UNLOCK_TIME",
+      "type": "int",
+      "default": 900,
+      "min": 0,
+      "max": 86400,
+      "description": "Minimum faillock unlock_time in seconds. Zero still passes, matching the original range.",
+      "requirement_ids": [
+        "RULE196"
+      ]
+    },
+    {
+      "name": "PASS_WARN_AGE",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 365,
+      "description": "Minimum PASS_WARN_AGE in days.",
+      "requirement_ids": [
+        "RULE214"
+      ]
+    },
+    {
+      "name": "INACTIVE_DAYS",
+      "type": "int",
+      "default": 45,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum inactive-password lock in days. Zero and negative shadow ages still follow the original shadow test.",
+      "requirement_ids": [
+        "RULE216"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR_750",
+      "type": "string",
+      "default": "750",
+      "description": "Required octal mode (750). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE297"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE307"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE308"
+      ]
+    },
+    {
+      "name": "MODE_GROUP",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE309"
+      ]
+    },
+    {
+      "name": "MODE_GROUP_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE310"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW",
+      "type": "string",
+      "default": "640",
+      "description": "Octal mode ceiling (640). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE311"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW_DASH",
+      "type": "string",
+      "default": "640",
+      "description": "Octal mode ceiling (640). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE312"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW",
+      "type": "string",
+      "default": "640",
+      "description": "Octal mode ceiling (640). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE313"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW_DASH",
+      "type": "string",
+      "default": "640",
+      "description": "Octal mode ceiling (640). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE314"
+      ]
+    },
+    {
+      "name": "MODE_SHELLS",
+      "type": "string",
+      "default": "644",
+      "description": "Octal mode ceiling (644). The default keeps the original check; any other value is a maximum mode and a stricter mode passes.",
+      "requirement_ids": [
+        "RULE315"
+      ]
+    },
+    {
+      "name": "MODE_OPASSWD",
+      "type": "string",
+      "default": "600",
+      "description": "Required octal mode (600). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE316"
+      ]
+    }
+  ]
+}

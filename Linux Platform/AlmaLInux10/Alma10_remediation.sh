@@ -22,6 +22,41 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+secaudit_var_token() {
+    local value
+    value=$(secaudit_var "$1" "$2")
+    value=${value%%,*}
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+# Keep the installed value at the package preference when the ceiling is higher.
+secaudit_cap() {
+    local prefer="$1" ceiling="$2"
+    [[ "$prefer" =~ ^[0-9]+$ && "$ceiling" =~ ^[0-9]+$ ]] || {
+        printf '%s' "$prefer"
+        return 0
+    }
+    if [ "$ceiling" -lt "$prefer" ]; then
+        printf '%s' "$ceiling"
+    else
+        printf '%s' "$prefer"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -454,9 +489,9 @@ sec_audit_harden_audit_logs() {
     alogdir="${alogdir:-/var/log/audit/audit.log}"
     alogdir=$(dirname "$alogdir")
     [ -d "$alogdir" ] || mkdir -p "$alogdir"
-    chmod 750 "$alogdir" 2>/dev/null || true
+    chmod "$(secaudit_var MODE_AUDIT_LOG_DIR 750)" "$alogdir" 2>/dev/null || true
     chown root:root "$alogdir" 2>/dev/null || true
-    sec_audit_set_auditd_conf_kv log_group root || true
+    sec_audit_set_auditd_conf_kv log_group "$(secaudit_var_token AUDIT_LOG_GROUP root,adm)" || true
     if sec_audit_have_bin find; then
         find "$alogdir" -xdev -maxdepth 1 -type f -exec chmod 0600 {} \; 2>/dev/null || true
         find "$alogdir" -xdev -maxdepth 1 -type f -exec chown root:root {} \; 2>/dev/null || true
@@ -481,17 +516,22 @@ sec_audit_harden_audit_tools() {
     for tool in /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/auditd /sbin/augenrules \
                 /usr/sbin/auditctl /usr/sbin/aureport /usr/sbin/ausearch /usr/sbin/auditd /usr/sbin/augenrules; do
         [ -f "$tool" ] || continue
-        sec_audit_harden_path "$tool" 755 root:root || true
+        sec_audit_harden_path "$tool" "$(secaudit_var MODE_AUDIT_TOOLS 755)" root:root || true
     done
 }
 
 sec_audit_configure_journald() {
     mkdir -p /etc/systemd/journald.conf.d
-    cat >/etc/systemd/journald.conf.d/99-secaudit-alma10.conf <<'EOF'
+    _jstor=$(secaudit_var JOURNALD_STORAGE persistent)
+    case "$_jstor" in
+        persistent|volatile|auto|none) ;;
+        *) _jstor=persistent ;;
+    esac
+    cat >/etc/systemd/journald.conf.d/99-secaudit-alma10.conf <<EOF
 [Journal]
 ForwardToSyslog=no
 Compress=yes
-Storage=persistent
+Storage=${_jstor}
 EOF
     sec_audit_have_bin systemctl && systemctl restart systemd-journald >/dev/null 2>&1 || true
 }
@@ -678,25 +718,38 @@ sec_audit_remediate_selinux() {
     fi
     sec_audit_remediate_done 43 "removed selinux=0/enforcing=0 from bootloader args"
 
+    _selpol=$(secaudit_var_token SELINUX_POLICY targeted,mls)
+    case "$_selpol" in
+        ""|*[!A-Za-z0-9_]*) _selpol=targeted ;;
+    esac
     if [ -f /etc/selinux/config ]; then
         if grep -qE '^[[:space:]]*SELINUXTYPE=' /etc/selinux/config; then
-            sed -i 's/^[[:space:]]*SELINUXTYPE=.*/SELINUXTYPE=targeted/' /etc/selinux/config
+            sed -i "s/^[[:space:]]*SELINUXTYPE=.*/SELINUXTYPE=${_selpol}/" /etc/selinux/config
         else
-            echo 'SELINUXTYPE=targeted' >>/etc/selinux/config
+            echo "SELINUXTYPE=${_selpol}" >>/etc/selinux/config
         fi
     fi
-    sec_audit_remediate_done 44 "SELINUXTYPE=targeted"
+    sec_audit_remediate_done 44 "SELINUXTYPE=${_selpol}"
 
+    _selmode=$(secaudit_var SELINUX_MODE enforcing)
+    case "$_selmode" in
+        enforcing|permissive|disabled) ;;
+        *) _selmode=enforcing ;;
+    esac
     if [ -f /etc/selinux/config ]; then
         if grep -qE '^[[:space:]]*SELINUX=' /etc/selinux/config; then
-            sed -i 's/^[[:space:]]*SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+            sed -i "s/^[[:space:]]*SELINUX=.*/SELINUX=${_selmode}/" /etc/selinux/config
         else
-            echo 'SELINUX=enforcing' >>/etc/selinux/config
+            echo "SELINUX=${_selmode}" >>/etc/selinux/config
         fi
     fi
-    sec_audit_have_bin setenforce && setenforce 1 >/dev/null 2>&1 || true
-    sec_audit_remediate_done 45 "SELinux not disabled (config enforcing)"
-    sec_audit_remediate_done 46 "SELinux enforcing"
+    if [ "$_selmode" = "enforcing" ]; then
+        sec_audit_have_bin setenforce && setenforce 1 >/dev/null 2>&1 || true
+    elif [ "$_selmode" = "permissive" ]; then
+        sec_audit_have_bin setenforce && setenforce 0 >/dev/null 2>&1 || true
+    fi
+    sec_audit_remediate_done 45 "SELinux mode ${_selmode}"
+    sec_audit_remediate_done 46 "SELinux mode ${_selmode}"
 
     sec_audit_remediate_skip 47 "no unconfined services exist"
     sec_audit_pkg_remove setroubleshoot
@@ -706,12 +759,13 @@ sec_audit_remediate_selinux() {
 
 sec_audit_remediate_bootloader() {
     sec_audit_remediate_skip 49 "bootloader password is set"
-    sec_audit_harden_path /boot/grub2/grub.cfg 600 root:root || true
-    sec_audit_harden_path /boot/grub2/user.cfg 600 root:root || true
+    _grub_mode=$(secaudit_var MODE_GRUB_CFG 600)
+    sec_audit_harden_path /boot/grub2/grub.cfg "$_grub_mode" root:root || true
+    sec_audit_harden_path /boot/grub2/user.cfg "$_grub_mode" root:root || true
     local g
     for g in /boot/efi/EFI/*/grub.cfg; do
         [ -f "$g" ] || continue
-        sec_audit_harden_path "$g" 600 root:root || true
+        sec_audit_harden_path "$g" "$_grub_mode" root:root || true
     done
     sec_audit_remediate_done 50 "hardened grub permissions"
 }
@@ -720,21 +774,21 @@ sec_audit_remediate_process_hardening() {
     sec_audit_configure_coredump
     sec_audit_remediate_done 51 "disabled core dumps (limits + systemd-coredump)"
 
-    sec_audit_set_sysctl fs.protected_hardlinks 1
-    sec_audit_remediate_done 52 "set fs.protected_hardlinks=1"
-    sec_audit_set_sysctl fs.protected_symlinks 1
-    sec_audit_remediate_done 53 "set fs.protected_symlinks=1"
+    sec_audit_set_sysctl fs.protected_hardlinks "$(secaudit_var SYSCTL_FS_PROTECTED_HARDLINKS 1)"
+    sec_audit_remediate_done 52 "set fs.protected_hardlinks=$(secaudit_var SYSCTL_FS_PROTECTED_HARDLINKS 1)"
+    sec_audit_set_sysctl fs.protected_symlinks "$(secaudit_var SYSCTL_FS_PROTECTED_SYMLINKS 1)"
+    sec_audit_remediate_done 53 "set fs.protected_symlinks=$(secaudit_var SYSCTL_FS_PROTECTED_SYMLINKS 1)"
     sec_audit_remediate_skip 54 "fs.suid_dumpable is configured"
-    sec_audit_set_sysctl kernel.dmesg_restrict 1
-    sec_audit_remediate_done 55 "set kernel.dmesg_restrict=1"
-    sec_audit_set_sysctl kernel.kptr_restrict 2
-    sec_audit_remediate_done 56 "set kernel.kptr_restrict=2"
-    sec_audit_set_sysctl kernel.yama.ptrace_scope 1
-    sec_audit_remediate_done 57 "set kernel.yama.ptrace_scope=1"
-    sec_audit_set_sysctl kernel.randomize_va_space 2
-    sec_audit_remediate_done 58 "set kernel.randomize_va_space=2"
+    sec_audit_set_sysctl kernel.dmesg_restrict "$(secaudit_var SYSCTL_KRN_DMESG_RESTRICT 1)"
+    sec_audit_remediate_done 55 "set kernel.dmesg_restrict=$(secaudit_var SYSCTL_KRN_DMESG_RESTRICT 1)"
+    sec_audit_set_sysctl kernel.kptr_restrict "$(secaudit_var SYSCTL_KRN_KPTR_RESTRICT 2)"
+    sec_audit_remediate_done 56 "set kernel.kptr_restrict=$(secaudit_var SYSCTL_KRN_KPTR_RESTRICT 2)"
+    sec_audit_set_sysctl kernel.yama.ptrace_scope "$(secaudit_var SYSCTL_KRN_PTRACE_SCOPE 1)"
+    sec_audit_remediate_done 57 "set kernel.yama.ptrace_scope=$(secaudit_var SYSCTL_KRN_PTRACE_SCOPE 1)"
+    sec_audit_set_sysctl kernel.randomize_va_space "$(secaudit_var SYSCTL_KRN_RANDOMIZE_VA 2)"
+    sec_audit_remediate_done 58 "set kernel.randomize_va_space=$(secaudit_var SYSCTL_KRN_RANDOMIZE_VA 2)"
 
-    sec_audit_set_sysctl fs.suid_dumpable 0
+    sec_audit_set_sysctl fs.suid_dumpable "$(secaudit_var SYSCTL_FS_SUID_DUMPABLE 0)"
     sec_audit_configure_coredump
     sec_audit_remediate_done 59 "coredump ProcessSizeMax=0 and fs.suid_dumpable=0"
     sec_audit_configure_coredump
@@ -762,11 +816,11 @@ sec_audit_remediate_banners() {
     sec_audit_remediate_done 65 "sanitized banner /etc/issue"
     sec_audit_sanitize_banner /etc/issue.net
     sec_audit_remediate_done 66 "sanitized banner /etc/issue.net"
-    sec_audit_harden_path /etc/motd 644 root:root || true
+    sec_audit_harden_path /etc/motd "$(secaudit_var MODE_MOTD 644)" root:root || true
     sec_audit_remediate_done 67 "permissions /etc/motd"
-    sec_audit_harden_path /etc/issue 644 root:root || true
+    sec_audit_harden_path /etc/issue "$(secaudit_var MODE_ISSUE 644)" root:root || true
     sec_audit_remediate_done 68 "permissions /etc/issue"
-    sec_audit_harden_path /etc/issue.net 644 root:root || true
+    sec_audit_harden_path /etc/issue.net "$(secaudit_var MODE_ISSUE_NET 644)" root:root || true
     sec_audit_remediate_done 69 "permissions /etc/issue.net"
 }
 
@@ -888,7 +942,7 @@ sec_audit_remediate_cron_at() {
     sec_audit_start_svc crond
     sec_audit_remediate_done 103 "enabled crond"
 
-    sec_audit_harden_path /etc/crontab 600 root:root || true
+    sec_audit_harden_path /etc/crontab "$(secaudit_var MODE_CRONTAB 600)" root:root || true
     sec_audit_remediate_done 104 "restricted /etc/crontab"
 
     sec_audit_remediate_skip 105 "review remediation: access to /etc/cron.hourly is configured"
@@ -925,29 +979,29 @@ sec_audit_remediate_network_stack() {
     sec_audit_disable_kmod sctp
     sec_audit_remediate_done 121 "blacklisted sctp"
 
-    sec_audit_set_sysctl net.ipv4.ip_forward 0
-    sec_audit_remediate_done 122 "set net.ipv4.ip_forward=0"
+    sec_audit_set_sysctl net.ipv4.ip_forward "$(secaudit_var SYSCTL_IPV4_IP_FORWARD 0)"
+    sec_audit_remediate_done 122 "set net.ipv4.ip_forward=$(secaudit_var SYSCTL_IPV4_IP_FORWARD 0)"
     sec_audit_remediate_skip 123 "review remediation: net.ipv4.conf.all.forwarding is configured"
     sec_audit_remediate_skip 124 "review remediation: net.ipv4.conf.default.forwarding is configured"
 
-    sec_audit_set_sysctl net.ipv4.conf.all.send_redirects 0
-    sec_audit_remediate_done 125 "set net.ipv4.conf.all.send_redirects=0"
-    sec_audit_set_sysctl net.ipv4.conf.default.send_redirects 0
-    sec_audit_remediate_done 126 "set net.ipv4.conf.default.send_redirects=0"
-    sec_audit_set_sysctl net.ipv4.conf.all.accept_redirects 0
-    sec_audit_remediate_done 127 "set net.ipv4.conf.all.accept_redirects=0"
-    sec_audit_set_sysctl net.ipv4.conf.all.secure_redirects 0
-    sec_audit_remediate_done 128 "set net.ipv4.conf.all.secure_redirects=0"
-    sec_audit_set_sysctl net.ipv4.conf.all.rp_filter 1
-    sec_audit_remediate_done 129 "set net.ipv4.conf.all.rp_filter=1"
-    sec_audit_set_sysctl net.ipv4.conf.default.rp_filter 1
-    sec_audit_remediate_done 130 "set net.ipv4.conf.default.rp_filter=1"
-    sec_audit_set_sysctl net.ipv4.conf.all.log_martians 1
-    sec_audit_remediate_done 131 "set net.ipv4.conf.all.log_martians=1"
-    sec_audit_set_sysctl net.ipv4.conf.default.log_martians 1
-    sec_audit_remediate_done 132 "set net.ipv4.conf.default.log_martians=1"
-    sec_audit_set_sysctl net.ipv4.tcp_syncookies 1
-    sec_audit_remediate_done 133 "set net.ipv4.tcp_syncookies=1"
+    sec_audit_set_sysctl net.ipv4.conf.all.send_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SEND_REDIRECTS 0)"
+    sec_audit_remediate_done 125 "set net.ipv4.conf.all.send_redirects=$(secaudit_var SYSCTL_IPV4_ALL_SEND_REDIRECTS 0)"
+    sec_audit_set_sysctl net.ipv4.conf.default.send_redirects "$(secaudit_var SYSCTL_IPV4_DEF_SEND_REDIRECTS 0)"
+    sec_audit_remediate_done 126 "set net.ipv4.conf.default.send_redirects=$(secaudit_var SYSCTL_IPV4_DEF_SEND_REDIRECTS 0)"
+    sec_audit_set_sysctl net.ipv4.conf.all.accept_redirects "$(secaudit_var SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS 0)"
+    sec_audit_remediate_done 127 "set net.ipv4.conf.all.accept_redirects=$(secaudit_var SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS 0)"
+    sec_audit_set_sysctl net.ipv4.conf.all.secure_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SECURE_REDIRECTS 0)"
+    sec_audit_remediate_done 128 "set net.ipv4.conf.all.secure_redirects=$(secaudit_var SYSCTL_IPV4_ALL_SECURE_REDIRECTS 0)"
+    sec_audit_set_sysctl net.ipv4.conf.all.rp_filter "$(secaudit_var SYSCTL_IPV4_ALL_RP_FILTER 1)"
+    sec_audit_remediate_done 129 "set net.ipv4.conf.all.rp_filter=$(secaudit_var SYSCTL_IPV4_ALL_RP_FILTER 1)"
+    sec_audit_set_sysctl net.ipv4.conf.default.rp_filter "$(secaudit_var SYSCTL_IPV4_DEF_RP_FILTER 1)"
+    sec_audit_remediate_done 130 "set net.ipv4.conf.default.rp_filter=$(secaudit_var SYSCTL_IPV4_DEF_RP_FILTER 1)"
+    sec_audit_set_sysctl net.ipv4.conf.all.log_martians "$(secaudit_var SYSCTL_IPV4_ALL_LOG_MARTIANS 1)"
+    sec_audit_remediate_done 131 "set net.ipv4.conf.all.log_martians=$(secaudit_var SYSCTL_IPV4_ALL_LOG_MARTIANS 1)"
+    sec_audit_set_sysctl net.ipv4.conf.default.log_martians "$(secaudit_var SYSCTL_IPV4_DEF_LOG_MARTIANS 1)"
+    sec_audit_remediate_done 132 "set net.ipv4.conf.default.log_martians=$(secaudit_var SYSCTL_IPV4_DEF_LOG_MARTIANS 1)"
+    sec_audit_set_sysctl net.ipv4.tcp_syncookies "$(secaudit_var SYSCTL_IPV4_TCP_SYNCOOKIES 1)"
+    sec_audit_remediate_done 133 "set net.ipv4.tcp_syncookies=$(secaudit_var SYSCTL_IPV4_TCP_SYNCOOKIES 1)"
 
     sec_audit_remediate_skip 134 "net.ipv6.conf.all.forwarding is configured"
     sec_audit_remediate_skip 135 "net.ipv6.conf.default.forwarding is configured"
@@ -976,7 +1030,7 @@ sec_audit_remediate_sshd() {
     sec_audit_set_sshd_kv Banner /etc/issue.net || true
     sec_audit_remediate_done 149 "sshd Banner"
     sec_audit_remediate_skip 150 "review remediation: sshd Ciphers are configured"
-    sec_audit_set_sshd_kv ClientAliveInterval 300 || true
+    sec_audit_set_sshd_kv ClientAliveInterval "$(secaudit_cap 300 "$(secaudit_var CLIENT_ALIVE_INTERVAL 2147483647)")" || true
     sec_audit_remediate_done 151 "sshd ClientAliveInterval"
     sec_audit_set_sshd_kv DisableForwarding yes || true
     sec_audit_remediate_done 152 "sshd DisableForwarding"
@@ -987,20 +1041,25 @@ sec_audit_remediate_sshd() {
     sec_audit_set_sshd_kv IgnoreRhosts yes || true
     sec_audit_remediate_done 155 "sshd IgnoreRhosts"
     sec_audit_remediate_skip 156 "review remediation: sshd KexAlgorithms is configured"
-    sec_audit_set_sshd_kv LoginGraceTime 60 || true
+    sec_audit_set_sshd_kv LoginGraceTime "$(secaudit_cap 60 "$(secaudit_var LOGIN_GRACE_TIME 60)")" || true
     sec_audit_remediate_done 157 "sshd LoginGraceTime"
-    sec_audit_set_sshd_kv LogLevel VERBOSE || true
+    _ssh_level=$(secaudit_var_token SSH_LOG_LEVEL verbose,info)
+    _ssh_level=$(printf '%s' "$_ssh_level" | tr '[:lower:]' '[:upper:]')
+    case "$_ssh_level" in
+        ""|*[!A-Z]*) _ssh_level=VERBOSE ;;
+    esac
+    sec_audit_set_sshd_kv LogLevel "$_ssh_level" || true
     sec_audit_remediate_done 158 "sshd LogLevel"
     sec_audit_remediate_skip 159 "review remediation: sshd MACs are configured"
-    sec_audit_set_sshd_kv MaxAuthTries 4 || true
+    sec_audit_set_sshd_kv MaxAuthTries "$(secaudit_cap 4 "$(secaudit_var MAX_AUTH_TRIES 4)")" || true
     sec_audit_remediate_done 160 "sshd MaxAuthTries"
-    sec_audit_set_sshd_kv MaxStartups 10:30:60 || true
+    sec_audit_set_sshd_kv MaxStartups "$(secaudit_var MAX_STARTUPS 10:30:60)" || true
     sec_audit_remediate_done 161 "sshd MaxStartups"
-    sec_audit_set_sshd_kv MaxSessions 10 || true
+    sec_audit_set_sshd_kv MaxSessions "$(secaudit_cap 10 "$(secaudit_var MAX_SESSIONS 10)")" || true
     sec_audit_remediate_done 162 "sshd MaxSessions"
     sec_audit_set_sshd_kv PermitEmptyPasswords no || true
     sec_audit_remediate_done 163 "sshd PermitEmptyPasswords"
-    sec_audit_set_sshd_kv PermitRootLogin no || true
+    sec_audit_set_sshd_kv PermitRootLogin "$(secaudit_var_token SSH_PERMIT_ROOT no,prohibit-password,without-password)" || true
     sec_audit_remediate_done 164 "sshd PermitRootLogin"
     sec_audit_set_sshd_kv PermitUserEnvironment no || true
     sec_audit_remediate_done 165 "sshd PermitUserEnvironment"
@@ -1014,7 +1073,7 @@ sec_audit_remediate_sudo_su() {
     sec_audit_remediate_skip 168 "review remediation: sudo commands use pty"
     sec_audit_remediate_skip 169 "review remediation: sudo log file exists"
     sec_audit_remediate_skip 170 "review remediation: users must provide password for escalation"
-    echo 'Defaults timestamp_timeout=5' >/etc/sudoers.d/99-secaudit-timeout
+    echo "Defaults timestamp_timeout=$(secaudit_cap 5 "$(secaudit_var SUDO_TIMESTAMP_TIMEOUT 15)")" >/etc/sudoers.d/99-secaudit-timeout
     chmod 440 /etc/sudoers.d/99-secaudit-timeout
     sec_audit_remediate_done 171 "sudo timestamp_timeout=5"
     sec_audit_remediate_skip 172 "review remediation: access to the su command is restricted"
@@ -1025,28 +1084,28 @@ sec_audit_remediate_pam_auth() {
     sec_audit_authselect_enable with-faillock
     sec_audit_remediate_done 174 "pam faillock"
     sec_audit_authselect_enable with-pwquality
-    sec_audit_set_pwquality_kv minlen 14
+    sec_audit_set_pwquality_kv minlen "$(secaudit_var PASSWORD_MINLEN 14)"
     sec_audit_remediate_done 175 "password quality"
     sec_audit_authselect_enable with-pwhistory
     mkdir -p /etc/security
     grep -qE '^[[:space:]]*remember[[:space:]]*=' /etc/security/pwhistory.conf 2>/dev/null \
-        || echo 'remember = 24' >>/etc/security/pwhistory.conf
+        || echo "remember = $(secaudit_var PASSWORD_REMEMBER 24)" >>/etc/security/pwhistory.conf
     sec_audit_remediate_done 176 "password history"
     sec_audit_remediate_skip 177 "review remediation: pam_unix module is enabled"
     sec_audit_authselect_enable with-faillock
-    sec_audit_set_faillock_kv deny 5
-    sec_audit_set_faillock_kv unlock_time 900
+    sec_audit_set_faillock_kv deny "$(secaudit_var FAILLOCK_DENY 5)"
+    sec_audit_set_faillock_kv unlock_time "$(secaudit_var FAILLOCK_UNLOCK_TIME 900)"
     sec_audit_remediate_done 178 "pam faillock"
     sec_audit_remediate_skip 179 "review remediation: password unlock time is configured"
     sec_audit_remediate_skip 180 "review remediation: password length is configured"
     sec_audit_remediate_skip 181 "password complexity is configured"
     sec_audit_remediate_skip 182 "review remediation: password dictionary check is enabled"
     sec_audit_authselect_enable with-pwquality
-    sec_audit_set_pwquality_kv minlen 14
+    sec_audit_set_pwquality_kv minlen "$(secaudit_var PASSWORD_MINLEN 14)"
     sec_audit_remediate_done 183 "password quality"
     sec_audit_authselect_enable with-pwhistory
     grep -qE '^[[:space:]]*remember[[:space:]]*=' /etc/security/pwhistory.conf 2>/dev/null \
-        || echo 'remember = 24' >>/etc/security/pwhistory.conf
+        || echo "remember = $(secaudit_var PASSWORD_REMEMBER 24)" >>/etc/security/pwhistory.conf
     sec_audit_remediate_done 184 "password history"
     sec_audit_authselect_enable with-pwhistory
     sec_audit_remediate_done 185 "password history"
@@ -1062,8 +1121,13 @@ sec_audit_remediate_accounts() {
     sec_audit_remediate_skip 190 "review remediation: password expiration is configured"
     sec_audit_remediate_skip 191 "minimum password days is configured"
     sec_audit_remediate_skip 192 "review remediation: password expiration warning days is configured"
-    sec_audit_set_login_defs_kv ENCRYPT_METHOD SHA512
-    sec_audit_remediate_done 193 "ENCRYPT_METHOD SHA512"
+    _enc=$(secaudit_var_token ENCRYPT_METHOD sha512,yescrypt)
+    _enc=$(printf '%s' "$_enc" | tr '[:lower:]' '[:upper:]')
+    case "$_enc" in
+        ""|*[!A-Z0-9_]*) _enc=SHA512 ;;
+    esac
+    sec_audit_set_login_defs_kv ENCRYPT_METHOD "$_enc"
+    sec_audit_remediate_done 193 "ENCRYPT_METHOD ${_enc}"
     sec_audit_remediate_skip 194 "inactive password lock is configured"
     sec_audit_remediate_skip 195 "all users last password change date is in the past"
     sec_audit_remediate_skip 196 "root is the only UID 0 account"
@@ -1071,25 +1135,34 @@ sec_audit_remediate_accounts() {
     sec_audit_remediate_skip 198 "group root is the only GID 0 group"
     sec_audit_remediate_skip 199 "root account access is controlled"
     sec_audit_remediate_skip 200 "root path integrity"
-    sec_audit_set_login_defs_kv UMASK 027
-    cat >/etc/profile.d/99-secaudit-umask.sh <<'EOF'
-umask 027
+    _umask=$(secaudit_var UMASK 027)
+    case "$_umask" in
+        *[!0-7]*|"") _umask=027 ;;
+    esac
+    sec_audit_set_login_defs_kv UMASK "$_umask"
+    cat >/etc/profile.d/99-secaudit-umask.sh <<EOF
+umask ${_umask}
 EOF
-    sec_audit_remediate_done 201 "default umask 027"
+    sec_audit_remediate_done 201 "default umask ${_umask}"
     sec_audit_remediate_skip 202 "system accounts do not have a valid login shell"
     sec_audit_remediate_skip 203 "accounts without a valid login shell are locked"
     sec_audit_remediate_skip 204 "review remediation: nologin is not listed in /etc/shells"
-    cat >/etc/profile.d/99-secaudit-timeout.sh <<'EOF'
-TMOUT=600
+    _tmout=$(secaudit_cap 600 "$(secaudit_var TMOUT 999)")
+    cat >/etc/profile.d/99-secaudit-timeout.sh <<EOF
+TMOUT=${_tmout}
 readonly TMOUT
 export TMOUT
 EOF
-    sec_audit_remediate_done 205 "TMOUT=600"
-    sec_audit_set_login_defs_kv UMASK 027
-    cat >/etc/profile.d/99-secaudit-umask.sh <<'EOF'
-umask 027
+    sec_audit_remediate_done 205 "TMOUT=${_tmout}"
+    _umask=$(secaudit_var UMASK 027)
+    case "$_umask" in
+        *[!0-7]*|"") _umask=027 ;;
+    esac
+    sec_audit_set_login_defs_kv UMASK "$_umask"
+    cat >/etc/profile.d/99-secaudit-umask.sh <<EOF
+umask ${_umask}
 EOF
-    sec_audit_remediate_done 206 "default umask 027"
+    sec_audit_remediate_done 206 "default umask ${_umask}"
 }
 
 sec_audit_remediate_aide() {
@@ -1210,27 +1283,27 @@ sec_audit_remediate_auditd() {
 
 sec_audit_remediate_identity_files() {
     # Modes/owners aligned with Alma10.sh assert_path_access expectations.
-    sec_audit_harden_path /etc/passwd 644 root:root || true
+    sec_audit_harden_path /etc/passwd "$(secaudit_var MODE_PASSWD 644)" root:root || true
     sec_audit_remediate_done 257 "hardened /etc/passwd (644 root:root)"
-    sec_audit_harden_path /etc/passwd- 644 root:root || true
+    sec_audit_harden_path /etc/passwd- "$(secaudit_var MODE_PASSWD_DASH 644)" root:root || true
     sec_audit_remediate_done 258 "hardened /etc/passwd- when present (644 root:root)"
-    sec_audit_harden_path /etc/group 644 root:root || true
+    sec_audit_harden_path /etc/group "$(secaudit_var MODE_GROUP 644)" root:root || true
     sec_audit_remediate_done 259 "hardened /etc/group (644 root:root)"
-    sec_audit_harden_path /etc/group- 644 root:root || true
+    sec_audit_harden_path /etc/group- "$(secaudit_var MODE_GROUP_DASH 644)" root:root || true
     sec_audit_remediate_done 260 "hardened /etc/group- when present (644 root:root)"
-    sec_audit_harden_path /etc/shadow 640 root:root || true
+    sec_audit_harden_path /etc/shadow "$(secaudit_var MODE_SHADOW 640)" root:root || true
     sec_audit_remediate_done 261 "hardened /etc/shadow (640 root:root)"
-    sec_audit_harden_path /etc/shadow- 640 root:root || true
+    sec_audit_harden_path /etc/shadow- "$(secaudit_var MODE_SHADOW_DASH 640)" root:root || true
     sec_audit_remediate_done 262 "hardened /etc/shadow- when present (640 root:root)"
-    sec_audit_harden_path /etc/gshadow 640 root:root || true
+    sec_audit_harden_path /etc/gshadow "$(secaudit_var MODE_GSHADOW 640)" root:root || true
     sec_audit_remediate_done 263 "hardened /etc/gshadow when present (640 root:root)"
-    sec_audit_harden_path /etc/gshadow- 640 root:root || true
+    sec_audit_harden_path /etc/gshadow- "$(secaudit_var MODE_GSHADOW_DASH 640)" root:root || true
     sec_audit_remediate_done 264 "hardened /etc/gshadow- when present (640 root:root)"
-    sec_audit_harden_path /etc/shells 644 root:root || true
+    sec_audit_harden_path /etc/shells "$(secaudit_var MODE_SHELLS 644)" root:root || true
     sec_audit_remediate_done 265 "hardened /etc/shells (644 root:root)"
     mkdir -p /etc/security
     [ -e /etc/security/opasswd ] || touch /etc/security/opasswd 2>/dev/null || true
-    sec_audit_harden_path /etc/security/opasswd 600 root:root || true
+    sec_audit_harden_path /etc/security/opasswd "$(secaudit_var MODE_OPASSWD 600)" root:root || true
     sec_audit_remediate_done 266 "hardened /etc/security/opasswd (600 root:root)"
 }
 
@@ -1299,5 +1372,466 @@ sec_audit_main() {
     sec_audit_log "remediation complete (Alma10_remediation.sh)"
     exit 0
 }
+
+# secaudit-restore-journal: paired with Alma10_remediation.sh
+SECAUDIT_JOURNAL="${SECAUDIT_JOURNAL:-/var/backups/secaudit-alma10.journal}"
+SECAUDIT_PKG="${SECAUDIT_PKG:-dnf}"
+
+sec_audit_journal_once() {
+	local kind="$1" id="$2"
+	shift 2
+	mkdir -p "$(dirname "$SECAUDIT_JOURNAL")" 2>/dev/null || return 0
+	touch "$SECAUDIT_JOURNAL" 2>/dev/null || return 0
+	grep -q "^${kind} ${id} " "$SECAUDIT_JOURNAL" 2>/dev/null && return 0
+	grep -qxF "${kind} ${id}" "$SECAUDIT_JOURNAL" 2>/dev/null && return 0
+	if [ $# -eq 0 ]; then
+		printf '%s %s\n' "$kind" "$id" >>"$SECAUDIT_JOURNAL"
+	else
+		printf '%s %s %s\n' "$kind" "$id" "$*" >>"$SECAUDIT_JOURNAL"
+	fi
+}
+
+sec_audit_guard_file() {
+	local f="$1"
+	[ -n "$f" ] || return 0
+	case "$f" in *.secaudit.bak) return 0 ;; esac
+	if [ -e "$f" ]; then
+		[ -e "${f}.secaudit.bak" ] && return 0
+		cp -p "$f" "${f}.secaudit.bak" 2>/dev/null || true
+	else
+		sec_audit_journal_once created "$f"
+	fi
+}
+
+sec_audit_pkg_table() {
+	case "$SECAUDIT_PKG" in
+		apt) dpkg-query -W -f='${Package} ${Version}\n' 2>/dev/null | sort -u ;;
+		zypper|dnf|yum) rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | sort -u ;;
+	esac
+}
+
+sec_audit_journal_pkg_diff() {
+	local kind="$1" before="$2" after="$3" name ver
+	comm -13 "$before" "$after" | while read -r name ver; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once "$kind" "$name" "$ver"
+	done
+}
+
+sec_audit_remember_unit() {
+	local u="$1" state
+	command -v systemctl >/dev/null 2>&1 || return 0
+	[ -n "$u" ] || return 0
+	state=$(systemctl is-enabled "$u" 2>/dev/null || true)
+	case "$state" in
+		enabled|enabled-runtime) state=enabled ;;
+		disabled|masked|static|indirect|absent) ;;
+		*) state=absent ;;
+	esac
+	sec_audit_journal_once unit "$u" "$state"
+}
+
+sec_audit_remember_mount() {
+	local mp="$1" opts
+	[ -n "$mp" ] || return 0
+	mountpoint -q "$mp" 2>/dev/null || return 0
+	opts=$(findmnt -kn -T "$mp" -o OPTIONS -n 2>/dev/null | head -n1)
+	[ -n "$opts" ] && sec_audit_journal_once mount "$mp" "$opts"
+}
+
+sec_audit_rename_fn() {
+	local src="$1" dst="${1}_raw" body
+	declare -f "$src" >/dev/null 2>&1 || return 1
+	declare -f "$dst" >/dev/null 2>&1 && return 0
+	body=$(declare -f "$src") || return 1
+	eval "${body/#"$src"/"$dst"}"
+}
+
+sed() {
+	local arg
+	for arg in "$@"; do
+		case "$arg" in
+			/etc/*|/boot/*|/usr/*|/var/*) sec_audit_guard_file "$arg" ;;
+		esac
+	done
+	command sed "$@"
+}
+
+chmod() {
+	local path="${!#}" mode owner
+	if [ -n "${path:-}" ] && [ -e "$path" ]; then
+		mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+		owner=$(stat -c '%U:%G' "$path" 2>/dev/null || true)
+		[ -n "$mode" ] && sec_audit_journal_once mode "$path" "$mode ${owner:-root:root}"
+	fi
+	command chmod "$@"
+}
+
+chown() {
+	local path="${!#}" mode owner
+	if [ -n "${path:-}" ] && [ -e "$path" ]; then
+		mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+		owner=$(stat -c '%U:%G' "$path" 2>/dev/null || true)
+		[ -n "$mode" ] && sec_audit_journal_once mode "$path" "$mode ${owner:-root:root}"
+	fi
+	command chown "$@"
+}
+
+
+if sec_audit_rename_fn sec_audit_pkg_install; then
+sec_audit_pkg_install() {
+	local before after
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_pkg_table >"$before"
+	sec_audit_pkg_install_raw "$@"
+	sec_audit_pkg_table >"$after"
+	sec_audit_journal_pkg_diff pkg_add "$before" "$after"
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_pkg_remove; then
+sec_audit_pkg_remove() {
+	local before after
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_pkg_table >"$before"
+	sec_audit_pkg_remove_raw "$@"
+	sec_audit_pkg_table >"$after"
+	sec_audit_journal_pkg_diff pkg_del "$before" "$after"
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_start_svc; then
+sec_audit_start_svc() {
+	local u
+	for u in "$@"; do
+		sec_audit_remember_unit "$u"
+	done
+	sec_audit_start_svc_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_disable_svc; then
+sec_audit_disable_svc() {
+	local u
+	for u in "$@"; do
+		sec_audit_remember_unit "$u"
+	done
+	sec_audit_disable_svc_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_disable_kmod; then
+sec_audit_disable_kmod() {
+	local mod="$1" before after name
+	if awk '{print $1}' /proc/modules 2>/dev/null | grep -qx "$mod"; then
+		sec_audit_journal_once kmod "$mod"
+	fi
+	before=$(mktemp)
+	after=$(mktemp)
+	find /etc/modprobe.d -type f -printf '%f\n' 2>/dev/null | sort >"$before"
+	sec_audit_disable_kmod_raw "$@"
+	find /etc/modprobe.d -type f -printf '%f\n' 2>/dev/null | sort >"$after"
+	comm -13 "$before" "$after" | while read -r name; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once created "/etc/modprobe.d/$name"
+	done
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_sysctl; then
+sec_audit_set_sysctl() {
+	local key="$1" old
+		sec_audit_guard_file /etc/sysctl.d
+	old=$(sysctl -n "$key" 2>/dev/null || true)
+	[ -n "$old" ] && sec_audit_journal_once sysctl "$key" "$old"
+	sec_audit_set_sysctl_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_dnf_main_kv; then
+sec_audit_set_dnf_main_kv() {
+		sec_audit_guard_file /etc/dnf/dnf.conf
+	sec_audit_guard_file /etc/dnf
+	sec_audit_set_dnf_main_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_sshd_kv; then
+sec_audit_set_sshd_kv() {
+		sec_audit_guard_file /etc/ssh/sshd_config
+	sec_audit_set_sshd_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_login_defs_kv; then
+sec_audit_set_login_defs_kv() {
+		sec_audit_guard_file /etc/login.defs
+	sec_audit_set_login_defs_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_pwquality_kv; then
+sec_audit_set_pwquality_kv() {
+		sec_audit_guard_file /etc/security/pwquality.conf
+	sec_audit_guard_file /etc/security
+	sec_audit_set_pwquality_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_faillock_kv; then
+sec_audit_set_faillock_kv() {
+		sec_audit_guard_file /etc/security/faillock.conf
+	sec_audit_guard_file /etc/security
+	sec_audit_set_faillock_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_auditd_conf_kv; then
+sec_audit_set_auditd_conf_kv() {
+		sec_audit_guard_file /etc/audit/auditd.conf
+	sec_audit_set_auditd_conf_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_authselect_enable; then
+sec_audit_authselect_enable() {
+		sec_audit_guard_file /etc/authselect/authselect.conf
+	sec_audit_guard_file /etc/pam.d/system-auth
+	sec_audit_guard_file /etc/pam.d/password-auth
+	sec_audit_guard_file /etc/pam.d/common-auth
+	sec_audit_guard_file /etc/pam.d/common-password
+	sec_audit_authselect_enable_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_fstab_has_mount; then
+sec_audit_fstab_has_mount() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_fstab_has_mount_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_fstab_has_option; then
+sec_audit_fstab_has_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_fstab_has_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_add_fstab_option; then
+sec_audit_add_fstab_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_guard_file /etc/fstab.secaudit.tmp
+	sec_audit_remember_mount "$1"
+	sec_audit_add_fstab_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_tmpfs_fstab; then
+sec_audit_ensure_tmpfs_fstab() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_ensure_tmpfs_fstab_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remount_option; then
+sec_audit_remount_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_remount_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_mount_option; then
+sec_audit_ensure_mount_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_ensure_mount_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_audit_baseline; then
+sec_audit_ensure_audit_baseline() {
+		sec_audit_guard_file /etc/audit/rules.d
+	sec_audit_guard_file /etc/sudoers
+	sec_audit_guard_file /etc/sudoers.d
+	sec_audit_guard_file /etc/passwd
+	sec_audit_guard_file /etc/group
+	sec_audit_guard_file /etc/gshadow
+	sec_audit_guard_file /etc/shadow
+	sec_audit_guard_file /etc/security/opasswd
+	sec_audit_guard_file /etc/NetworkManager
+	sec_audit_guard_file /usr/bin/sudo
+	sec_audit_guard_file /usr/bin/su
+	sec_audit_guard_file /var/log/sudo.log
+	sec_audit_guard_file /var/run/utmp
+	sec_audit_guard_file /var/log/wtmp
+	sec_audit_guard_file /var/log/btmp
+	sec_audit_guard_file /var/log/lastlog
+	sec_audit_guard_file /var/run/faillock
+	sec_audit_guard_file /usr/bin/kmod
+	sec_audit_guard_file /var/log/audit
+	sec_audit_ensure_audit_baseline_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_module_audit_rules; then
+sec_audit_ensure_module_audit_rules() {
+		sec_audit_guard_file /etc/audit/rules.d
+	sec_audit_guard_file /etc/audit/rules.d/50-secaudit-modules.rules
+	sec_audit_guard_file /usr/bin/kmod
+	sec_audit_ensure_module_audit_rules_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_harden_audit_logs; then
+sec_audit_harden_audit_logs() {
+		sec_audit_guard_file /etc/audit/auditd.conf
+	sec_audit_guard_file /var/log/audit/audit.log
+	sec_audit_harden_audit_logs_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_harden_audit_config; then
+sec_audit_harden_audit_config() {
+		sec_audit_guard_file /etc/audit
+	sec_audit_guard_file /etc/audit/auditd.conf
+	sec_audit_guard_file /etc/audit/audit.rules
+	sec_audit_harden_audit_config_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_configure_journald; then
+sec_audit_configure_journald() {
+		sec_audit_guard_file /etc/systemd/journald.conf.d
+	sec_audit_guard_file /etc/systemd/journald.conf.d/99-secaudit-alma10.conf
+	sec_audit_configure_journald_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_configure_coredump; then
+sec_audit_configure_coredump() {
+		sec_audit_guard_file /etc/security/limits.conf
+	sec_audit_guard_file /etc/security/limits.d
+	sec_audit_guard_file /etc/security/limits.d/99-secaudit-core.conf
+	sec_audit_guard_file /etc/systemd/coredump.conf.d
+	sec_audit_guard_file /etc/systemd/coredump.conf.d/99-secaudit-alma10.conf
+	sec_audit_configure_coredump_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_gdm_dconf_stub; then
+sec_audit_gdm_dconf_stub() {
+		sec_audit_guard_file /etc/dconf/db/gdm.d
+	sec_audit_guard_file /etc/dconf/db/gdm.d/locks
+	sec_audit_guard_file /etc/dconf/db/gdm.d/99-secaudit-alma10
+	sec_audit_guard_file /etc/dconf/db/gdm.d/locks/99-secaudit-alma10
+	sec_audit_gdm_dconf_stub_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_selinux; then
+sec_audit_remediate_selinux() {
+		sec_audit_guard_file /etc/default/grub
+	sec_audit_guard_file /etc/selinux/config
+	sec_audit_remediate_selinux_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_chrony; then
+sec_audit_remediate_chrony() {
+		sec_audit_guard_file /etc/chrony.conf
+	sec_audit_guard_file /etc/chrony.d
+	sec_audit_remediate_chrony_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_sudo_su; then
+sec_audit_remediate_sudo_su() {
+		sec_audit_guard_file /etc/sudoers.d/99-secaudit-timeout
+	sec_audit_remediate_sudo_su_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_pam_auth; then
+sec_audit_remediate_pam_auth() {
+		sec_audit_guard_file /etc/security
+	sec_audit_guard_file /etc/security/pwhistory.conf
+	sec_audit_remediate_pam_auth_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_accounts; then
+sec_audit_remediate_accounts() {
+		sec_audit_guard_file /etc/profile.d/99-secaudit-umask.sh
+	sec_audit_guard_file /etc/shells
+	sec_audit_guard_file /etc/profile.d/99-secaudit-timeout.sh
+	sec_audit_remediate_accounts_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_auditd; then
+sec_audit_remediate_auditd() {
+		sec_audit_guard_file /etc/default/grub
+	sec_audit_guard_file /etc/sudoers
+	sec_audit_guard_file /etc/NetworkManager
+	sec_audit_guard_file /etc/shadow
+	sec_audit_guard_file /etc/gshadow
+	sec_audit_remediate_auditd_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_main; then
+sec_audit_main() {
+		if command -v getenforce >/dev/null 2>&1; then
+		sec_audit_journal_once selinux getenforce "$(getenforce 2>/dev/null || true)"
+	fi
+	sec_audit_guard_file /etc/selinux/config
+	if command -v update-crypto-policies >/dev/null 2>&1; then
+		sec_audit_journal_once crypto policy "$(update-crypto-policies --show 2>/dev/null || true)"
+	fi
+	sec_audit_main_raw "$@"
+}
+fi
 
 sec_audit_main "$@"

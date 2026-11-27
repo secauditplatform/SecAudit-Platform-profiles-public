@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 if [ -z "${BASH_VERSION:-}" ]; then
     if command -v bash >/dev/null 2>&1; then
         exec bash "$0" "$@"
@@ -123,7 +135,7 @@ secaudit_perm_assessment() {
 }
 
 secaudit_conf_perm_assessment() {
-    local file="$1" extra="${2:-g+rwx,u+x}" expected_mode="${3:-600}"
+    local file="$1" extra="${2:-g+rwx,u+x}" expected_mode="${3:-$(secaudit_var MODE_CONF 600)}"
     local path="${TOMCAT_CONF}/${file}" v mode actual
     v=$(secaudit_perm_violations "$path" "$extra")
     case "$v" in
@@ -513,10 +525,11 @@ secaudit_shutdown_audit() {
 }
 
 secaudit_shutdown_port_disabled() {
-    local line
+    local line want
+    want=$(secaudit_var SHUTDOWN_PORT -1)
     line=$(secaudit_server_xml_active 2>/dev/null | grep -iE '^[[:space:]]*<Server\b' | head -1)
     case "$line" in
-        *port=\"-1\"*|*port='-1'*)
+        *"port=\"${want}\""*|*"port='${want}'"*)
             echo "$line"
             ;;
     esac
@@ -856,9 +869,9 @@ secaudit_security_listener_assessment() {
 
 secaudit_minimum_umask_assessment() {
     local hits
-    hits=$(secaudit_server_xml_grep 'minimumUmask[[:space:]]*=[[:space:]]*"0007"' | grep -vE '^[[:space:]]*<!--' | tr '\n' ' ')
-    secaudit_pass_if_present "$hits" "SecurityListener minimumUmask is 0007" \
-        "minimumUmask=\"0007\" is not configured on SecurityListener"
+    hits=$(secaudit_server_xml_grep 'minimumUmask[[:space:]]*=[[:space:]]*"'"$(secaudit_var UMASK 0007)"'"' | grep -vE '^[[:space:]]*<!--' | tr '\n' ' ')
+    secaudit_pass_if_present "$hits" "SecurityListener minimumUmask is $(secaudit_var UMASK 0007)" \
+        "minimumUmask=\"$(secaudit_var UMASK 0007)\" is not configured on SecurityListener"
 }
 
 secaudit_metadata_complete_assessment() {
@@ -975,8 +988,8 @@ secaudit_run_protect_tomcat_configurations() {
 	secaudit_emit 19 "$(secaudit_conf_perm_assessment logging.properties)"
 	secaudit_emit 20 "$(secaudit_conf_perm_assessment server.xml)"
 	secaudit_emit 21 "$(secaudit_conf_perm_assessment tomcat-users.xml)"
-	secaudit_emit 22 "$(secaudit_conf_perm_assessment web.xml 'g+rwx,u+wx' 400)"
-	secaudit_emit 23 "$(secaudit_conf_perm_assessment jaspic-providers.xml 'g+rwx,u+x' 600)"
+	secaudit_emit 22 "$(secaudit_conf_perm_assessment web.xml 'g+rwx,u+wx' "$(secaudit_var MODE_WEBXML 400)")"
+	secaudit_emit 23 "$(secaudit_conf_perm_assessment jaspic-providers.xml)"
 
 }
 
@@ -1035,8 +1048,6 @@ secaudit_run_miscellaneous_configuration_settings() {
 	secaudit_emit 52 "$(secaudit_log_effective_webxml_assessment)"
 	secaudit_emit 53 "$(secaudit_manager_users_assessment)"
 	secaudit_emit 54 "$(secaudit_manager_digest_assessment)"
-
-
 }
 
 secaudit_main() {
@@ -1050,7 +1061,10 @@ secaudit_main() {
 	secaudit_run_configure_catalina_policy
 	secaudit_run_application_deployment
 	secaudit_run_miscellaneous_configuration_settings
-	[ -n "$TOMCAT_INFO_TMP" ] && [ -d "$TOMCAT_INFO_TMP" ] && rm -rf "$TOMCAT_INFO_TMP"
+	if [ -n "$TOMCAT_INFO_TMP" ] && [ -d "$TOMCAT_INFO_TMP" ]; then
+		rm -rf "$TOMCAT_INFO_TMP"
+	fi
+	exit 0
 }
 
 secaudit_main "$@"

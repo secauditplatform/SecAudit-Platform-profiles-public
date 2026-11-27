@@ -1046,6 +1046,9 @@ function check_rule {
         }
         return
     }
+    $ruleKey = "SECAUDIT_VAR_" + (($Id -replace '\s','').ToUpper())
+    $ruleOverride = [Environment]::GetEnvironmentVariable($ruleKey)
+    if (-not [string]::IsNullOrEmpty($ruleOverride)) { $Target = $ruleOverride }
     try {
         $ok = secaudit_eval_rule -Actual $Actual -Operator $Operator -Target $Target -Default $Default -ValueType $ValueType
         secaudit_write_result -Id $Id -Pass:([bool]$ok) -Message ("actual=$Actual; expected($Operator)=$Target")

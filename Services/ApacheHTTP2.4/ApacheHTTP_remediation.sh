@@ -22,6 +22,32 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Keep the installed value at the package preference when the ceiling is higher.
+secaudit_cap() {
+    local prefer="$1" ceiling="$2"
+    [[ "$prefer" =~ ^[0-9]+$ && "$ceiling" =~ ^[0-9]+$ ]] || {
+        printf '%s' "$prefer"
+        return 0
+    }
+    if [ "$ceiling" -lt "$prefer" ]; then
+        printf '%s' "$ceiling"
+    else
+        printf '%s' "$prefer"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -60,11 +86,16 @@ secaudit_finish() {
 }
 
 secaudit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-apachehttp.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ] || [ -L "$f" ]; then
+        if [ ! -e "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 secaudit_detect_layout() {
@@ -134,26 +165,44 @@ secaudit_configtest() {
 }
 
 secaudit_install_dropin() {
-    local f link
+    local f link to ka_max ka_to line fields fsize body hdr_max body_max hdr_lo body_lo tokens signature key_mode
+    to=$(secaudit_var TIMEOUT 10)
+    ka_max=$(secaudit_var MAX_KEEPALIVE_REQUESTS 100)
+    ka_to=$(secaudit_cap 5 "$(secaudit_var KEEPALIVE_TIMEOUT 15)")
+    line=$(secaudit_var LIMIT_REQUEST_LINE 8190)
+    fields=$(secaudit_var LIMIT_REQUEST_FIELDS 100)
+    fsize=$(secaudit_var LIMIT_REQUEST_FIELDSIZE 1024)
+    body=$(secaudit_var LIMIT_REQUEST_BODY 102400)
+    hdr_max=$(secaudit_var REQUEST_READ_HEADER_MAX 40)
+    body_max=$(secaudit_var REQUEST_READ_BODY_MAX 20)
+    hdr_lo=20
+    body_lo=10
+    [ "$hdr_max" -lt "$hdr_lo" ] 2>/dev/null && hdr_lo=$hdr_max
+    [ "$body_max" -lt "$body_lo" ] 2>/dev/null && body_lo=$body_max
+    tokens=$(secaudit_var SERVER_TOKENS "Prod,ProductOnly"); tokens=${tokens%%,*}
+    signature=$(secaudit_var SERVER_SIGNATURE Off)
+    tokens=$(secaudit_var SERVER_TOKENS "Prod,ProductOnly"); tokens=${tokens%%,*}
+    signature=$(secaudit_var SERVER_SIGNATURE Off)
     f=$(secaudit_dropin_path)
     mkdir -p "$(dirname "$f")"
-    cat >"$f" <<'EOF'
+    secaudit_backup_file "$f"
+    cat >"$f" <<EOF
 # SecAudit Apache HTTP hardening
 TraceEnable Off
-ServerTokens Prod
-ServerSignature Off
-Timeout 10
+ServerTokens ${tokens}
+ServerSignature ${signature}
+Timeout ${to}
 KeepAlive On
-MaxKeepAliveRequests 100
-KeepAliveTimeout 5
-LimitRequestLine 8190
-LimitRequestFields 100
-LimitRequestFieldsize 1024
-LimitRequestBody 102400
+MaxKeepAliveRequests ${ka_max}
+KeepAliveTimeout ${ka_to}
+LimitRequestLine ${line}
+LimitRequestFields ${fields}
+LimitRequestFieldsize ${fsize}
+LimitRequestBody ${body}
 FileETag MTime Size
 LogLevel notice
 <IfModule reqtimeout_module>
-    RequestReadTimeout header=20-40,MinRate=500 body=10-20,MinRate=500
+    RequestReadTimeout header=${hdr_lo}-${hdr_max},MinRate=500 body=${body_lo}-${body_max},MinRate=500
 </IfModule>
 ErrorLog "syslog:local1"
 
@@ -182,6 +231,7 @@ ErrorLog "syslog:local1"
 EOF
     if [ -d /etc/apache2/conf-enabled ]; then
         link=/etc/apache2/conf-enabled/zz-secaudit.conf
+        secaudit_backup_file "$link"
         ln -sfn ../conf-available/zz-secaudit.conf "$link"
     fi
     if secaudit_configtest; then
@@ -329,7 +379,7 @@ secaudit_remediate_logging_and_tls() {
     key=$(grep -RhiE '^[[:space:]]*SSLCertificateKeyFile[[:space:]]+' /etc/apache2 /etc/httpd 2>/dev/null | awk '{ print $2 }' | tr -d '"' | head -1)
     if [ -n "$key" ] && [ -f "$key" ]; then
         if secaudit_rule_enabled 51; then
-            chmod 600 "$key" >/dev/null 2>&1 || true
+            key_mode=$(secaudit_var KEY_MODES "600,400,440"); chmod "${key_mode%%,*}" "$key" >/dev/null 2>&1 || true
         fi
         secaudit_finish 51 done "private key mode set to 600 (${key})"
     else

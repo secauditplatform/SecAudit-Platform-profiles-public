@@ -22,6 +22,34 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+sec_audit_mode_policy() {
+    local path="$1" max="$2" legacy="$3" kind="$4" legacy_re="$5" got
+    got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+    if [ "$max" = "$legacy" ]; then
+        printf '%s\n' "$got" | grep -qE -- "$legacy_re"
+        return $?
+    fi
+    [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+    if [ "$kind" = "exact" ]; then
+        (( 8#$got == 8#$max ))
+    else
+        (( (8#$got & ~8#$max) == 0 ))
+    fi
+}
+
+
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -1434,10 +1462,16 @@ sec_audit_pam_auth_stacks_grep_Pi() {
     return 1
 }
 
+sec_audit_run_kernel_modules() {
+# RULE1-2
 # RULE1:
 sec_audit_assert_kmod_disabled 1 "squashfs kernel module" squashfs squashfs.ko* "squashfs"
 # RULE2:
 sec_audit_assert_kmod_disabled 2 "udf kernel module" udf udf.ko* "udf"
+}
+
+sec_audit_run_filesystem_partitions() {
+# RULE3-18
 # RULE3:
 if sec_audit_tmp_is_isolated; then
     if sec_audit_mount_is_persisted /tmp; then
@@ -1571,6 +1605,10 @@ else
     sec_audit_report_fail 18 "noexec is not set on /dev/shm (or path not resolvable / not an explicit mount per policy)"
 fi
 
+}
+
+sec_audit_run_sshd() {
+# RULE19-19
 # RULE19:
 if rpm -q autofs &>/dev/null && systemctl is-enabled autofs.service 2>/dev/null | grep -qE 'enabled|active'; then
     sec_audit_report_fail 19 "autofs is enabled or active"
@@ -1578,6 +1616,10 @@ else
     sec_audit_report_pass 19 "autofs is not enabled"
 fi
 
+}
+
+sec_audit_run_banners() {
+# RULE20-20
 # RULE20:
 _rule37_k=$(sec_audit_rpm_gpg_pubkey_count)
 _rule37_sample=""
@@ -1594,6 +1636,10 @@ else
     sec_audit_report_pass 20 "${_rule37_k} gpg-pubkey package(s) in RPM DB (sample key VERSION ids: ${_rule37_sample:-n/a})"
 fi
 
+}
+
+sec_audit_run_accounts() {
+# RULE21-21
 # RULE21:
 if rpm -q aide &>/dev/null; then
     sec_audit_report_pass 21 "AIDE is installed"
@@ -1601,11 +1647,15 @@ else
     sec_audit_report_fail 21 "AIDE is not installed"
 fi
 
+}
+
+sec_audit_run_bootloader() {
+# RULE22-24
 # RULE22:
 _fail50=1
 while IFS= read -r _gcfg; do
     [[ -f "$_gcfg" ]] || continue
-    if stat -Lc '%a' "$_gcfg" 2>/dev/null | grep -q '^[0-6]00$'; then
+    if sec_audit_mode_policy "$_gcfg" "$(secaudit_var MODE_GRUB_CFG 600)" 600 within '^[0-6]00$'; then
         if stat -Lc '%U:%G' "$_gcfg" 2>/dev/null | grep -q '^root:root$'; then
             _fail50=0
             break
@@ -1634,10 +1684,18 @@ else
     sec_audit_report_fail 24 "GRUB bootloader superuser/password_pbkdf2 is not configured as required in grub.cfg"
 fi
 
+}
+
+sec_audit_run_process_hardening() {
+# RULE25-26
 # RULE25:
-sec_audit_assert_sysctl_equals 25 fs.protected_hardlinks 1
+sec_audit_assert_sysctl_equals 25 fs.protected_hardlinks "$(secaudit_var SYSCTL_FS_PROTECTED_HARDLINKS 1)"
 # RULE26:
-sec_audit_assert_sysctl_equals 26 fs.protected_symlinks 1
+sec_audit_assert_sysctl_equals 26 fs.protected_symlinks "$(secaudit_var SYSCTL_FS_PROTECTED_SYMLINKS 1)"
+}
+
+sec_audit_run_selinux() {
+# RULE27-33
 # RULE27:
 if grep -P '(selinux|enforcing)=0\b' /proc/cmdline 2>/dev/null; then
     sec_audit_report_fail 27 "SELinux is disabled via kernel command line or bootloader configuration"
@@ -1650,15 +1708,15 @@ fi
 # RULE28:
 _ge46=$(getenforce 2>/dev/null || true)
 _cfg46=$(grep -Pi '^\h*SELINUX=\K\w+' /etc/selinux/config 2>/dev/null | head -n1 || true)
-if [[ "$_ge46" != "Enforcing" ]]; then
+if [[ "$(printf '%s' "$_ge46" | tr '[:upper:]' '[:lower:]')" != "$(secaudit_var SELINUX_MODE enforcing)" ]]; then
     sec_audit_report_fail 28 "getenforce is '${_ge46:-unknown}', expected Enforcing"
-elif [[ "$_cfg46" != "enforcing" ]]; then
+elif [[ "$(printf '%s' "$_cfg46" | tr '[:upper:]' '[:lower:]')" != "$(secaudit_var SELINUX_MODE enforcing)" ]]; then
     sec_audit_report_fail 28 "runtime Enforcing but /etc/selinux/config SELINUX=${_cfg46:-unset} (will revert after reboot)"
 else
     sec_audit_report_pass 28 "the SELinux mode is enforcing (runtime and config)"
 fi
 # RULE29:
-if grep -Psi '^\h*SELINUXTYPE\h*=\h*(targeted|mls)\b' /etc/selinux/config 2>/dev/null; then
+if _allow=$(secaudit_var SELINUX_POLICY targeted,mls); _got=$(grep -hE '^[[:space:]]*SELINUXTYPE[[:space:]]*=' /etc/selinux/config 2>/dev/null | head -n1 | sed 's/^[^=]*=[[:space:]]*//; s/[[:space:]].*$//'); _ug=$(printf '%s' "$_got" | tr '[:upper:]' '[:lower:]'); _hit=1; IFS=,; for _a in $_allow; do _ua=$(printf '%s' "$_a" | tr '[:upper:]' '[:lower:]'); _ua=${_ua// /}; [ -n "$_ua" ] && [ "$_ug" = "$_ua" ] && _hit=0; done; unset IFS; [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 29 "SELinux policy is configured"
 else
     sec_audit_report_fail 29 "SELinux policy type is not set to targeted or mls in /etc/selinux/config"
@@ -1692,6 +1750,10 @@ else
     sec_audit_report_pass 33 "/etc/motd is configured"
 fi
 
+}
+
+sec_audit_run_banners_2() {
+# RULE34-35
 # RULE34:
 if grep -Psi "(\\\v|\\\r|\\\m|\\\s|\b$(grep ^ID= /etc/os-release 2>/dev/null | cut -d= -f2 | sed -e 's/"//g')\b)" /etc/issue 2>/dev/null; then
     sec_audit_report_fail 34 "/etc/issue is missing or does not contain required local login banner"
@@ -1710,9 +1772,13 @@ else
     sec_audit_report_pass 35 "/etc/issue.net is configured"
 fi
 
+}
+
+sec_audit_run_gdm() {
+# RULE36-40
 # RULE36:
 if [ -e /etc/motd ]; then
-    if stat -Lc '%a' /etc/motd 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/motd "$(secaudit_var MODE_MOTD 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/motd 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 36 "access to /etc/motd is configured"
         else
@@ -1726,7 +1792,7 @@ else
 fi
 
 # RULE37:
-if stat -Lc '%a' /etc/issue 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/issue "$(secaudit_var MODE_ISSUE 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/issue 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 37 "access to /etc/issue is configured"
     else
@@ -1738,7 +1804,7 @@ fi
 
 # RULE38:
 if [ -e /etc/issue.net ]; then
-    if stat -Lc '%a' /etc/issue.net 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/issue.net "$(secaudit_var MODE_ISSUE_NET 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/issue.net 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 38 "access to /etc/issue.net is configured"
         else
@@ -1761,6 +1827,10 @@ else
     sec_audit_report_pass 40 "package xinetd is not installed"
 fi
 
+}
+
+sec_audit_run_unused_services() {
+# RULE41-43
 # RULE41:
 sec_audit_assert_service_unused 41 autofs "autofs services are not in use" "autofs services are installed and enabled or actively running" "autofs.service"
 # RULE42:
@@ -1772,6 +1842,10 @@ else
     sec_audit_report_pass 43 "package avahi is not installed"
 fi
 
+}
+
+sec_audit_run_client_tools() {
+# RULE44-56
 # RULE44:
 sec_audit_assert_service_unused 44 cups "print server services are not in use" "print server services are installed and enabled or actively running" "cups.socket" "cups.service"
 # RULE45:
@@ -1834,6 +1908,10 @@ fi
 
 # RULE56:
 sec_audit_assert_service_unused 56 rsync-daemon "rsync services are not in use" "rsync services are installed and enabled or actively running" "rsyncd.socket" "rsyncd.service"
+}
+
+sec_audit_run_chrony() {
+# RULE57-58
 # RULE57:
 if rpm -q telnet &>/dev/null; then
     sec_audit_report_fail 57 "package telnet is installed"
@@ -1858,6 +1936,10 @@ else
     sec_audit_report_fail 58 "chrony is not configured with time sources (no server/pool in chrony.conf or chrony.d)"
 fi
 
+}
+
+sec_audit_run_network_stack() {
+# RULE59-70
 # RULE59:
 sec_audit_assert_kmod_disabled 59 "atm kernel module" atm atm.ko* "atm"
 # RULE60:
@@ -1876,31 +1958,35 @@ fi
 # RULE61:
 sec_audit_assert_kmod_disabled 61 "can kernel module" can can.ko* "can"
 # RULE62:
-sec_audit_assert_sysctl_equals 62 net.ipv4.conf.all.send_redirects 0
+sec_audit_assert_sysctl_equals 62 net.ipv4.conf.all.send_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SEND_REDIRECTS 0)"
 
 # RULE63:
 sec_audit_report_skip 63 "check requires host review — 3.3.2 Ensure ICMP redirects are not accepted"
 # RULE64:
 sec_audit_report_skip 64 "check requires host review — 3.3.3 Ensure secure ICMP redirects are not accepted"
 # RULE65:
-sec_audit_assert_sysctl_equals 65 net.ipv4.conf.all.accept_redirects 0
+sec_audit_assert_sysctl_equals 65 net.ipv4.conf.all.accept_redirects "$(secaudit_var SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS 0)"
 
 # RULE66:
 sec_audit_report_skip 66 "check requires host review — 3.3.5 Ensure broadcast ICMP requests are ignored"
 # RULE67:
-sec_audit_assert_sysctl_equals 67 net.ipv4.conf.all.secure_redirects 0
+sec_audit_assert_sysctl_equals 67 net.ipv4.conf.all.secure_redirects "$(secaudit_var SYSCTL_IPV4_ALL_SECURE_REDIRECTS 0)"
 
 # RULE68:
-sec_audit_assert_sysctl_equals 68 net.ipv4.conf.all.rp_filter 1
+sec_audit_assert_sysctl_equals 68 net.ipv4.conf.all.rp_filter "$(secaudit_var SYSCTL_IPV4_ALL_RP_FILTER 1)"
 
 # RULE69:
-sec_audit_assert_sysctl_equals 69 net.ipv4.conf.default.rp_filter 1
+sec_audit_assert_sysctl_equals 69 net.ipv4.conf.default.rp_filter "$(secaudit_var SYSCTL_IPV4_DEF_RP_FILTER 1)"
 
 # RULE70:
-sec_audit_assert_sysctl_equals 70 net.ipv6.conf.all.accept_ra 0
+sec_audit_assert_sysctl_equals 70 net.ipv6.conf.all.accept_ra "$(secaudit_var SYSCTL_IPV6_ALL_ACCEPT_RA 0)"
 
+}
+
+sec_audit_run_auditd() {
+# RULE71-76
 # RULE71:
-if grep -Pi '^\h*max_log_file_action\h*=\h*keep_logs\b' /etc/audit/auditd.conf 2>/dev/null; then
+if _want=$(secaudit_var AUDIT_MAX_LOG_FILE_ACTION keep_logs); _got=$(awk -F= '/^[[:space:]]*max_log_file_action[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' /etc/audit/auditd.conf 2>/dev/null); [ -n "$_got" ] && [ "$_got" = "$_want" ]; then
     sec_audit_report_pass 71 "audit logs are not automatically deleted"
 else
     sec_audit_report_fail 71 "max_log_file_action or keep_logs policy allows silent deletion"
@@ -1957,6 +2043,10 @@ else
     sec_audit_report_fail 76 "auditd is not enabled or not active"
 fi
 
+}
+
+sec_audit_run_unused_services_2() {
+# RULE77-77
 # RULE77:
 if systemctl is-enabled rsyslog 2>/dev/null | grep -q 'enabled'; then
     if systemctl is-active rsyslog.service 2>/dev/null | grep -q 'active'; then
@@ -1968,6 +2058,10 @@ else
     sec_audit_report_fail 77 "rsyslog is not enabled or not active"
 fi
 
+}
+
+sec_audit_run_logging() {
+# RULE78-100
 # RULE78:
 if grep -Ps '^\h*\$FileCreateMode\h+0[0,2,4,6][0,2,4]0\b' /etc/rsyslog.conf /etc/rsyslog.d/*.conf 2>/dev/null; then
     sec_audit_report_pass 78 "rsyslog log file creation mode is configured"
@@ -1979,7 +2073,7 @@ fi
 echo "RULE79= MANUAL: check requires host review — 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host"
 
 # RULE80:
-if stat -Lc '%a' /etc/ssh/sshd_config 2>/dev/null | grep -q '^600$'; then
+if sec_audit_mode_policy /etc/ssh/sshd_config "$(secaudit_var MODE_SSHD_CONFIG 600)" 600 exact '^600$'; then
     if stat -Lc '%U:%G' /etc/ssh/sshd_config 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 80 "access to /etc/ssh/sshd_config is configured"
     else
@@ -1999,7 +2093,7 @@ PRIV_KEYS=$(sec_audit_sshd_effective_config | awk '$1=="hostkey" {print $2}')
 FAIL81=0
 for key in $PRIV_KEYS; do
     if [ -f "$key" ]; then
-        if ! stat -Lc '%a' "$key" 2>/dev/null | grep -q '^600$'; then
+        if ! sec_audit_mode_policy "$key" "$(secaudit_var MODE_SSH_HOSTKEY 600)" 600 exact '^600$'; then
             FAIL81=1
         fi
         if ! stat -Lc '%U:%G' "$key" 2>/dev/null | grep -q '^root:root$'; then
@@ -2020,7 +2114,7 @@ PUB_KEYS=$(sec_audit_sshd_effective_config | awk '$1=="hostkey" {print $2".pub"}
 FAIL82=0
 for key in $PUB_KEYS; do
     if [ -f "$key" ]; then
-        if ! stat -Lc '%a' "$key" 2>/dev/null | grep -qE '^[0-6]44$'; then
+        if ! sec_audit_mode_policy "$key" "$(secaudit_var MODE_SSH_HOSTKEY_PUB 644)" 644 within '^[0-6]44$'; then
             FAIL82=1
         fi
         if ! stat -Lc '%U:%G' "$key" 2>/dev/null | grep -q '^root:root$'; then
@@ -2058,7 +2152,7 @@ else
 fi
 
 # RULE86:
-if sec_audit_sshd_config_grep -Piq 'clientaliveinterval\s+([1-9]|[1-9][0-9]+)'; then
+if _iv=$(sec_audit_sshd_config_grep -i '^clientaliveinterval' | awk '{print $2; exit}'); _mx=$(secaudit_var CLIENT_ALIVE_INTERVAL 2147483647); [ -n "$_iv" ] && [ "$_iv" -ge 1 ] && [ "$_iv" -le "$_mx" ]; then
     if sec_audit_sshd_config_grep -Piq 'clientalivecountmax\s+([1-9]|[1-9][0-9]+)'; then
         sec_audit_report_pass 86 "sshd ClientAliveInterval and ClientAliveCountMax are configured"
     else
@@ -2069,14 +2163,14 @@ else
 fi
 
 # RULE87:
-if sec_audit_sshd_config_grep -iq 'disableforwarding yes'; then
+if sec_audit_sshd_config_grep -iq "disableforwarding $(secaudit_var SSH_DISABLE_FORWARDING yes)"; then
     sec_audit_report_pass 87 "sshd DisableForwarding is enabled"
 else
     sec_audit_report_fail 87 "sshd DisableForwarding is not enabled in effective sshd -T output"
 fi
 
 # RULE88:
-if sec_audit_sshd_config_grep -iq 'gssapiauthentication no'; then
+if sec_audit_sshd_config_grep -iq "gssapiauthentication $(secaudit_var SSH_GSSAPI_AUTH no)"; then
     sec_audit_report_pass 88 "sshd GSSAPIAuthentication is disabled"
 else
     sec_audit_report_fail 88 "sshd GSSAPIAuthentication is not disabled in effective sshd -T output"
@@ -2097,28 +2191,28 @@ else
 fi
 
 # RULE91:
-if sec_audit_sshd_config_grep -Piq 'maxauthtries\s+[1-4]\b'; then
+if _v=$(sec_audit_sshd_config_grep -i '^maxauthtries' | awk '{print $2; exit}'); _mx=$(secaudit_var MAX_AUTH_TRIES 4); [ -n "$_v" ] && [ "$_v" -ge 1 ] && [ "$_v" -le "$_mx" ]; then
     sec_audit_report_pass 91 "sshd MaxAuthTries is configured"
 else
     sec_audit_report_fail 91 "sshd MaxAuthTries does not meet the required policy (see sshd -T)"
 fi
 
 # RULE92:
-if sec_audit_sshd_config_grep -iq 'ignorerhosts yes'; then
+if sec_audit_sshd_config_grep -iq "ignorerhosts $(secaudit_var SSH_IGNORE_RHOSTS yes)"; then
     sec_audit_report_pass 92 "sshd IgnoreRhosts is enabled"
 else
     sec_audit_report_fail 92 "sshd IgnoreRhosts is not enabled in effective sshd -T output"
 fi
 
 # RULE93:
-if sec_audit_sshd_config_grep -iq 'disableforwarding yes'; then
+if sec_audit_sshd_config_grep -iq "disableforwarding $(secaudit_var SSH_DISABLE_FORWARDING yes)"; then
     sec_audit_report_pass 93 "sshd DisableForwarding is enabled"
 else
     sec_audit_report_fail 93 "sshd DisableForwarding is not enabled in effective sshd -T output"
 fi
 
 # RULE94:
-if sec_audit_sshd_config_grep -Piq 'clientaliveinterval\s+([1-9]|[1-9][0-9]+)'; then
+if _iv=$(sec_audit_sshd_config_grep -i '^clientaliveinterval' | awk '{print $2; exit}'); _mx=$(secaudit_var CLIENT_ALIVE_INTERVAL 2147483647); [ -n "$_iv" ] && [ "$_iv" -ge 1 ] && [ "$_iv" -le "$_mx" ]; then
     if sec_audit_sshd_config_grep -Piq 'clientalivecountmax\s+([1-9]|[1-9][0-9]+)'; then
         sec_audit_report_pass 94 "sshd ClientAliveInterval and ClientAliveCountMax are configured"
     else
@@ -2129,35 +2223,35 @@ else
 fi
 
 # RULE95:
-if sec_audit_sshd_config_grep -iq 'gssapiauthentication no'; then
+if sec_audit_sshd_config_grep -iq "gssapiauthentication $(secaudit_var SSH_GSSAPI_AUTH no)"; then
     sec_audit_report_pass 95 "sshd GSSAPIAuthentication is disabled"
 else
     sec_audit_report_fail 95 "sshd GSSAPIAuthentication is not disabled in effective sshd -T output"
 fi
 
 # RULE96:
-if sec_audit_sshd_config_grep -iq 'hostbasedauthentication no'; then
+if sec_audit_sshd_config_grep -iq "hostbasedauthentication $(secaudit_var SSH_HOSTBASED_AUTH no)"; then
     sec_audit_report_pass 96 "sshd HostbasedAuthentication is disabled"
 else
     sec_audit_report_fail 96 "sshd HostbasedAuthentication is not disabled in effective sshd -T output"
 fi
 
 # RULE97:
-if sec_audit_sshd_config_grep -iq 'permitrootlogin no'; then
+if sec_audit_sshd_config_grep -iq "permitrootlogin $(secaudit_var PERMIT_ROOT_LOGIN no)"; then
     sec_audit_report_pass 97 "sshd PermitRootLogin is disabled"
 else
     sec_audit_report_fail 97 "sshd PermitRootLogin is not disabled in effective sshd -T output"
 fi
 
 # RULE98:
-if sec_audit_sshd_config_grep -iq 'permitrootlogin no'; then
+if sec_audit_sshd_config_grep -iq "permitrootlogin $(secaudit_var PERMIT_ROOT_LOGIN no)"; then
     sec_audit_report_pass 98 "sshd PermitRootLogin is disabled"
 else
     sec_audit_report_fail 98 "sshd PermitRootLogin is not disabled in effective sshd -T output"
 fi
 
 # RULE99:
-if sec_audit_sshd_config_grep -iq 'permitemptypasswords no'; then
+if sec_audit_sshd_config_grep -iq "permitemptypasswords $(secaudit_var SSH_PERMIT_EMPTY_PASSWORDS no)"; then
     sec_audit_report_pass 99 "sshd PermitEmptyPasswords is disabled"
 else
     sec_audit_report_fail 99 "sshd PermitEmptyPasswords is not disabled in effective sshd -T output"
@@ -2172,12 +2266,20 @@ fi
 
 fi
 
+}
+
+sec_audit_run_identity_files() {
+# RULE101-103
 # RULE101:
 sec_audit_report_skip 101 "check requires host review — 5.5.1 Ensure password creation requirements are configured"
 # RULE102:
 sec_audit_report_skip 102 "check requires host review — 5.5.1 Ensure password creation requirements are configured"
 # RULE103:
 sec_audit_report_skip 103 "check requires host review — 5.5.2 Ensure lockout for failed password attempts is configured"
+}
+
+sec_audit_run_accounts_2() {
+# RULE104-111
 # RULE104:
 sec_audit_report_skip 104 "check requires host review — 5.5.3 Ensure password reuse is limited"
 # RULE105:
@@ -2194,12 +2296,20 @@ sec_audit_report_skip 109 "check requires host review — 5.6.1.4 Ensure inactiv
 sec_audit_report_skip 110 "check requires host review — 5.6.1.4 Ensure inactive password lock is 30 days or less"
 # RULE111:
 sec_audit_report_skip 111 "check requires host review — 5.6.1.5 Ensure all users last password change date is in the past"
+}
+
+sec_audit_run_sshd_3() {
+# RULE112-114
 # RULE112:
 sec_audit_report_skip 112 "check requires host review — 5.6.4 Ensure default group for the root account is GID 0"
 # RULE113:
 sec_audit_report_skip 113 "check requires host review — 5.6.5 Ensure default user umask is 027 or more restrictive"
 # RULE114:
 sec_audit_report_skip 114 "check requires host review — 5.6.3 Ensure default user shell timeout is 900 seconds or less"
+}
+
+sec_audit_run_aide() {
+# RULE115-115
 # RULE115:
 if rpm -q aide &>/dev/null; then
     _a207_db=""
@@ -2213,8 +2323,12 @@ else
     sec_audit_report_fail 115 "AIDE package is not installed"
 fi
 
+}
+
+sec_audit_run_identity_files_2() {
+# RULE116-133
 # RULE116:
-if stat -Lc '%a' /etc/passwd 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/passwd "$(secaudit_var MODE_PASSWD 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/passwd 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 116 "access to /etc/passwd is configured"
     else
@@ -2225,7 +2339,7 @@ else
 fi
 
 # RULE117:
-if stat -Lc '%a' /etc/shadow 2>/dev/null | grep -qE '^[0-6]40$'; then
+if sec_audit_mode_policy /etc/shadow "$(secaudit_var MODE_SHADOW 640)" 640 within '^[0-6]40$'; then
     if stat -Lc '%U' /etc/shadow 2>/dev/null | grep -q 'root'; then
         if stat -Lc '%G' /etc/shadow 2>/dev/null | grep -qE 'root|shadow'; then
             sec_audit_report_pass 117 "access to /etc/shadow is configured"
@@ -2242,7 +2356,7 @@ fi
 # RULE118:
 sec_audit_report_skip 118 "check requires host review — "
 # RULE119:
-if stat -Lc '%a' /etc/group 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/group "$(secaudit_var MODE_GROUP 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/group 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 119 "access to /etc/group is configured"
     else
@@ -2256,7 +2370,7 @@ fi
 sec_audit_report_skip 120 "check requires host review — "
 # RULE121:
 if [ -e /etc/gshadow ]; then
-    if stat -Lc '%a' /etc/gshadow 2>/dev/null | grep -qE '^[0-6]40$'; then
+    if sec_audit_mode_policy /etc/gshadow "$(secaudit_var MODE_GSHADOW 640)" 640 within '^[0-6]40$'; then
         if stat -Lc '%U' /etc/gshadow 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/gshadow 2>/dev/null | grep -qE 'root|shadow'; then
                 sec_audit_report_pass 121 "access to /etc/gshadow is configured"
@@ -2290,7 +2404,7 @@ else
 fi
 
 # RULE124:
-if stat -Lc '%a' /etc/passwd 2>/dev/null | grep -qE '^[0-6]44$'; then
+if sec_audit_mode_policy /etc/passwd "$(secaudit_var MODE_PASSWD 644)" 644 within '^[0-6]44$'; then
     if stat -Lc '%U:%G' /etc/passwd 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 124 "access to /etc/passwd is configured"
     else
@@ -2302,7 +2416,7 @@ fi
 
 # RULE125:
 if [ -e /etc/shadow- ]; then
-    if stat -Lc '%a' /etc/shadow- 2>/dev/null | grep -qE '^[0-6]40$'; then
+    if sec_audit_mode_policy /etc/shadow- "$(secaudit_var MODE_SHADOW_DASH 640)" 640 within '^[0-6]40$'; then
         if stat -Lc '%U' /etc/shadow- 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/shadow- 2>/dev/null | grep -qE 'root|shadow'; then
                 sec_audit_report_pass 125 "access to /etc/shadow- is configured"
@@ -2323,7 +2437,7 @@ fi
 sec_audit_report_skip 126 "check requires host review — "
 # RULE127:
 if [ -e /etc/group- ]; then
-    if stat -Lc '%a' /etc/group- 2>/dev/null | grep -qE '^[0-6]44$'; then
+    if sec_audit_mode_policy /etc/group- "$(secaudit_var MODE_GROUP_DASH 644)" 644 within '^[0-6]44$'; then
         if stat -Lc '%U:%G' /etc/group- 2>/dev/null | grep -q '^root:root$'; then
             sec_audit_report_pass 127 "access to /etc/group- is configured"
         else
@@ -2340,7 +2454,7 @@ fi
 sec_audit_report_skip 128 "check requires host review — "
 # RULE129:
 if [ -e /etc/gshadow- ]; then
-    if stat -Lc '%a' /etc/gshadow- 2>/dev/null | grep -qE '^[0-6]40$'; then
+    if sec_audit_mode_policy /etc/gshadow- "$(secaudit_var MODE_GSHADOW_DASH 640)" 640 within '^[0-6]40$'; then
         if stat -Lc '%U' /etc/gshadow- 2>/dev/null | grep -q 'root'; then
             if stat -Lc '%G' /etc/gshadow- 2>/dev/null | grep -qE 'root|shadow'; then
                 sec_audit_report_pass 129 "access to /etc/gshadow- is configured"
@@ -2378,12 +2492,20 @@ fi
 sec_audit_report_skip 132 "check requires host review — 6.1.10 Ensure no unowned files or directories exist"
 # RULE133:
 sec_audit_report_skip 133 "check requires host review — 6.1.11 Ensure no ungrouped files or directories exist"
+}
+
+sec_audit_run_auditd_2() {
+# RULE134-135
 # RULE134:
 echo "RULE134= MANUAL: check requires host review — 6.1.13 Audit SUID executables"
 
 # RULE135:
 echo "RULE135= MANUAL: check requires host review — 6.1.14 Audit SGID executables"
 
+}
+
+sec_audit_run_identity_files_3() {
+# RULE136-138
 # RULE136:
 if awk -F: '($2 != "x" ) { print }' /etc/passwd 2>/dev/null | grep -q '.'; then
     sec_audit_report_fail 136 "Non-shadow password field found in /etc/passwd (second field not "x")"
@@ -2409,6 +2531,10 @@ else
     sec_audit_report_pass 138 "package ossec is not installed"
 fi
 
+}
+
+sec_audit_run_unused_services_3() {
+# RULE139-142
 # RULE139:
 sec_audit_report_skip 139 "check requires host review — "
 # RULE140:
@@ -2431,6 +2557,10 @@ else
     sec_audit_report_pass 142 "package xorg-x11-server is not installed"
 fi
 
+}
+
+sec_audit_run_network_stack_2() {
+# RULE143-143
 # RULE143:
 if compgen -G "/sys/class/net/*/wireless" >/dev/null; then
     sec_audit_report_fail 143 "Wireless interfaces are present under /sys/class/net"
@@ -2438,6 +2568,10 @@ else
     sec_audit_report_pass 143 "wireless interfaces are not available"
 fi
 
+}
+
+sec_audit_run_auditd_3() {
+# RULE144-149
 # RULE144:
 if rpm -q audit audit-libs &>/dev/null; then
     sec_audit_report_pass 144 "auditd packages are installed"
@@ -2474,8 +2608,16 @@ else
     sec_audit_report_fail 149 "/etc/sudoers file watch missing on disk or not loaded"
 fi
 
+}
+
+sec_audit_run_kernel_modules_2() {
+# RULE150-150
 # RULE150:
 sec_audit_report_skip 150 "check requires host review — 4.1.3.19 Ensure kernel module loading unloading and modification is collected"
+}
+
+sec_audit_run_logging_2() {
+# RULE151-151
 # RULE151:
 if rpm -q rsyslog &>/dev/null; then
     sec_audit_report_pass 151 "rsyslog is installed"
@@ -2483,6 +2625,10 @@ else
     sec_audit_report_fail 151 "rsyslog package is not installed"
 fi
 
+}
+
+sec_audit_run_sudo_su() {
+# RULE152-155
 # RULE152:
 sec_audit_report_skip 152 "check requires host review — 5.3.1 Ensure sudo is installed"
 # RULE153:
@@ -2494,7 +2640,7 @@ PRIV_KEYS=$(sec_audit_sshd_effective_config | awk '$1=="hostkey" {print $2}')
 FAIL155=0
 for key in $PRIV_KEYS; do
     if [ -f "$key" ]; then
-        if ! stat -Lc '%a' "$key" 2>/dev/null | grep -q '^600$'; then
+        if ! sec_audit_mode_policy "$key" "$(secaudit_var MODE_SSH_HOSTKEY 600)" 600 exact '^600$'; then
             FAIL155=1
         fi
         if ! stat -Lc '%U:%G' "$key" 2>/dev/null | grep -q '^root:root$'; then
@@ -2510,12 +2656,16 @@ else
     sec_audit_report_fail 155 "File SSH private host key files permissions or ownership not correct"
 fi
 
+}
+
+sec_audit_run_sshd_4() {
+# RULE156-159
 # RULE156:
 PUB_KEYS=$(sec_audit_sshd_effective_config | awk '$1=="hostkey" {print $2".pub"}')
 FAIL156=0
 for key in $PUB_KEYS; do
     if [ -f "$key" ]; then
-        if ! stat -Lc '%a' "$key" 2>/dev/null | grep -qE '^[0-6]44$'; then
+        if ! sec_audit_mode_policy "$key" "$(secaudit_var MODE_SSH_HOSTKEY_PUB 644)" 644 within '^[0-6]44$'; then
             FAIL156=1
         fi
         if ! stat -Lc '%U:%G' "$key" 2>/dev/null | grep -q '^root:root$'; then
@@ -2547,6 +2697,10 @@ fi
 
 # RULE159:
 sec_audit_report_skip 159 "check requires host review — 5.6.2 Ensure system accounts are secured"
+}
+
+sec_audit_run_filesystem_integrity() {
+# RULE160-160
 # RULE160:
 if cut -f1 -d":" /etc/passwd 2>/dev/null | sort -n | uniq -c | while read -r count user; do [ "$count" -gt 1 ] && echo "found"; done | grep -q "found"; then
     sec_audit_report_fail 160 "Duplicate user names exist in /etc/passwd"
@@ -2554,6 +2708,10 @@ else
     sec_audit_report_pass 160 "no duplicate user names exist"
 fi
 
+}
+
+sec_audit_run_identity_files_4() {
+# RULE161-161
 # RULE161:
 if cut -f1 -d":" /etc/group 2>/dev/null | sort -n | uniq -c | while read -r count group; do [ "$count" -gt 1 ] && echo "found"; done | grep -q "found"; then
     sec_audit_report_fail 161 "Duplicate group names exist in /etc/group"
@@ -2561,6 +2719,10 @@ else
     sec_audit_report_pass 161 "no duplicate group names exist"
 fi
 
+}
+
+sec_audit_run_accounts_3() {
+# RULE162-162
 # RULE162:
 if cut -f3 -d":" /etc/group 2>/dev/null | sort -n | uniq -c | while read -r count gid; do [ "$count" -gt 1 ] && echo "found"; done | grep -q "found"; then
     sec_audit_report_fail 162 "Duplicate GID entries exist in /etc/group"
@@ -2568,8 +2730,16 @@ else
     sec_audit_report_pass 162 "no duplicate GIDs exist"
 fi
 
+}
+
+sec_audit_run_unused_services_4() {
+# RULE163-163
 # RULE163:
 sec_audit_report_skip 163 "check requires host review — 4.1.1.2 Ensure auditing for processes that start prior to auditd is enabled"
+}
+
+sec_audit_run_auditd_4() {
+# RULE164-166
 # RULE164:
 if sec_audit_audit_rule_on_disk_and_loaded -E -q 'EACCES|EPERM'; then
     sec_audit_report_pass 164 "unsuccessful access (EACCES/EPERM) auditing on disk and loaded"
@@ -2581,6 +2751,10 @@ fi
 sec_audit_report_skip 165 "check requires host review — 4.1.3.12 Ensure login and logout events are collected"
 # RULE166:
 sec_audit_report_skip 166 "check requires host review — 4.1.3.13 Ensure file deletion events by users are collected"
+}
+
+sec_audit_run_filesystem_partitions_2() {
+# RULE167-176
 # RULE167:
 if sec_audit_mount_has_option /var nodev; then
     sec_audit_report_pass 167 "nodev option set on /var partition"
@@ -2659,8 +2833,16 @@ else
     sec_audit_report_pass 176 "repo_gpgcheck enabled in [main] and no enabled .repo section forces repo_gpgcheck=0"
 fi
 
+}
+
+sec_audit_run_accounts_4() {
+# RULE177-177
 # RULE177:
 sec_audit_report_skip 177 "check requires host review — 1.3.2 Ensure filesystem integrity is regularly checked"
+}
+
+sec_audit_run_process_hardening_2() {
+# RULE178-178
 # RULE178:
 if sec_audit_core_dumps_limited; then
     sec_audit_report_pass 178 "limits * hard core 0 present and systemd DefaultLimitCORE does not allow unlimited core dumps"
@@ -2670,6 +2852,10 @@ else
     sec_audit_report_fail 178 "core file size limits are not configured (limits * hard core 0 not found)"
 fi
 
+}
+
+sec_audit_run_selinux_2() {
+# RULE179-179
 # RULE179:
 _ge45=$(getenforce 2>/dev/null || true)
 if grep -Pi '^\h*SELINUX=disabled\b' /etc/selinux/config 2>/dev/null; then
@@ -2683,6 +2869,10 @@ elif grep -Pi '^\h*SELINUX=(enforcing|permissive)\b' /etc/selinux/config 2>/dev/
 else
     sec_audit_report_fail 179 "SELinux mode is not in an acceptable state (config/getenforce mismatch or disabled)"
 fi
+}
+
+sec_audit_run_unused_services_5() {
+# RULE180-180
 # RULE180:
 if grep -Pi '^\h*SELINUX=enforcing\b' /etc/selinux/config 2>/dev/null; then
     if getenforce | grep -q Enforcing; then
@@ -2694,6 +2884,10 @@ else
     sec_audit_report_fail 180 "SELinux is not enforcing in /etc/selinux/config or getenforce is not Enforcing"
 fi
 
+}
+
+sec_audit_run_gdm_2() {
+# RULE181-183
 # RULE181:
 GDM_CONFIG="/etc/gdm/custom.conf"
 if [ -f "$GDM_CONFIG" ]; then
@@ -2717,6 +2911,10 @@ fi
 
 # RULE183:
 sec_audit_report_skip 183 "check requires host review — 1.8.10 Ensure XDCMP is not enabled"
+}
+
+sec_audit_run_crypto_policy() {
+# RULE184-187
 # RULE184:
 sec_audit_report_skip 184 "check requires host review — 1.10 Ensure system-wide crypto policy is not legacy"
 # RULE185:
@@ -2733,8 +2931,16 @@ else
 fi
 # RULE187:
 sec_audit_assert_service_unused 187 vsftpd "ftp server services are not in use" "ftp server services are installed and enabled or actively running" "vsftpd.service"
+}
+
+sec_audit_run_unused_services_6() {
+# RULE188-188
 # RULE188:
 sec_audit_assert_service_unused 188 rpcbind "rpcbind services are not in use" "rpcbind services are installed and enabled or actively running" "rpcbind.socket" "rpcbind.service"
+}
+
+sec_audit_run_chrony_2() {
+# RULE189-190
 # RULE189:
 if grep -Psi -- '^\h*OPTIONS=\"?\h*([^#\n\r]+\h+)?-u\h+root\b' /etc/sysconfig/chronyd 2>/dev/null; then
     sec_audit_report_fail 189 "chronyd is configured to run as root (OPTIONS in /etc/sysconfig/chronyd)"
@@ -2749,6 +2955,10 @@ else
     sec_audit_report_fail 190 "actions as another user are not always logged (execve audit rule missing or not loaded)"
 fi
 
+}
+
+sec_audit_run_sudo_su_2() {
+# RULE191-191
 # RULE191:
 if [ -f /var/log/sudo.log ]; then
     if sec_audit_audit_rule_on_disk_and_loaded -q "path=/var/log/sudo.log"; then
@@ -2760,6 +2970,10 @@ else
     sec_audit_report_fail 191 "events that modify the sudo log file are not collected (/var/log/sudo.log not found)"
 fi
 
+}
+
+sec_audit_run_auditd_5() {
+# RULE192-198
 # RULE192:
 sec_audit_report_skip 192 "check requires host review — 4.1.3.6 Ensure use of privileged commands are collected"
 # RULE193:
@@ -2787,8 +3001,12 @@ else
     sec_audit_report_fail 198 "successful file system mounts are not collected"
 fi
 
+}
+
+sec_audit_run_sshd_5() {
+# RULE199-199
 # RULE199:
-if stat -Lc '%a' /etc/ssh/sshd_config 2>/dev/null | grep -q '^600$'; then
+if sec_audit_mode_policy /etc/ssh/sshd_config "$(secaudit_var MODE_SSHD_CONFIG 600)" 600 exact '^600$'; then
     if stat -Lc '%U:%G' /etc/ssh/sshd_config 2>/dev/null | grep -q '^root:root$'; then
         sec_audit_report_pass 199 "access to /etc/ssh/sshd_config is configured"
     else
@@ -2798,17 +3016,29 @@ else
     sec_audit_report_fail 199 "File /etc/ssh/sshd_config permissions or ownership not correct"
 fi
 
+}
+
+sec_audit_run_crypto_policy_2() {
+# RULE200-200
 # RULE200:
-if sec_audit_sshd_config_grep -iq 'loglevel VERBOSE\|loglevel INFO'; then
+if _lv=$(sec_audit_sshd_config_grep -i '^loglevel' | awk '{print toupper($2); exit}'); _allow=$(secaudit_var LOG_LEVEL VERBOSE,INFO); _hit=1; IFS=,; for _a in $_allow; do _ua=$(printf '%s' "$_a" | tr '[:lower:]' '[:upper:]'); _ua=${_ua// /}; [ -n "$_ua" ] && [ "$_lv" = "$_ua" ] && _hit=0; done; unset IFS; [ "$_hit" -eq 0 ]; then
     sec_audit_report_pass 200 "sshd LogLevel is configured"
 else
     sec_audit_report_fail 200 "sshd LogLevel does not meet the required policy (see sshd -T)"
 fi
 
+}
+
+sec_audit_run_identity_files_5() {
+# RULE201-202
 # RULE201:
 sec_audit_report_skip 201 "check requires host review — 5.3.4 Ensure users must provide password for escalation"
 # RULE202:
 sec_audit_report_skip 202 "check requires host review — 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally"
+}
+
+sec_audit_run_sudo_su_3() {
+# RULE203-206
 # RULE203:
 sec_audit_report_skip 203 "check requires host review — 5.3.6 Ensure sudo authentication timeout is configured correctly"
 # RULE204:
@@ -2817,6 +3047,10 @@ sec_audit_report_skip 204 "check requires host review — 5.3.7 Ensure access to
 sec_audit_report_skip 205 "check requires host review — 5.4.2 Ensure authselect includes with-faillock"
 # RULE206:
 sec_audit_report_skip 206 "check requires host review — 6.1.12 Ensure sticky bit is set on all world-writable directories"
+}
+
+sec_audit_run_identity_files_6() {
+# RULE207-207
 # RULE207:
 if cut -f3 -d":" /etc/passwd 2>/dev/null | sort -n | uniq -c | while read -r count uid; do [ "$count" -gt 1 ] && echo "found"; done | grep -q "found"; then
     sec_audit_report_fail 207 "Duplicate UID entries exist in /etc/passwd"
@@ -2824,6 +3058,10 @@ else
     sec_audit_report_pass 207 "no duplicate UIDs exist"
 fi
 
+}
+
+sec_audit_run_filesystem_partitions_3() {
+# RULE208-208
 # RULE208:
 if sec_audit_path_is_isolated_volume /dev/shm; then
     sec_audit_report_pass 208 "separate partition exists for /dev/shm"
@@ -2831,6 +3069,10 @@ else
     sec_audit_report_fail 208 "no compliant dedicated mount for /dev/shm"
 fi
 
+}
+
+sec_audit_run_package_security() {
+# RULE209-210
 # RULE209:
 _rule40_dnf_n=$(sec_audit_dnf_enabled_repo_count)
 if [ ! -d /etc/yum.repos.d ]; then
@@ -2859,6 +3101,10 @@ fi
 
 # RULE210:
 sec_audit_report_skip 210 "check requires host review — 1.3.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools"
+}
+
+sec_audit_run_gdm_3() {
+# RULE211-217
 # RULE211:
 if grep -q "idle-delay=uint32" /etc/dconf/db/gdm.d/* 2>/dev/null || \
    grep -q "lock-delay=uint32" /etc/dconf/db/gdm.d/* 2>/dev/null; then
@@ -2901,6 +3147,10 @@ sec_audit_report_skip 215 "check requires host review — 1.8.7 Ensure GDM disab
 sec_audit_report_skip 216 "check requires host review — 1.8.8 Ensure GDM autorun-never is enabled"
 # RULE217:
 sec_audit_report_skip 217 "check requires host review — 1.8.9 Ensure GDM autorun-never is not overridden"
+}
+
+sec_audit_run_unused_services_7() {
+# RULE218-219
 # RULE218:
 if rpm -q avahi &>/dev/null; then
     if systemctl is-enabled avahi-daemon.socket avahi-daemon.service 2>/dev/null | grep -q 'enabled'; then
@@ -2921,23 +3171,51 @@ else
     sec_audit_report_pass 219 "package dnsmasq is not installed"
 fi
 
+}
+
+sec_audit_run_client_tools_2() {
+# RULE220-220
 # RULE220:
 sec_audit_report_skip 220 "check requires host review — 2.3.4 Ensure FTP client is not installed"
+}
+
+sec_audit_run_network_stack_3() {
+# RULE221-221
 # RULE221:
 echo "RULE221= MANUAL: check requires host review — 3.1.1 Ensure IPv6 status is identified"
 
+}
+
+sec_audit_run_unused_services_8() {
+# RULE222-222
 # RULE222:
 sec_audit_assert_service_unused 222 bluez "bluetooth services are not in use" "bluetooth services are installed and enabled or actively running" "bluetooth.service"
+}
+
+sec_audit_run_firewalld() {
+# RULE223-224
 # RULE223:
 sec_audit_report_skip 223 "check requires host review — 3.4.1.2 Ensure a single firewall configuration utility is in use"
 # RULE224:
 sec_audit_report_skip 224 "check requires host review — 4.1.3.7 Ensure unsuccessful file access attempts are collected"
+}
+
+sec_audit_run_logging_3() {
+# RULE225-226
 # RULE225:
 sec_audit_report_skip 225 "check requires host review — 4.2.1.7 Ensure rsyslog is not configured to receive logs from a remote client"
 # RULE226:
 sec_audit_report_skip 226 "check requires host review — 5.6.1.2 Ensure minimum days between password changes is configured"
+}
+
+sec_audit_run_sshd_6() {
+# RULE227-227
 # RULE227:
 sec_audit_report_skip 227 "check requires host review — 5.6.6 Ensure root password is set"
+}
+
+sec_audit_run_identity_files_7() {
+# RULE228-231
 # RULE228:
 if awk -F: '($2 != "x" ) { print }' /etc/passwd 2>/dev/null | grep -q '.'; then
     sec_audit_report_fail 228 "Non-shadow password field found in /etc/passwd (second field not "x")"
@@ -2956,15 +3234,18 @@ fi
 sec_audit_report_skip 230 "check requires host review — 6.2.8 Ensure root PATH Integrity"
 # RULE231:
 sec_audit_report_skip 231 "check requires host review — 6.2.11 Ensure local interactive users own their home directories"
+}
+
+sec_audit_run_filesystem_integrity_2() {
+# RULE232-232
 # RULE232:
 FAIL232=0
-while IFS=: read -r user pass uid gid rest; do
+while IFS=: read -r user pass uid gid gecos home shell; do
     if [ "$uid" -ge 1000 ] 2>/dev/null && [ "$uid" -lt 65534 ]; then
-        home=$(echo "$rest" | cut -d: -f1)
         for dotfile in "$home/.bashrc" "$home/.bash_profile" "$home/.profile" "$home/.bash_logout"; do
             if [ -f "$dotfile" ]; then
                 perm=$(stat -c '%a' "$dotfile" 2>/dev/null)
-                if [ "${perm:2:1}" -gt 0 ] 2>/dev/null || [ "${perm:1:1}" -gt 0 ] 2>/dev/null; then
+                if [ -n "$perm" ] && { [ $(( ${perm: -1:1} & 2 )) -ne 0 ] || [ $(( ${perm: -2:1} & 2 )) -ne 0 ]; }; then
                     sec_audit_report_fail 232 "User $user dot file $dotfile has world/group write permissions ($perm)"
                     FAIL232=1
                 fi
@@ -2972,9 +3253,79 @@ while IFS=: read -r user pass uid gid rest; do
         done
     fi
 done < /etc/passwd 2>/dev/null
-[ $FAIL232 -eq 0 ] && echo "RULE232= PASS: Local interactive user dot files access is configured"
+[ $FAIL232 -eq 0 ] && sec_audit_report_pass 232 "Local interactive user dot files access is configured"
 
-exit 0
 
-exit 0
+
+}
+
+sec_audit_main() {
+    sec_audit_run_kernel_modules
+    sec_audit_run_filesystem_partitions
+    sec_audit_run_sshd
+    sec_audit_run_banners
+    sec_audit_run_accounts
+    sec_audit_run_bootloader
+    sec_audit_run_process_hardening
+    sec_audit_run_selinux
+    sec_audit_run_banners_2
+    sec_audit_run_gdm
+    sec_audit_run_unused_services
+    sec_audit_run_client_tools
+    sec_audit_run_chrony
+    sec_audit_run_network_stack
+    sec_audit_run_auditd
+    sec_audit_run_unused_services_2
+    sec_audit_run_logging
+    sec_audit_run_identity_files
+    sec_audit_run_accounts_2
+    sec_audit_run_sshd_3
+    sec_audit_run_aide
+    sec_audit_run_identity_files_2
+    sec_audit_run_auditd_2
+    sec_audit_run_identity_files_3
+    sec_audit_run_unused_services_3
+    sec_audit_run_network_stack_2
+    sec_audit_run_auditd_3
+    sec_audit_run_kernel_modules_2
+    sec_audit_run_logging_2
+    sec_audit_run_sudo_su
+    sec_audit_run_sshd_4
+    sec_audit_run_filesystem_integrity
+    sec_audit_run_identity_files_4
+    sec_audit_run_accounts_3
+    sec_audit_run_unused_services_4
+    sec_audit_run_auditd_4
+    sec_audit_run_filesystem_partitions_2
+    sec_audit_run_accounts_4
+    sec_audit_run_process_hardening_2
+    sec_audit_run_selinux_2
+    sec_audit_run_unused_services_5
+    sec_audit_run_gdm_2
+    sec_audit_run_crypto_policy
+    sec_audit_run_unused_services_6
+    sec_audit_run_chrony_2
+    sec_audit_run_sudo_su_2
+    sec_audit_run_auditd_5
+    sec_audit_run_sshd_5
+    sec_audit_run_crypto_policy_2
+    sec_audit_run_identity_files_5
+    sec_audit_run_sudo_su_3
+    sec_audit_run_identity_files_6
+    sec_audit_run_filesystem_partitions_3
+    sec_audit_run_package_security
+    sec_audit_run_gdm_3
+    sec_audit_run_unused_services_7
+    sec_audit_run_client_tools_2
+    sec_audit_run_network_stack_3
+    sec_audit_run_unused_services_8
+    sec_audit_run_firewalld
+    sec_audit_run_logging_3
+    sec_audit_run_sshd_6
+    sec_audit_run_identity_files_7
+    sec_audit_run_filesystem_integrity_2
+    exit 0
+}
+
+sec_audit_main "$@"
 

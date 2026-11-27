@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "MODE_PGDATA",
+      "type": "string",
+      "default": "700",
+      "description": "Mode required on the cluster data directory.",
+      "requirement_ids": [
+        "RULE2"
+      ]
+    },
+    {
+      "name": "UMASK",
+      "type": "string",
+      "default": "077",
+      "description": "umask required for the postgres OS user. Leading zeros are ignored, so 077, 0077, and 77 match.",
+      "requirement_ids": [
+        "RULE3"
+      ]
+    },
+    {
+      "name": "LOG_FILE_MODE",
+      "type": "string",
+      "default": "0600,0640",
+      "description": "Comma-separated log_file_mode values the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE8",
+        "RULE63"
+      ]
+    },
+    {
+      "name": "UNIX_SOCKET_MODE",
+      "type": "string",
+      "default": "0770,0700,0750",
+      "description": "Comma-separated unix_socket_permissions values the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE56"
+      ]
+    },
+    {
+      "name": "SYSLOG_FACILITY",
+      "type": "string",
+      "default": "local0,local1,local2,local3,local4,local5,local6,local7",
+      "description": "Comma-separated syslog_facility values the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE9",
+        "RULE66"
+      ]
+    },
+    {
+      "name": "LOG_MIN_MESSAGES",
+      "type": "string",
+      "default": "warning,log,notice,info,debug1,debug2,debug3,debug4,debug5",
+      "description": "Comma-separated log_min_messages values the check accepts. An unset value is treated as warning. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE10",
+        "RULE70"
+      ]
+    },
+    {
+      "name": "ERROR_VERBOSITY",
+      "type": "string",
+      "default": "default,verbose",
+      "description": "Comma-separated log_error_verbosity values the check accepts. An unset value is treated as default.",
+      "requirement_ids": [
+        "RULE16",
+        "RULE69"
+      ]
+    },
+    {
+      "name": "TIMEZONE",
+      "type": "string",
+      "default": "UTC,GMT,Etc/UTC",
+      "description": "Comma-separated log_timezone values that pass without matching the OS zone. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE19"
+      ]
+    },
+    {
+      "name": "WEAK_HBA",
+      "type": "string",
+      "default": "trust,password,ident",
+      "description": "Comma-separated pg_hba methods that fail the host-auth check.",
+      "requirement_ids": [
+        "RULE26"
+      ]
+    },
+    {
+      "name": "POST_AUTH_DELAY",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "description": "Required post_auth_delay. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE42"
+      ]
+    },
+    {
+      "name": "WEAK_CIPHERS",
+      "type": "string",
+      "default": "RC4,MD5,NULL,EXPORT,DES,3DES",
+      "description": "Comma-separated ssl_ciphers tokens that fail the check.",
+      "requirement_ids": [
+        "RULE50"
+      ]
+    },
+    {
+      "name": "ECDH_DISABLED",
+      "type": "string",
+      "default": "none",
+      "description": "ssl_ecdh_curve value that fails the check.",
+      "requirement_ids": [
+        "RULE52"
+      ]
+    },
+    {
+      "name": "AUTOVACUUM_LOG_OFF",
+      "type": "int",
+      "default": -1,
+      "min": -1,
+      "max": 2147483647,
+      "description": "log_autovacuum_min_duration value that fails the check.",
+      "requirement_ids": [
+        "RULE60"
+      ]
+    },
+    {
+      "name": "ROTATION_AGE_OFF",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "description": "log_rotation_age value that fails the check.",
+      "requirement_ids": [
+        "RULE64",
+        "RULE84"
+      ]
+    },
+    {
+      "name": "BACKSLASH_QUOTE",
+      "type": "string",
+      "default": "safe_encoding,off",
+      "description": "Comma-separated backslash_quote values the check accepts.",
+      "requirement_ids": [
+        "RULE72"
+      ]
+    },
+    {
+      "name": "ISOLATION",
+      "type": "string",
+      "default": "read committed",
+      "description": "default_transaction_isolation text the check requires. Remediation writes this value.",
+      "requirement_ids": [
+        "RULE73"
+      ]
+    },
+    {
+      "name": "IDLE_TX_OFF",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "description": "idle_in_transaction_session_timeout value that fails the check.",
+      "requirement_ids": [
+        "RULE74"
+      ]
+    },
+    {
+      "name": "PASSWORD_ENCRYPTION",
+      "type": "string",
+      "default": "scram-sha-256,md5,on",
+      "description": "Comma-separated password_encryption values the check accepts. Remediation writes the first value.",
+      "requirement_ids": [
+        "RULE75"
+      ]
+    },
+    {
+      "name": "ROTATION_SIZE_OFF",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "description": "log_rotation_size value that fails the check.",
+      "requirement_ids": [
+        "RULE85"
+      ]
+    }
+  ]
+}

@@ -106,6 +106,19 @@
       ansible.builtin.script: Talos.sh
       args:
         executable: /bin/bash
+      environment:
+        SECAUDIT_RULES: "{{ SECAUDIT_RULES | default('', true) }}"
+        SECAUDIT_REMEDIATE_RULES: "{{ SECAUDIT_REMEDIATE_RULES | default('', true) }}"
+        SECAUDIT_VAR_NTP_MIN_SERVERS: "{{ SECAUDIT_VAR_NTP_MIN_SERVERS | default('2', true) }}"
+        SECAUDIT_VAR_POD_SECURITY_ENFORCE: "{{ SECAUDIT_VAR_POD_SECURITY_ENFORCE | default('restricted', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_SEND_REDIRECTS: "{{ SECAUDIT_VAR_SYSCTL_IPV4_SEND_REDIRECTS | default('0', true) }}"
+        SECAUDIT_VAR_SYSCTL_ACCEPT_SOURCE_ROUTE: "{{ SECAUDIT_VAR_SYSCTL_ACCEPT_SOURCE_ROUTE | default('0', true) }}"
+        SECAUDIT_VAR_SYSCTL_ACCEPT_REDIRECTS: "{{ SECAUDIT_VAR_SYSCTL_ACCEPT_REDIRECTS | default('0', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_SECURE_REDIRECTS: "{{ SECAUDIT_VAR_SYSCTL_IPV4_SECURE_REDIRECTS | default('0', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_LOG_MARTIANS: "{{ SECAUDIT_VAR_SYSCTL_IPV4_LOG_MARTIANS | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_ICMP_ECHO_IGN_BCAST: "{{ SECAUDIT_VAR_SYSCTL_IPV4_ICMP_ECHO_IGN_BCAST | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_ICMP_IGN_BOGUS: "{{ SECAUDIT_VAR_SYSCTL_IPV4_ICMP_IGN_BOGUS | default('1', true) }}"
+        SECAUDIT_VAR_SYSCTL_IPV4_TCP_SYNCOOKIES: "{{ SECAUDIT_VAR_SYSCTL_IPV4_TCP_SYNCOOKIES | default('1', true) }}"
       register: talos_audit_raw
       changed_when: false
       failed_when: false

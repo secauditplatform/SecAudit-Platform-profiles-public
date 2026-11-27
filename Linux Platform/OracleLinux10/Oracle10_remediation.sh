@@ -1380,4 +1380,475 @@ sec_audit_main() {
     exit 0
 }
 
+# secaudit-restore-journal: paired with Oracle10_remediation.sh
+SECAUDIT_JOURNAL="${SECAUDIT_JOURNAL:-/var/backups/secaudit-oracle10.journal}"
+SECAUDIT_PKG="${SECAUDIT_PKG:-dnf}"
+
+sec_audit_journal_once() {
+	local kind="$1" id="$2"
+	shift 2
+	mkdir -p "$(dirname "$SECAUDIT_JOURNAL")" 2>/dev/null || return 0
+	touch "$SECAUDIT_JOURNAL" 2>/dev/null || return 0
+	grep -q "^${kind} ${id} " "$SECAUDIT_JOURNAL" 2>/dev/null && return 0
+	grep -qxF "${kind} ${id}" "$SECAUDIT_JOURNAL" 2>/dev/null && return 0
+	if [ $# -eq 0 ]; then
+		printf '%s %s\n' "$kind" "$id" >>"$SECAUDIT_JOURNAL"
+	else
+		printf '%s %s %s\n' "$kind" "$id" "$*" >>"$SECAUDIT_JOURNAL"
+	fi
+}
+
+sec_audit_guard_file() {
+	local f="$1"
+	[ -n "$f" ] || return 0
+	case "$f" in *.secaudit.bak) return 0 ;; esac
+	if [ -e "$f" ]; then
+		[ -e "${f}.secaudit.bak" ] && return 0
+		cp -p "$f" "${f}.secaudit.bak" 2>/dev/null || true
+	else
+		sec_audit_journal_once created "$f"
+	fi
+}
+
+sec_audit_pkg_table() {
+	case "$SECAUDIT_PKG" in
+		apt) dpkg-query -W -f='${Package} ${Version}\n' 2>/dev/null | sort -u ;;
+		zypper|dnf|yum) rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | sort -u ;;
+	esac
+}
+
+sec_audit_journal_pkg_diff() {
+	local kind="$1" before="$2" after="$3" name ver
+	comm -13 "$before" "$after" | while read -r name ver; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once "$kind" "$name" "$ver"
+	done
+}
+
+sec_audit_remember_unit() {
+	local u="$1" state
+	command -v systemctl >/dev/null 2>&1 || return 0
+	[ -n "$u" ] || return 0
+	state=$(systemctl is-enabled "$u" 2>/dev/null || true)
+	case "$state" in
+		enabled|enabled-runtime) state=enabled ;;
+		disabled|masked|static|indirect|absent) ;;
+		*) state=absent ;;
+	esac
+	sec_audit_journal_once unit "$u" "$state"
+}
+
+sec_audit_remember_mount() {
+	local mp="$1" opts
+	[ -n "$mp" ] || return 0
+	mountpoint -q "$mp" 2>/dev/null || return 0
+	opts=$(findmnt -kn -T "$mp" -o OPTIONS -n 2>/dev/null | head -n1)
+	[ -n "$opts" ] && sec_audit_journal_once mount "$mp" "$opts"
+}
+
+sec_audit_rename_fn() {
+	local src="$1" dst="${1}_raw" body
+	declare -f "$src" >/dev/null 2>&1 || return 1
+	declare -f "$dst" >/dev/null 2>&1 && return 0
+	body=$(declare -f "$src") || return 1
+	eval "${body/#"$src"/"$dst"}"
+}
+
+sed() {
+	local arg
+	for arg in "$@"; do
+		case "$arg" in
+			/etc/*|/boot/*|/usr/*|/var/*) sec_audit_guard_file "$arg" ;;
+		esac
+	done
+	command sed "$@"
+}
+
+chmod() {
+	local path="${!#}" mode owner
+	if [ -n "${path:-}" ] && [ -e "$path" ]; then
+		mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+		owner=$(stat -c '%U:%G' "$path" 2>/dev/null || true)
+		[ -n "$mode" ] && sec_audit_journal_once mode "$path" "$mode ${owner:-root:root}"
+	fi
+	command chmod "$@"
+}
+
+chown() {
+	local path="${!#}" mode owner
+	if [ -n "${path:-}" ] && [ -e "$path" ]; then
+		mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+		owner=$(stat -c '%U:%G' "$path" 2>/dev/null || true)
+		[ -n "$mode" ] && sec_audit_journal_once mode "$path" "$mode ${owner:-root:root}"
+	fi
+	command chown "$@"
+}
+
+
+if sec_audit_rename_fn sec_audit_pkg_install; then
+sec_audit_pkg_install() {
+	local before after
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_pkg_table >"$before"
+	sec_audit_pkg_install_raw "$@"
+	sec_audit_pkg_table >"$after"
+	sec_audit_journal_pkg_diff pkg_add "$before" "$after"
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_pkg_remove; then
+sec_audit_pkg_remove() {
+	local before after
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_pkg_table >"$before"
+	sec_audit_pkg_remove_raw "$@"
+	sec_audit_pkg_table >"$after"
+	sec_audit_journal_pkg_diff pkg_del "$before" "$after"
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_start_svc; then
+sec_audit_start_svc() {
+	local u
+	for u in "$@"; do
+		sec_audit_remember_unit "$u"
+	done
+	sec_audit_start_svc_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_disable_svc; then
+sec_audit_disable_svc() {
+	local u
+	for u in "$@"; do
+		sec_audit_remember_unit "$u"
+	done
+	sec_audit_disable_svc_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_disable_kmod; then
+sec_audit_disable_kmod() {
+	local mod="$1" before after name
+	if awk '{print $1}' /proc/modules 2>/dev/null | grep -qx "$mod"; then
+		sec_audit_journal_once kmod "$mod"
+	fi
+	before=$(mktemp)
+	after=$(mktemp)
+	find /etc/modprobe.d -type f -printf '%f\n' 2>/dev/null | sort >"$before"
+	sec_audit_disable_kmod_raw "$@"
+	find /etc/modprobe.d -type f -printf '%f\n' 2>/dev/null | sort >"$after"
+	comm -13 "$before" "$after" | while read -r name; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once created "/etc/modprobe.d/$name"
+	done
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_sysctl; then
+sec_audit_set_sysctl() {
+	local key="$1" old
+		sec_audit_guard_file /etc/sysctl.d
+	old=$(sysctl -n "$key" 2>/dev/null || true)
+	[ -n "$old" ] && sec_audit_journal_once sysctl "$key" "$old"
+	sec_audit_set_sysctl_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_dnf_main_kv; then
+sec_audit_set_dnf_main_kv() {
+		sec_audit_guard_file /etc/dnf/dnf.conf
+	sec_audit_guard_file /etc/dnf
+	sec_audit_set_dnf_main_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_sshd_kv; then
+sec_audit_set_sshd_kv() {
+		sec_audit_guard_file /etc/ssh/sshd_config
+	sec_audit_set_sshd_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_login_defs_kv; then
+sec_audit_set_login_defs_kv() {
+		sec_audit_guard_file /etc/login.defs
+	sec_audit_set_login_defs_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_pwquality_kv; then
+sec_audit_set_pwquality_kv() {
+		sec_audit_guard_file /etc/security/pwquality.conf
+	sec_audit_guard_file /etc/security
+	sec_audit_set_pwquality_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_faillock_kv; then
+sec_audit_set_faillock_kv() {
+		sec_audit_guard_file /etc/security/faillock.conf
+	sec_audit_guard_file /etc/security
+	sec_audit_set_faillock_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_set_auditd_conf_kv; then
+sec_audit_set_auditd_conf_kv() {
+		sec_audit_guard_file /etc/audit/auditd.conf
+	sec_audit_set_auditd_conf_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_authselect_enable; then
+sec_audit_authselect_enable() {
+		sec_audit_guard_file /etc/authselect/authselect.conf
+	sec_audit_guard_file /etc/pam.d/system-auth
+	sec_audit_guard_file /etc/pam.d/password-auth
+	sec_audit_guard_file /etc/pam.d/common-auth
+	sec_audit_guard_file /etc/pam.d/common-password
+	sec_audit_authselect_enable_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_fstab_has_mount; then
+sec_audit_fstab_has_mount() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_fstab_has_mount_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_fstab_has_option; then
+sec_audit_fstab_has_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_fstab_has_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_add_fstab_option; then
+sec_audit_add_fstab_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_guard_file /etc/fstab.secaudit.tmp
+	sec_audit_remember_mount "$1"
+	sec_audit_add_fstab_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_tmpfs_fstab; then
+sec_audit_ensure_tmpfs_fstab() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_ensure_tmpfs_fstab_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remount_option; then
+sec_audit_remount_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_remount_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_mount_option; then
+sec_audit_ensure_mount_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_ensure_mount_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_audit_baseline; then
+sec_audit_ensure_audit_baseline() {
+		sec_audit_guard_file /etc/audit/rules.d
+	sec_audit_guard_file /etc/sudoers
+	sec_audit_guard_file /etc/sudoers.d
+	sec_audit_guard_file /etc/passwd
+	sec_audit_guard_file /etc/group
+	sec_audit_guard_file /etc/gshadow
+	sec_audit_guard_file /etc/shadow
+	sec_audit_guard_file /etc/security/opasswd
+	sec_audit_guard_file /etc/NetworkManager
+	sec_audit_guard_file /usr/bin/sudo
+	sec_audit_guard_file /usr/bin/su
+	sec_audit_guard_file /var/log/sudo.log
+	sec_audit_guard_file /var/run/utmp
+	sec_audit_guard_file /var/log/wtmp
+	sec_audit_guard_file /var/log/btmp
+	sec_audit_guard_file /var/log/lastlog
+	sec_audit_guard_file /var/run/faillock
+	sec_audit_guard_file /usr/bin/kmod
+	sec_audit_guard_file /var/log/audit
+	sec_audit_ensure_audit_baseline_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_module_audit_rules; then
+sec_audit_ensure_module_audit_rules() {
+		sec_audit_guard_file /etc/audit/rules.d
+	sec_audit_guard_file /etc/audit/rules.d/50-secaudit-modules.rules
+	sec_audit_guard_file /usr/bin/kmod
+	sec_audit_ensure_module_audit_rules_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_harden_audit_logs; then
+sec_audit_harden_audit_logs() {
+		sec_audit_guard_file /etc/audit/auditd.conf
+	sec_audit_guard_file /var/log/audit/audit.log
+	sec_audit_harden_audit_logs_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_harden_audit_config; then
+sec_audit_harden_audit_config() {
+		sec_audit_guard_file /etc/audit
+	sec_audit_guard_file /etc/audit/auditd.conf
+	sec_audit_guard_file /etc/audit/audit.rules
+	sec_audit_harden_audit_config_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_configure_journald; then
+sec_audit_configure_journald() {
+		sec_audit_guard_file /etc/systemd/journald.conf.d
+	sec_audit_guard_file /etc/systemd/journald.conf.d/99-secaudit-oracle10.conf
+	sec_audit_configure_journald_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_configure_coredump; then
+sec_audit_configure_coredump() {
+		sec_audit_guard_file /etc/security/limits.conf
+	sec_audit_guard_file /etc/security/limits.d
+	sec_audit_guard_file /etc/security/limits.d/99-secaudit-core.conf
+	sec_audit_guard_file /etc/systemd/coredump.conf.d
+	sec_audit_guard_file /etc/systemd/coredump.conf.d/99-secaudit-oracle10.conf
+	sec_audit_configure_coredump_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_gdm_dconf_stub; then
+sec_audit_gdm_dconf_stub() {
+		sec_audit_guard_file /etc/dconf/db/gdm.d
+	sec_audit_guard_file /etc/dconf/db/gdm.d/locks
+	sec_audit_guard_file /etc/dconf/db/gdm.d/99-secaudit-oracle10
+	sec_audit_guard_file /etc/dconf/db/gdm.d/locks/99-secaudit-oracle10
+	sec_audit_gdm_dconf_stub_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_selinux; then
+sec_audit_remediate_selinux() {
+		sec_audit_guard_file /etc/default/grub
+	sec_audit_guard_file /etc/selinux/config
+	sec_audit_remediate_selinux_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_chrony; then
+sec_audit_remediate_chrony() {
+		sec_audit_guard_file /etc/chrony.conf
+	sec_audit_guard_file /etc/chrony.d
+	sec_audit_remediate_chrony_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_sudo_su; then
+sec_audit_remediate_sudo_su() {
+		sec_audit_guard_file /etc/sudoers.d/99-secaudit-timeout
+	sec_audit_remediate_sudo_su_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_pam_auth; then
+sec_audit_remediate_pam_auth() {
+		sec_audit_guard_file /etc/security
+	sec_audit_guard_file /etc/security/pwhistory.conf
+	sec_audit_remediate_pam_auth_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_accounts; then
+sec_audit_remediate_accounts() {
+		sec_audit_guard_file /etc/profile.d/99-secaudit-umask.sh
+	sec_audit_guard_file /etc/shells
+	sec_audit_guard_file /etc/profile.d/99-secaudit-timeout.sh
+	sec_audit_remediate_accounts_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_auditd; then
+sec_audit_remediate_auditd() {
+		sec_audit_guard_file /etc/default/grub
+	sec_audit_guard_file /etc/sudoers
+	sec_audit_guard_file /etc/NetworkManager
+	sec_audit_guard_file /etc/shadow
+	sec_audit_guard_file /etc/gshadow
+	sec_audit_remediate_auditd_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_auditd_extended; then
+sec_audit_remediate_auditd_extended() {
+		sec_audit_guard_file /etc/audit/rules.d
+	sec_audit_guard_file /etc/audit/audit.rules
+	sec_audit_guard_file /etc/audit/rules.d/99-secaudit-oracle10-immutable.rules
+	sec_audit_remediate_auditd_extended_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_main; then
+sec_audit_main() {
+		if command -v getenforce >/dev/null 2>&1; then
+		sec_audit_journal_once selinux getenforce "$(getenforce 2>/dev/null || true)"
+	fi
+	sec_audit_guard_file /etc/selinux/config
+	if command -v update-crypto-policies >/dev/null 2>&1; then
+		sec_audit_journal_once crypto policy "$(update-crypto-policies --show 2>/dev/null || true)"
+	fi
+	sec_audit_main_raw "$@"
+}
+fi
+
 sec_audit_main "$@"

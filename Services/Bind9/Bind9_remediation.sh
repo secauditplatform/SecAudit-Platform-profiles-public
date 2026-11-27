@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -37,10 +49,12 @@ set +e
 
 BIND9_FIND_CAP="${BIND9_FIND_CAP:-25}"
 BIND9_CMD_CAP="${BIND9_CMD_CAP:-8}"
-BIND9_XFER_CAP="${BIND9_XFER_CAP:-3}"
-BIND9_XFER_PER_NS_CAP="${BIND9_XFER_PER_NS_CAP:-3}"
-BIND9_XFER_IN_CAP="${BIND9_XFER_IN_CAP:-10}"
-BIND9_LOG_VERSIONS_MIN="${BIND9_LOG_VERSIONS_MIN:-3}"
+BIND9_XFER_CAP=$(secaudit_var XFER_CAP "${BIND9_XFER_CAP:-3}")
+BIND9_XFER_PER_NS_CAP=$(secaudit_var XFER_PER_NS_CAP "${BIND9_XFER_PER_NS_CAP:-3}")
+BIND9_XFER_IN_CAP=$(secaudit_var XFER_IN_CAP "${BIND9_XFER_IN_CAP:-10}")
+BIND9_LOG_VERSIONS_MIN=$(secaudit_var LOG_VERSIONS_MIN "${BIND9_LOG_VERSIONS_MIN:-3}")
+_BIND_LOG_SEVERITY=$(secaudit_var LOG_SEVERITY "info,dynamic,debug"); _BIND_LOG_SEVERITY=${_BIND_LOG_SEVERITY%%,*}
+_BIND_PRINT_SEVERITY=$(secaudit_var PRINT_SEVERITY yes)
 BIND9_REMEDIATE_DROPIN="${BIND9_REMEDIATE_DROPIN:-99-secaudit-bind9.conf}"
 BIND9_REMEDIATE_APPLY_FIREWALL="${BIND9_REMEDIATE_APPLY_FIREWALL:-1}"
 BIND9_REMEDIATE_CHROOT="${BIND9_REMEDIATE_CHROOT:-0}"
@@ -203,11 +217,16 @@ sec_audit_conf_present() {
 }
 
 sec_audit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-bind9.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ]; then
+        if [ ! -f "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 sec_audit_ensure_include_dropin() {
@@ -218,6 +237,7 @@ sec_audit_ensure_include_dropin() {
     base=$(dirname "$dropin")
     mkdir -p "$base" 2>/dev/null || true
     if [ ! -f "$dropin" ]; then
+        sec_audit_backup_file "$dropin"
         cat > "$dropin" <<'EOF'
 # SecAudit Bind9 remediation drop-in (managed)
 # Included from named.conf; safe to re-run remediator.
@@ -314,9 +334,9 @@ sec_audit_ensure_logging_baseline() {
                             if (c=="}") ch_depth--
                         }
                         if (low ~ /^[[:space:]]*print-time[[:space:]]/) { print "\t\tprint-time yes;"; if (ch_depth<=0) in_ch=0; next }
-                        if (low ~ /^[[:space:]]*print-severity[[:space:]]/) { print "\t\tprint-severity yes;"; if (ch_depth<=0) in_ch=0; next }
+                        if (low ~ /^[[:space:]]*print-severity[[:space:]]/) { print "\t\tprint-severity '"${_BIND_PRINT_SEVERITY}"';"; if (ch_depth<=0) in_ch=0; next }
                         if (low ~ /^[[:space:]]*print-category[[:space:]]/) { print "\t\tprint-category yes;"; if (ch_depth<=0) in_ch=0; next }
-                        if (low ~ /^[[:space:]]*severity[[:space:]]/) { print "\t\tseverity info;"; if (ch_depth<=0) in_ch=0; next }
+                        if (low ~ /^[[:space:]]*severity[[:space:]]/) { print "\t\tseverity '"${_BIND_LOG_SEVERITY}"';"; if (ch_depth<=0) in_ch=0; next }
                         if (low ~ /versions[[:space:]]+[0-9]+/) {
                             gsub(/versions[[:space:]]+[0-9]+/, "versions " vmin)
                         }
@@ -333,16 +353,16 @@ sec_audit_ensure_logging_baseline() {
 logging {
     channel secaudit_file {
         file "/var/log/named/secaudit-bind9.log" versions ${BIND9_LOG_VERSIONS_MIN} size 10m;
-        severity info;
+        severity ${_BIND_LOG_SEVERITY};
         print-time yes;
-        print-severity yes;
+        print-severity ${_BIND_PRINT_SEVERITY};
         print-category yes;
     };
     channel secaudit_syslog {
         syslog daemon;
-        severity info;
+        severity ${_BIND_LOG_SEVERITY};
         print-time yes;
-        print-severity yes;
+        print-severity ${_BIND_PRINT_SEVERITY};
         print-category yes;
     };
     category default { secaudit_file; secaudit_syslog; };
@@ -764,6 +784,7 @@ sec_audit_bootstrap_bind() {
         mkdir -p "$_BIND_LAYOUT_ROOT" 2>/dev/null || true
         _BIND_PRIMARY_CONF="$_BIND_LAYOUT_ROOT/named.conf"
         if [ ! -f "$_BIND_PRIMARY_CONF" ]; then
+            sec_audit_backup_file "$_BIND_PRIMARY_CONF"
             cat > "$_BIND_PRIMARY_CONF" <<EOF
 // SecAudit Bind9 baseline named.conf
 include "$_BIND_LAYOUT_ROOT/$BIND9_REMEDIATE_DROPIN";

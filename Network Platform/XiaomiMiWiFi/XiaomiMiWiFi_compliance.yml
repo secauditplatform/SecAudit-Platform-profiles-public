@@ -116,7 +116,15 @@
         resource_user: "{{ resource_user | default(omit) }}"
         resource_pass: "{{ resource_pass | default(omit) }}"
         SECAUDIT_CONFIG_FILE: "{{ secaudit_config_file | default(omit) }}"
-        SECAUDIT_RULES: "{{ SECAUDIT_RULES | default('') }}"
+        SECAUDIT_RULES: "{{ SECAUDIT_RULES | default('', true) }}"
+        SECAUDIT_REMEDIATE_RULES: "{{ SECAUDIT_REMEDIATE_RULES | default('', true) }}"
+        SECAUDIT_VAR_DEFAULT_HOSTNAMES: "{{ SECAUDIT_VAR_DEFAULT_HOSTNAMES | default('xiaomi,miwifi,mi-wifi,openwrt,xiaoqiang,router,localhost', true) }}"
+        SECAUDIT_VAR_WIFI_ENCRYPTION: "{{ SECAUDIT_VAR_WIFI_ENCRYPTION | default('psk2+ccmp,psk2,psk2+aes,ccmp,sae,sae-mixed,wpa3,wpa3-mixed,wpa2,wpa2+ccmp', true) }}"
+        SECAUDIT_VAR_SSH_WAN_PORT: "{{ SECAUDIT_VAR_SSH_WAN_PORT | default('22', true) }}"
+        SECAUDIT_VAR_PORT_FORWARD_MAX: "{{ SECAUDIT_VAR_PORT_FORWARD_MAX | default('3', true) }}"
+        SECAUDIT_VAR_LAN_FACTORY_PREFIX: "{{ SECAUDIT_VAR_LAN_FACTORY_PREFIX | default('192.168.31.', true) }}"
+        SECAUDIT_VAR_PMF_VALUES: "{{ SECAUDIT_VAR_PMF_VALUES | default('1,2', true) }}"
+        SECAUDIT_VAR_WEAK_ADMIN_PASSWORDS: "{{ SECAUDIT_VAR_WEAK_ADMIN_PASSWORDS | default('admin,root,password,12345678', true) }}"
       register: xiaomimiwifi_audit_raw
       changed_when: false
       failed_when: false

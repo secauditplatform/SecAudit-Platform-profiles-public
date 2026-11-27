@@ -22,6 +22,33 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+sec_audit_mode_policy() {
+    local path="$1" max="$2" legacy="$3" kind="$4" legacy_re="$5" got
+    got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+    if [ "$max" = "$legacy" ]; then
+        printf '%s\n' "$got" | grep -qE -- "$legacy_re"
+        return $?
+    fi
+    [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+    if [ "$kind" = "exact" ]; then
+        (( 8#$got == 8#$max ))
+    else
+        (( (8#$got & ~8#$max) == 0 ))
+    fi
+}
+
+
 # --- bootstrap / reporting ---
 sec_audit_report_pass() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
 sec_audit_report_fail() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
@@ -608,7 +635,8 @@ sec_audit__interactive_users() {
 # Section runners
 # =============================================================================
 
-sec_audit_run_initial_setup() {
+sec_audit_run_kernel_modules() {
+# RULE1-11
 if secaudit_rule_enabled 1; then
 sec_audit__emit_kernel_mod_unavailable 1 cramfs
 
@@ -658,6 +686,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_filesystem_partitions() {
+# RULE12-38
 if secaudit_rule_enabled 12; then
 if sec_audit_findmnt_tmpfs_or_separate_ok /tmp; then
   sec_audit_report_pass 12 "/tmp is tmpfs or a separate partition"
@@ -791,6 +823,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_package_security() {
+# RULE39-53
 if secaudit_rule_enabled 39; then
 _r=$(apt-config dump 2>/dev/null | awk '$1=="APT::Install-Recommends"{gsub(/[";]/,"",$2);print $2;exit}')
 _s=$(apt-config dump 2>/dev/null | awk '$1=="APT::Install-Suggests"{gsub(/[";]/,"",$2);print $2;exit}')
@@ -806,7 +842,7 @@ _bad=""
 for _d in /usr/share/keyrings /etc/apt/trusted.gpg.d; do
   [ -d "$_d" ] || continue
   while IFS= read -r -d '' _f; do
-    sec_audit__path_access_ok "$_f" 644 root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
+    sec_audit__path_access_ok "$_f" "$(secaudit_var MODE_AUDIT_LOG_DIR 644)" root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
   done < <(find -L "$_d" -xdev -type f -name '*gpg' -print0 2>/dev/null)
 done
 if [ -z "$_bad" ]; then
@@ -827,7 +863,7 @@ for _p in /etc/apt/trusted.gpg.d; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 755 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR_755 755)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 41 "insecure access on:${_bad} (expected 755 root:root or more restrictive)"
@@ -849,7 +885,7 @@ for _p in /etc/apt/auth.conf.d; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 755 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR_755 755)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 42 "insecure access on:${_bad} (expected 755 root:root or more restrictive)"
@@ -871,7 +907,7 @@ for _p in /etc/apt/auth.conf.d/*.conf; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 640 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR_640 640)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 43 "insecure access on:${_bad} (expected 640 root:root or more restrictive)"
@@ -893,7 +929,7 @@ for _p in /usr/share/keyrings; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 755 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR_755 755)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 44 "insecure access on:${_bad} (expected 755 root:root or more restrictive)"
@@ -915,7 +951,7 @@ for _p in /etc/apt/sources.list.d; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 755 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR_755 755)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 45 "insecure access on:${_bad} (expected 755 root:root or more restrictive)"
@@ -937,7 +973,7 @@ for _p in /etc/apt/sources.list.d/*; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 644 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR 644)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 46 "insecure access on:${_bad} (expected 644 root:root or more restrictive)"
@@ -1032,6 +1068,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_apparmor() {
+# RULE54-56
 if secaudit_rule_enabled 54; then
 if sec_audit_is_package_installed apparmor; then
   sec_audit_report_pass 54 "AppArmor package is installed"
@@ -1065,15 +1105,23 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_selinux() {
+# RULE57-57
 if secaudit_rule_enabled 57; then
 _sr=$(sec_audit_sysctl_key_runtime_raw kernel.apparmor_restrict_unprivileged_unconfined)
-if sec_audit_sysctl_runtime_equals kernel.apparmor_restrict_unprivileged_unconfined 1; then
+if sec_audit_sysctl_runtime_equals kernel.apparmor_restrict_unprivileged_unconfined $(secaudit_var SYSCTL_KRN_APPARMOR_RESTRICT_UNPRIVILEGED 1); then
   sec_audit_report_pass 57 "kernel.apparmor_restrict_unprivileged_unconfined=1 in kernel$(sec_audit_sysctl_runtime_disk_hint kernel.apparmor_restrict_unprivileged_unconfined 1)"
 else
   sec_audit_report_fail 57 "kernel kernel.apparmor_restrict_unprivileged_unconfined is '${_sr:-<unreadable>}', expected 1$(sec_audit_sysctl_runtime_disk_hint kernel.apparmor_restrict_unprivileged_unconfined 1)"
 fi
 
 fi
+}
+
+sec_audit_run_bootloader() {
+# RULE58-59
 if secaudit_rule_enabled 58; then
 if grep -qE '^\s*set\s+superusers=' /boot/grub/grub.cfg 2>/dev/null &&     grep -qE '^\s*GRUB2_PASSWORD=grub\.pbkdf2\.sha512\.' /boot/grub/user.cfg 2>/dev/null; then
   sec_audit_report_pass 58 "bootloader superuser and hashed GRUB password are configured"
@@ -1083,13 +1131,17 @@ fi
 
 fi
 if secaudit_rule_enabled 59; then
-if stat -Lc '%a %U %G' /boot/grub/grub.cfg 2>/dev/null | grep -qE '^600 root root$'; then
+if _o=$(stat -Lc '%U %G' /boot/grub/grub.cfg 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /boot/grub/grub.cfg "$(secaudit_var MODE_GRUB_CFG 600)" 600 exact '^600$'; then
   sec_audit_report_pass 59 "grub.cfg permissions are 600 and owner/group are root"
 else
   sec_audit_report_fail 59 "grub.cfg permissions or ownership are incorrect"
 fi
 
 fi
+}
+
+sec_audit_run_process_hardening() {
+# RULE60-71
 if secaudit_rule_enabled 60; then
 if sec_audit_sysctl_runtime_and_persistent_equals fs.protected_hardlinks 1; then
   sec_audit_report_pass 60 "fs.protected_hardlinks=1 in kernel and persistent configuration"
@@ -1208,6 +1260,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_banners() {
+# RULE72-84
 if secaudit_rule_enabled 72; then
 _bad=$(sec_audit__sysinfo_leak /etc/motd /etc/motd.d/*)
 if [ -z "$_bad" ]; then
@@ -1269,7 +1325,7 @@ fi
 if secaudit_rule_enabled 77; then
 if [ ! -e /etc/motd ]; then
   sec_audit_report_pass 77 "/etc/motd does not exist (nothing to verify)"
-elif stat -Lc '%a %U %G' /etc/motd 2>/dev/null | grep -qE '^6[04][04] root root$|^[0-5][0-4][04] root root$'; then
+elif _o=$(stat -Lc '%U %G' /etc/motd 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$|^[0-5][0-4][04] root root$' && sec_audit_mode_policy /etc/motd "$(secaudit_var MODE_MOTD 644)" 644 within '^6[04][04]$'; then
   sec_audit_report_pass 77 "/etc/motd permissions are correctly set root-owned"
 else
   sec_audit_report_fail 77 "/etc/motd permissions or ownership are incorrect"
@@ -1277,7 +1333,7 @@ fi
 
 fi
 if secaudit_rule_enabled 78; then
-if stat -Lc '%a %U %G' /etc/issue 2>/dev/null | grep -qE '^6[04][04] root root$|^[0-5][0-4][04] root root$'; then
+if _o=$(stat -Lc '%U %G' /etc/issue 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$|^[0-5][0-4][04] root root$' && sec_audit_mode_policy /etc/issue "$(secaudit_var MODE_ISSUE 644)" 644 within '^6[04][04]$'; then
   sec_audit_report_pass 78 "/etc/issue permissions are correctly set root-owned"
 else
   sec_audit_report_fail 78 "/etc/issue permissions or ownership are incorrect"
@@ -1285,7 +1341,7 @@ fi
 
 fi
 if secaudit_rule_enabled 79; then
-if stat -Lc '%a %U %G' /etc/issue.net 2>/dev/null | grep -qE '^6[04][04] root root$|^[0-5][0-4][04] root root$'; then
+if _o=$(stat -Lc '%U %G' /etc/issue.net 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$|^[0-5][0-4][04] root root$' && sec_audit_mode_policy /etc/issue.net "$(secaudit_var MODE_ISSUE_NET 644)" 644 within '^6[04][04]$'; then
   sec_audit_report_pass 79 "/etc/issue.net permissions are correctly set root-owned"
 else
   sec_audit_report_fail 79 "/etc/issue.net permissions or ownership are incorrect"
@@ -1297,7 +1353,7 @@ _paths=$(grep -hPo 'motd=\K\S+' /etc/pam.d/* 2>/dev/null | tr -d '"' | sort -u)
 _bad=""
 for _p in $_paths; do
   [ -e "$_p" ] || continue
-  sec_audit__path_access_ok "$_p" 644 root root || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR 644)" root root || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -z "$_bad" ]; then
   sec_audit_report_pass 80 "pam_motd files have 0644 root:root or more restrictive access"
@@ -1312,7 +1368,7 @@ if [ -z "$_banner" ] || [ "$_banner" = "none" ]; then
   sec_audit_report_pass 81 "no sshd warning banner file configured (nothing to verify)"
 elif [ ! -e "$_banner" ]; then
   sec_audit_report_fail 81 "sshd warning banner file ${_banner} does not exist"
-elif sec_audit__path_access_ok "$_banner" 644 root root; then
+elif sec_audit__path_access_ok "$_banner" "$(secaudit_var MODE_AUDIT_LOG_DIR 644)" root root; then
   sec_audit_report_pass 81 "$(sec_audit__path_access_describe "$_banner") is 0644 root:root or more restrictive"
 else
   sec_audit_report_fail 81 "$(sec_audit__path_access_describe "$_banner") is not 0644 root:root or more restrictive"
@@ -1349,6 +1405,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_gdm() {
+# RULE85-90
 if secaudit_rule_enabled 85; then
 if sec_audit__gdm_absent; then
   sec_audit_report_pass 85 "GDM user list is disabled on the login screen - GNOME/GDM is not installed"
@@ -1439,9 +1499,11 @@ else
 fi
 
 fi
+
 }
 
-sec_audit_run_services() {
+sec_audit_run_unused_services() {
+# RULE91-113
 if secaudit_rule_enabled 91; then
 if ! (sec_audit_is_package_installed autofs && sec_audit_is_service_active autofs); then
   sec_audit_report_pass 91 "autofs service is not installed or not running"
@@ -1664,6 +1726,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_client_tools() {
+# RULE114-119
 if secaudit_rule_enabled 114; then
 if ! dpkg-query -W -f='${Status}' nis 2>/dev/null | grep -q 'install ok installed'; then
   sec_audit_report_pass 114 "NIS client is not installed"
@@ -1712,6 +1778,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_chrony() {
+# RULE120-126
 if secaudit_rule_enabled 120; then
 _ts_active=0
 for _u in chrony systemd-timesyncd ntp openntpd; do
@@ -1785,6 +1855,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_cron_at() {
+# RULE127-136
 if secaudit_rule_enabled 127; then
 if systemctl is-active cron 2>/dev/null | grep -q '^active' && systemctl is-enabled cron 2>/dev/null | grep -q '^enabled'; then
   sec_audit_report_pass 127 "cron daemon is enabled and running"
@@ -1807,7 +1881,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 600 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRONTAB 600)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 128 "insecure access on:${_bad} (expected 600 root:root or more restrictive)"
@@ -1833,7 +1907,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 700 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRON_HOURLY 700)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 129 "insecure access on:${_bad} (expected 700 root:root or more restrictive)"
@@ -1859,7 +1933,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 700 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRON_DAILY 700)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 130 "insecure access on:${_bad} (expected 700 root:root or more restrictive)"
@@ -1885,7 +1959,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 700 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRON_WEEKLY 700)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 131 "insecure access on:${_bad} (expected 700 root:root or more restrictive)"
@@ -1911,7 +1985,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 700 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRON_MONTHLY 700)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 132 "insecure access on:${_bad} (expected 700 root:root or more restrictive)"
@@ -1937,7 +2011,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 700 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRON_YEARLY 700)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 133 "insecure access on:${_bad} (expected 700 root:root or more restrictive)"
@@ -1963,7 +2037,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 700 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AUDIT_LOG_DIR_700 700)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 134 "insecure access on:${_bad} (expected 700 root:root or more restrictive)"
@@ -1989,7 +2063,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 640 'root' 'root|crontab' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_CRON_ALLOW 640)" 'root' 'root|crontab' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 135 "insecure access on:${_bad} (expected 640 root:root|crontab or more restrictive)"
@@ -2015,7 +2089,7 @@ else
       esac
       continue
     fi
-    sec_audit__path_access_ok "$_p" 640 'root' 'root|daemon' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+    sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_AT_ALLOW 640)" 'root' 'root|daemon' || _bad+=" $(sec_audit__path_access_describe "$_p")"
   done
   if [ -n "$_bad" ]; then
     sec_audit_report_fail 136 "insecure access on:${_bad} (expected 640 root:root|daemon or more restrictive)"
@@ -2027,11 +2101,13 @@ else
 fi
 
 fi
+
 }
 
-sec_audit_run_network() {
+sec_audit_run_network_stack() {
+# RULE137-138
 if secaudit_rule_enabled 137; then
-if grep -qs -- '^\h*0\b' /sys/module/ipv6/parameters/disable     || { sec_audit_sysctl_runtime_equals net.ipv6.conf.all.disable_ipv6 1 && sec_audit_sysctl_runtime_equals net.ipv6.conf.default.disable_ipv6 1; }; then
+if grep -qs -- '^\h*0\b' /sys/module/ipv6/parameters/disable     || { sec_audit_sysctl_runtime_equals net.ipv6.conf.all.disable_ipv6 $(secaudit_var SYSCTL_IPV6_ALL_DISABLE_IPV6 1) && sec_audit_sysctl_runtime_equals net.ipv6.conf.default.disable_ipv6 $(secaudit_var SYSCTL_IPV6_ALL_DISABLE_IPV6 1); }; then
   sec_audit_report_pass 137 "IPv6 status identified: disabled"
 else
   sec_audit_report_pass 137 "IPv6 status identified: enabled"
@@ -2053,6 +2129,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_unused_services_2() {
+# RULE139-139
 if secaudit_rule_enabled 139; then
 if ! (dpkg-query -W -f='${Status}' bluez 2>/dev/null | grep -q 'install ok installed' && systemctl is-active bluetooth 2>/dev/null | grep -q '^active'); then
   sec_audit_report_pass 139 "Bluetooth service is not installed or not running"
@@ -2061,6 +2141,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_kernel_modules_2() {
+# RULE140-149
 if secaudit_rule_enabled 140; then
 sec_audit__emit_kernel_mod_unavailable 140 atm
 
@@ -2118,6 +2202,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_network_stack_2() {
+# RULE150-173
 if secaudit_rule_enabled 150; then
 if sec_audit_sysctl_runtime_and_persistent_equals net.ipv4.conf.all.send_redirects 0; then
   sec_audit_report_pass 150 "net.ipv4.conf.all.send_redirects=0 in kernel and persistent configuration"
@@ -2310,9 +2398,11 @@ else
 fi
 
 fi
+
 }
 
-sec_audit_run_logging_and_auditing() {
+sec_audit_run_firewalld() {
+# RULE174-178
 if secaudit_rule_enabled 174; then
 if dpkg-query -W -f='${Status}' ufw 2>/dev/null | grep -q 'install ok installed'; then
   sec_audit_report_pass 174 "UFW is installed"
@@ -2369,15 +2459,17 @@ else
 fi
 
 fi
+
 }
 
-sec_audit_run_access_control() {
+sec_audit_run_sshd() {
+# RULE179-202
 if secaudit_rule_enabled 179; then
 _bad=""
-[ -e /etc/ssh/sshd_config ] && { sec_audit__path_access_ok /etc/ssh/sshd_config 600 root root || _bad+=" $(sec_audit__path_access_describe /etc/ssh/sshd_config)"; }
+[ -e /etc/ssh/sshd_config ] && { sec_audit__path_access_ok /etc/ssh/sshd_config "$(secaudit_var MODE_SSHD_CONFIG 600)" root root || _bad+=" $(sec_audit__path_access_describe /etc/ssh/sshd_config)"; }
 shopt -s nullglob
 for _f in /etc/ssh/sshd_config.d/*.conf; do
-  sec_audit__path_access_ok "$_f" 600 root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
+  sec_audit__path_access_ok "$_f" "$(secaudit_var MODE_SSHD_CONFIG 600)" root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
 done
 shopt -u nullglob
 if [ -z "$_bad" ]; then
@@ -2390,7 +2482,7 @@ fi
 if secaudit_rule_enabled 180; then
 if [ ! -e /etc/ssh/sshd_config.d ]; then
   sec_audit_report_fail 180 "/etc/ssh/sshd_config.d does not exist"
-elif sec_audit__path_access_ok /etc/ssh/sshd_config.d 700 root root; then
+elif sec_audit__path_access_ok /etc/ssh/sshd_config.d "$(secaudit_var MODE_SSHD_CONFIG_700 700)" root root; then
   sec_audit_report_pass 180 "$(sec_audit__path_access_describe /etc/ssh/sshd_config.d) is 700 root:root or more restrictive"
 else
   sec_audit_report_fail 180 "$(sec_audit__path_access_describe /etc/ssh/sshd_config.d) is not 700 root:root or more restrictive"
@@ -2402,7 +2494,7 @@ _bad=""
 for _f in /etc/ssh/ssh_host_*_key; do
   [ -e "$_f" ] || continue
   case "$_f" in *.pub) continue ;; esac
-  sec_audit__path_access_ok "$_f" 600 root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
+  sec_audit__path_access_ok "$_f" "$(secaudit_var MODE_SSH_HOSTKEY_PUB 600)" root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
 done
 if [ -z "$_bad" ]; then
   sec_audit_report_pass 181 "SSH private host keys are 0600 root:root or more restrictive"
@@ -2415,7 +2507,7 @@ if secaudit_rule_enabled 182; then
 _bad=""
 for _f in /etc/ssh/ssh_host_*_key.pub; do
   [ -e "$_f" ] || continue
-  sec_audit__path_access_ok "$_f" 644 root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
+  sec_audit__path_access_ok "$_f" "$(secaudit_var MODE_SSH_HOSTKEY_PUB_644 644)" root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
 done
 if [ -z "$_bad" ]; then
   sec_audit_report_pass 182 "SSH public host keys are 0644 root:root or more restrictive"
@@ -2449,10 +2541,10 @@ fi
 
 fi
 if secaudit_rule_enabled 186; then
-if sec_audit_sshd_effective_dump | awk '
+if sec_audit_sshd_effective_dump | awk -v interval="$(secaudit_var CLIENT_ALIVE_INTERVAL 900)" -v count="$(secaudit_var CLIENT_ALIVE_COUNT_MAX 3)" '
   /^clientaliveinterval / {i=$2}
   /^clientalivecountmax / {c=$2}
-  END {exit !(i+0>0 && i+0<=900 && c+0>0 && c+0<=3)}
+  END {exit !(i+0>0 && i+0<=interval+0 && c+0>0 && c+0<=count+0)}
 '; then
   sec_audit_report_pass 186 "SSH ClientAliveInterval and ClientAliveCountMax are configured"
 else
@@ -2516,7 +2608,7 @@ fi
 
 fi
 if secaudit_rule_enabled 193; then
-if sec_audit_sshd_effective_dump | grep -i '^logingracetime' | awk '{if($2+0>0 && $2+0<=60) exit 0; exit 1}'; then
+if sec_audit_sshd_effective_dump | grep -i '^logingracetime' | awk -v sa_limit="$(secaudit_var LOGIN_GRACE_TIME 60)" '{if($2+0>0 && $2+0<= sa_limit+0) exit 0; exit 1}'; then
   sec_audit_report_pass 193 "SSH LoginGraceTime is set to 60 seconds or less"
 else
   sec_audit_report_fail 193 "SSH LoginGraceTime is not configured or too long"
@@ -2540,7 +2632,7 @@ fi
 
 fi
 if secaudit_rule_enabled 196; then
-if sec_audit_sshd_effective_dump | grep -i '^maxauthtries' | awk '{if($2+0>0 && $2+0<=4) exit 0; exit 1}'; then
+if sec_audit_sshd_effective_dump | grep -i '^maxauthtries' | awk -v sa_limit="$(secaudit_var MAX_AUTH_TRIES 4)" '{if($2+0>0 && $2+0<= sa_limit+0) exit 0; exit 1}'; then
   sec_audit_report_pass 196 "SSH MaxAuthTries is set to 4 or less"
 else
   sec_audit_report_fail 196 "SSH MaxAuthTries is not configured or set too high"
@@ -2548,7 +2640,7 @@ fi
 
 fi
 if secaudit_rule_enabled 197; then
-if sec_audit_sshd_effective_dump | grep -i '^maxsessions' | awk '{print $2}' | awk '{if($1<=10) exit 0; else exit 1}'; then
+if sec_audit_sshd_effective_dump | grep -i '^maxsessions' | awk -v sa_limit="$(secaudit_var MAX_SESSIONS 10)" '{print $2}' | awk '{if($1<= sa_limit+0) exit 0; else exit 1}'; then
   sec_audit_report_pass 197 "SSH MaxSessions is set to 10 or less"
 else
   sec_audit_report_fail 197 "SSH MaxSessions is not configured or set too high"
@@ -2602,6 +2694,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_sudo_su() {
+# RULE203-211
 if secaudit_rule_enabled 203; then
 if dpkg-query -W -f='${Status}' sudo 2>/dev/null | grep -q 'install ok installed'; then
   sec_audit_report_pass 203 "sudo is installed"
@@ -2696,6 +2792,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_pam_auth() {
+# RULE212-219
 if secaudit_rule_enabled 212; then
 if dpkg-query -W -f='${Status}' libpam-pwquality 2>/dev/null | grep -q 'install ok installed'; then
   sec_audit_report_pass 212 "libpam-pwquality is installed"
@@ -2764,6 +2864,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_accounts() {
+# RULE220-221
 if secaudit_rule_enabled 220; then
 if grep -qE '^even_deny_root' /etc/security/faillock.conf 2>/dev/null; then
   sec_audit_report_pass 220 "faillock even_deny_root is enabled"
@@ -2780,6 +2884,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_pam_auth_2() {
+# RULE222-235
 if secaudit_rule_enabled 222; then
 _m=$(grep -rPhs -- '^\h*minlen\h*=\h*[0-9]+' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf 2>/dev/null | sed 's/.*=[[:space:]]*//' | tail -n1)
 _o=$(grep -Psi -- '^\h*password\h+(requisite|required|sufficient)\h+pam_pwquality\.so\h+([^#\n\r]+\h+)?minlen\h*=\h*([0-9]|1[0-3])\b' /etc/pam.d/common-password 2>/dev/null)
@@ -2906,8 +3014,12 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_accounts_2() {
+# RULE236-249
 if secaudit_rule_enabled 236; then
-if awk '($1=="PASS_MAX_DAYS"){if($2+0<=365 && $2+0>0) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
+if awk -v limit="$(secaudit_var PASS_MAX_DAYS 365)" '($1=="PASS_MAX_DAYS"){if($2+0<=limit+0 && $2+0>0) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
   sec_audit_report_pass 236 "PASS_MAX_DAYS is set to 365 or less in /etc/login.defs"
 else
   sec_audit_report_fail 236 "PASS_MAX_DAYS is not configured or exceeds 365 days"
@@ -2922,7 +3034,7 @@ elif [ ! -r /etc/shadow ]; then
   _d=""
 else
   _d=$(awk '/^[[:space:]]*PASS_MIN_DAYS[[:space:]]+[0-9]+/ {print $2}' /etc/login.defs 2>/dev/null | tail -n1)
-  _bad=$(awk -F: '($2 ~ /^\$.+\$/) {if ($4 < 1) print $1}' /etc/shadow 2>/dev/null | tr '\n' ' ')
+  _bad=$(awk -v sa_limit="$(secaudit_var PASS_MIN_DAYS 1)" -F: '($2 ~ /^\$.+\$/) {if ($4 < sa_limit+0) print $1}' /etc/shadow 2>/dev/null | tr '\n' ' ')
   if [ -n "$_d" ] && [ "$_d" -ge 1 ] 2>/dev/null && [ -z "$_bad" ]; then
     sec_audit_report_pass 237 "PASS_MIN_DAYS=${_d} and all password users comply"
   else
@@ -2932,7 +3044,7 @@ fi
 
 fi
 if secaudit_rule_enabled 238; then
-if awk '($1=="PASS_WARN_AGE"){if($2+0>=7) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
+if awk -v limit="$(secaudit_var PASS_WARN_AGE 7)" '($1=="PASS_WARN_AGE"){if($2+0>=limit+0) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
   sec_audit_report_pass 238 "PASS_WARN_AGE is set to 7 or more days in /etc/login.defs"
 else
   sec_audit_report_fail 238 "PASS_WARN_AGE is not configured or set below 7 days"
@@ -2948,7 +3060,7 @@ fi
 
 fi
 if secaudit_rule_enabled 240; then
-if useradd -D 2>/dev/null | grep -qE '^INACTIVE=[0-9]' && useradd -D 2>/dev/null | awk -F= '/INACTIVE/{if($2+0>0 && $2+0<=30) exit 0; exit 1}'; then
+if useradd -D 2>/dev/null | grep -qE '^INACTIVE=[0-9]' && useradd -D 2>/dev/null | awk -F= -v limit="$(secaudit_var INACTIVE_DAYS 30)" '/INACTIVE/{if($2+0>0 && $2+0<=limit+0) exit 0; exit 1}'; then
   sec_audit_report_pass 240 "INACTIVE password lock period is configured 1-30 days"
 else
   sec_audit_report_fail 240 "INACTIVE password lock period is not configured or out of range"
@@ -3032,6 +3144,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_identity_files() {
+# RULE250-251
 if secaudit_rule_enabled 250; then
 if ! grep -q 'nologin' /etc/shells 2>/dev/null; then
   sec_audit_report_pass 250 "nologin is not listed in /etc/shells"
@@ -3049,6 +3165,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_accounts_3() {
+# RULE252-252
 if secaudit_rule_enabled 252; then
 if grep -rqE '^\s*umask\s+(0[027]7|[027]7)' /etc/profile /etc/profile.d/*.sh /etc/bash.bashrc /etc/login.defs 2>/dev/null; then
   sec_audit_report_pass 252 "default umask is set to 027 or stricter in system profiles"
@@ -3057,9 +3177,11 @@ else
 fi
 
 fi
+
 }
 
-sec_audit_run_system_maintenance() {
+sec_audit_run_unused_services_3() {
+# RULE253-254
 if secaudit_rule_enabled 253; then
 if systemctl is-active systemd-journald 2>/dev/null | grep -q '^active' && systemctl is-enabled systemd-journald 2>/dev/null | grep -qE '^(enabled|static)'; then
   sec_audit_report_pass 253 "systemd-journald is enabled and running"
@@ -3080,6 +3202,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_logging() {
+# RULE255-270
 if secaudit_rule_enabled 255; then
 if sec_audit_is_service_active rsyslog &&     (grep -qE '^[[:space:]]*ForwardToSyslog[[:space:]]*=[[:space:]]*yes[[:space:]]*$' /etc/systemd/journald.conf 2>/dev/null ||      grep -rqE '^[[:space:]]*ForwardToSyslog[[:space:]]*=[[:space:]]*yes[[:space:]]*$' /etc/systemd/journald.conf.d/ 2>/dev/null); then
   sec_audit_report_pass 255 "journald ForwardToSyslog is set to yes forwarding to rsyslog"
@@ -3092,7 +3218,7 @@ if secaudit_rule_enabled 256; then
 _bad=""
 while IFS= read -r _f; do
   [ -e "$_f" ] || continue
-  sec_audit__path_access_ok "$_f" 640 root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
+  sec_audit__path_access_ok "$_f" "$(secaudit_var MODE_AUDIT_LOG_DIR_640 640)" root root || _bad+=" $(sec_audit__path_access_describe "$_f")"
 done < <(grep -rhs -- '^[[:space:]]*f[[:space:]]' /etc/tmpfiles.d/systemd.conf /usr/lib/tmpfiles.d/systemd.conf 2>/dev/null | awk '{print $2}' | grep -E '/var/log/journal')
 if [ -z "$_bad" ]; then
   sec_audit_report_pass 256 "journald log files are 0640 or more restrictive"
@@ -3235,6 +3361,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_auditd() {
+# RULE271-280
 if secaudit_rule_enabled 271; then
 if sec_audit_is_package_installed auditd; then
   sec_audit_report_pass 271 "auditd package is installed"
@@ -3332,6 +3462,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_sudo_su_2() {
+# RULE281-283
 if secaudit_rule_enabled 281; then
 if sec_audit_audit_rules_files_grep -q -E -- -w.*sudo.log; then
   sec_audit_report_pass 281 "audit rules monitor modifications to the sudo log file"
@@ -3361,6 +3495,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_banners_2() {
+# RULE284-289
 if secaudit_rule_enabled 284; then
 _ok=1
 sec_audit_audit_rule_on_disk -E -- '-a always,exit -F path=/etc/issue -F perm=wa' || _ok=0
@@ -3473,6 +3611,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_identity_files_2() {
+# RULE290-308
 if secaudit_rule_enabled 290; then
 _ok=1
 sec_audit_audit_rule_on_disk -E -- '-a always,exit -F path=/etc/group -F perm=wa' || _ok=0
@@ -3708,6 +3850,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_kernel_modules_3() {
+# RULE309-311
 if secaudit_rule_enabled 309; then
 if sec_audit_audit_rule_on_disk_all -a always,exit -F arch=b64 -S init_module && sec_audit_audit_rule_on_disk_all -w /sbin/insmod; then
   sec_audit_report_pass 309 "audit rules monitor kernel module load, unload, and modification"
@@ -3742,6 +3888,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_auditd_2() {
+# RULE312-314
 if secaudit_rule_enabled 312; then
 if grep -Ph -- '^\h*-c\b' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null | tail -1 | grep -q .; then
   sec_audit_report_pass 312 "audit configuration is loaded regardless of errors (-c rule present)"
@@ -3773,6 +3923,10 @@ else
 fi
 fi
 
+}
+
+sec_audit_run_logging_2() {
+# RULE315-318
 if secaudit_rule_enabled 315; then
 if ! sec_audit_is_package_installed auditd; then
   sec_audit__audit_absent_fail 315
@@ -3819,6 +3973,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_auditd_3() {
+# RULE319-324
 if secaudit_rule_enabled 319; then
 if ! sec_audit_is_package_installed auditd; then
   sec_audit__audit_absent_fail 319
@@ -3879,6 +4037,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_aide() {
+# RULE325-326
 if secaudit_rule_enabled 325; then
 if dpkg-query -W -f='${Status}' aide 2>/dev/null | grep -q 'install ok installed'; then
   sec_audit_report_pass 325 "AIDE is installed"
@@ -3895,6 +4057,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_crypto_policy() {
+# RULE327-327
 if secaudit_rule_enabled 327; then
 if ! sec_audit_is_package_installed aide && ! sec_audit_have_bin aide; then
   sec_audit_report_fail 327 "AIDE is not installed"
@@ -3919,9 +4085,11 @@ else
 fi
 
 fi
+
 }
 
-sec_audit_run_accounts() {
+sec_audit_run_identity_files_3() {
+# RULE328-344
 if secaudit_rule_enabled 328; then
 _bad=""
 _missing=""
@@ -3933,7 +4101,7 @@ for _p in /etc/passwd; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 644 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_PASSWD 644)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 328 "insecure access on:${_bad} (expected 644 root:root or more restrictive)"
@@ -3955,7 +4123,7 @@ for _p in /etc/passwd-; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 644 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_PASSWD_DASH 644)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 329 "insecure access on:${_bad} (expected 644 root:root or more restrictive)"
@@ -3977,7 +4145,7 @@ for _p in /etc/group; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 644 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_GROUP 644)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 330 "insecure access on:${_bad} (expected 644 root:root or more restrictive)"
@@ -3999,7 +4167,7 @@ for _p in /etc/group-; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 644 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_GROUP_DASH 644)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 331 "insecure access on:${_bad} (expected 644 root:root or more restrictive)"
@@ -4021,7 +4189,7 @@ for _p in /etc/shadow; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 640 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_SHADOW 640)" 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 332 "insecure access on:${_bad} (expected 640 root:root|shadow or more restrictive)"
@@ -4043,7 +4211,7 @@ for _p in /etc/shadow-; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 640 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_SHADOW_DASH 640)" 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 333 "insecure access on:${_bad} (expected 640 root:root|shadow or more restrictive)"
@@ -4065,7 +4233,7 @@ for _p in /etc/gshadow; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 640 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_GSHADOW 640)" 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 334 "insecure access on:${_bad} (expected 640 root:root|shadow or more restrictive)"
@@ -4087,7 +4255,7 @@ for _p in /etc/gshadow-; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 640 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_GSHADOW_DASH 640)" 'root' 'root|shadow' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 335 "insecure access on:${_bad} (expected 640 root:root|shadow or more restrictive)"
@@ -4109,7 +4277,7 @@ for _p in /etc/shells; do
     esac
     continue
   fi
-  sec_audit__path_access_ok "$_p" 644 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_SHELLS 644)" 'root' 'root' || _bad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_bad" ]; then
   sec_audit_report_fail 336 "insecure access on:${_bad} (expected 644 root:root or more restrictive)"
@@ -4126,7 +4294,7 @@ _obad=""
 for _p in /etc/security/opasswd /etc/security/opasswd.old; do
   [ -e "$_p" ] || continue
   _checked=$((_checked + 1))
-  sec_audit__path_access_ok "$_p" 600 'root' 'root' || _obad+=" $(sec_audit__path_access_describe "$_p")"
+  sec_audit__path_access_ok "$_p" "$(secaudit_var MODE_OPASSWD 600)" 'root' 'root' || _obad+=" $(sec_audit__path_access_describe "$_p")"
 done
 if [ -n "$_obad" ]; then
   sec_audit_report_fail 337 "insecure access on:${_obad} (expected 600 root:root or more restrictive)"
@@ -4225,6 +4393,10 @@ else
 fi
 
 fi
+}
+
+sec_audit_run_filesystem_integrity() {
+# RULE345-351
 if secaudit_rule_enabled 345; then
 if [ $(awk -F: '{print $3}' /etc/passwd 2>/dev/null | sort | uniq -d | wc -l) -eq 0 ]; then
   sec_audit_report_pass 345 "no duplicate UIDs exist in /etc/passwd"
@@ -4321,17 +4493,51 @@ else
 fi
 
 fi
+
 }
 
 sec_audit_main() {
-    sec_audit_run_initial_setup
-    sec_audit_run_services
-    sec_audit_run_network
-    sec_audit_run_logging_and_auditing
-    sec_audit_run_access_control
-    sec_audit_run_system_maintenance
+    sec_audit_run_kernel_modules
+    sec_audit_run_filesystem_partitions
+    sec_audit_run_package_security
+    sec_audit_run_apparmor
+    sec_audit_run_selinux
+    sec_audit_run_bootloader
+    sec_audit_run_process_hardening
+    sec_audit_run_banners
+    sec_audit_run_gdm
+    sec_audit_run_unused_services
+    sec_audit_run_client_tools
+    sec_audit_run_chrony
+    sec_audit_run_cron_at
+    sec_audit_run_network_stack
+    sec_audit_run_unused_services_2
+    sec_audit_run_kernel_modules_2
+    sec_audit_run_network_stack_2
+    sec_audit_run_firewalld
+    sec_audit_run_sshd
+    sec_audit_run_sudo_su
+    sec_audit_run_pam_auth
     sec_audit_run_accounts
-    exit 0
+    sec_audit_run_pam_auth_2
+    sec_audit_run_accounts_2
+    sec_audit_run_identity_files
+    sec_audit_run_accounts_3
+    sec_audit_run_unused_services_3
+    sec_audit_run_logging
+    sec_audit_run_auditd
+    sec_audit_run_sudo_su_2
+    sec_audit_run_banners_2
+    sec_audit_run_identity_files_2
+    sec_audit_run_kernel_modules_3
+    sec_audit_run_auditd_2
+    sec_audit_run_logging_2
+    sec_audit_run_auditd_3
+    sec_audit_run_aide
+    sec_audit_run_crypto_policy
+    sec_audit_run_identity_files_3
+    sec_audit_run_filesystem_integrity
 }
 
 sec_audit_main "$@"
+

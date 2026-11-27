@@ -37,33 +37,100 @@ set +e
 sec_audit_have_bin() { command -v "$1" >/dev/null 2>&1; }
 sec_audit_log() { printf '[remediation] %s\n' "$*"; }
 
+OS16_JOURNAL="${OS16_JOURNAL:-/var/backups/secaudit-opensuse16.journal}"
+
+sec_audit_journal_once() {
+	local kind="$1" id="$2"
+	shift 2
+	mkdir -p "$(dirname "$OS16_JOURNAL")" 2>/dev/null || return 0
+	touch "$OS16_JOURNAL" 2>/dev/null || return 0
+	grep -q "^${kind} ${id} " "$OS16_JOURNAL" 2>/dev/null && return 0
+	grep -qxF "${kind} ${id}" "$OS16_JOURNAL" 2>/dev/null && return 0
+	if [ $# -eq 0 ]; then
+		printf '%s %s\n' "$kind" "$id" >>"$OS16_JOURNAL"
+	else
+		printf '%s %s %s\n' "$kind" "$id" "$*" >>"$OS16_JOURNAL"
+	fi
+}
+
+# Existing file: one .secaudit.bak. Missing file: journal so restore deletes it.
+sec_audit_guard_file() {
+	local f="$1"
+	[ -n "$f" ] || return 0
+	case "$f" in *.secaudit.bak) return 0 ;; esac
+	if [ -e "$f" ]; then
+		[ -e "${f}.secaudit.bak" ] && return 0
+		cp -p "$f" "${f}.secaudit.bak" 2>/dev/null || true
+	else
+		sec_audit_journal_once created "$f"
+	fi
+}
+
+sec_audit_rpm_table() {
+	rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | sort -u
+}
+
+sec_audit_journal_rpm_diff() {
+	local kind="$1" before="$2" after="$3" name ver
+	# before/after are sorted "name version" lines. comm needs files.
+	comm -13 "$before" "$after" | while read -r name ver; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once "$kind" "$name" "$ver"
+	done
+}
+
 sec_audit_pkg_install() {
-	local p
+	local p before after
 	sec_audit_have_bin zypper || return 0
-	# Skip packages already present to avoid repeated zypper refresh hangs in containers.
 	local need=()
 	for p in "$@"; do
-		if rpm -q "$p" &>/dev/null; then
-			continue
-		fi
+		rpm -q "$p" &>/dev/null && continue
 		need+=("$p")
 	done
 	((${#need[@]})) || return 0
-	timeout 60 zypper --non-interactive install --no-recommends "${need[@]}" >/dev/null 2>&1 || true
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_rpm_table >"$before"
+	timeout 180 zypper --non-interactive install --no-recommends "${need[@]}" >/dev/null 2>&1 || true
+	sec_audit_rpm_table >"$after"
+	sec_audit_journal_rpm_diff pkg_add "$before" "$after"
+	rm -f "$before" "$after"
 }
 
 sec_audit_pkg_remove() {
-	local p
+	local p before after
 	sec_audit_have_bin zypper || return 0
+	local need=()
 	for p in "$@"; do
 		rpm -q "$p" &>/dev/null || continue
-		zypper --non-interactive remove "$p" >/dev/null 2>&1 || true
+		need+=("$p")
 	done
+	((${#need[@]})) || return 0
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_rpm_table >"$before"
+	timeout 180 zypper --non-interactive remove "${need[@]}" >/dev/null 2>&1 || true
+	sec_audit_rpm_table >"$after"
+	sec_audit_journal_rpm_diff pkg_del "$after" "$before"
+	rm -f "$before" "$after"
+}
+
+sec_audit_remember_unit() {
+	local u="$1" state
+	sec_audit_have_bin systemctl || return 0
+	state=$(systemctl is-enabled "$u" 2>/dev/null || true)
+	case "$state" in
+		enabled|enabled-runtime) state=enabled ;;
+		disabled|masked|static|indirect) ;;
+		*) state=absent ;;
+	esac
+	sec_audit_journal_once unit "$u" "$state"
 }
 
 sec_audit_start_service() {
 	local u="$1"
 	sec_audit_have_bin systemctl || return 0
+	sec_audit_remember_unit "$u"
 	systemctl enable "$u" >/dev/null 2>&1 || true
 	systemctl start "$u" >/dev/null 2>&1 || true
 }
@@ -71,50 +138,73 @@ sec_audit_start_service() {
 sec_audit_disable_service() {
 	local u="$1"
 	sec_audit_have_bin systemctl || return 0
+	sec_audit_remember_unit "$u"
 	systemctl disable --now "$u" >/dev/null 2>&1 || true
 }
 
 sec_audit_disable_kmod() {
-	local mod="$1" f="/etc/modprobe.d/-${mod}.conf"
+	local mod="$1"
+	local f="/etc/modprobe.d/${mod}.conf"
 	[[ -f "$f" ]] && grep -q "blacklist ${mod}" "$f" 2>/dev/null && return 0
+	sec_audit_guard_file "$f"
 	{
 		echo "install ${mod} /bin/false"
 		echo "blacklist ${mod}"
 	} >"$f"
 	if lsmod 2>/dev/null | awk '{print $1}' | grep -qx "$mod"; then
+		sec_audit_journal_once kmod "$mod"
 		modprobe -r "$mod" >/dev/null 2>&1 || rmmod "$mod" >/dev/null 2>&1 || true
 	fi
 }
 
+sec_audit_remember_mount() {
+	local mp="$1" opts
+	mountpoint -q "$mp" 2>/dev/null || return 0
+	opts=$(findmnt -kn -T "$mp" -o OPTIONS -n 2>/dev/null | head -n1)
+	[ -n "$opts" ] && sec_audit_journal_once mount "$mp" "$opts"
+}
+
+sec_audit_fstab_add_opt() {
+	local mp="$1" opt="$2" tmp
+	sec_audit_guard_file /etc/fstab
+	tmp=$(mktemp)
+	awk -v mp="$mp" -v opt="$opt" '
+		$0 ~ /^[[:space:]]*#/ || NF < 4 { print; next }
+		$2 == mp && $4 !~ "(^|,)" opt "(,|$)" { $4 = $4 "," opt }
+		{ print }
+	' OFS='\t' /etc/fstab >"$tmp" && mv "$tmp" /etc/fstab
+}
+
 sec_audit_ensure_tmpfs_mount() {
 	local mp="$1" opts="$2"
+	sec_audit_remember_mount "$mp"
 	if grep -qE "^[^#[:space:]]+[[:space:]]+${mp}[[:space:]]+" /etc/fstab 2>/dev/null; then
-		if ! grep -E "^[^#[:space:]]+[[:space:]]+${mp}[[:space:]]+" /etc/fstab | grep -q "$opts"; then
-			sed -i "s|^\([^#].*[[:space:]]${mp}[[:space:]].*\)$|\1,${opts}|" /etc/fstab 2>/dev/null || true
-		fi
+		sec_audit_fstab_add_opt "$mp" "$opts"
 	else
+		sec_audit_guard_file /etc/fstab
 		echo "tmpfs ${mp} tmpfs defaults,${opts} 0 0" >>/etc/fstab
 	fi
-	mountpoint -q "$mp" 2>/dev/null && mount -o remount,${opts} "$mp" >/dev/null 2>&1 || mount "$mp" >/dev/null 2>&1 || true
+	mountpoint -q "$mp" 2>/dev/null && mount -o "remount,${opts}" "$mp" >/dev/null 2>&1 || mount "$mp" >/dev/null 2>&1 || true
 }
 
 sec_audit_ensure_mount_option() {
 	local mp="$1" opt="$2"
-	if grep -qE "^[^#[:space:]]+[[:space:]]+${mp}[[:space:]]+" /etc/fstab 2>/dev/null; then
-		if ! grep -E "^[^#[:space:]]+[[:space:]]+${mp}[[:space:]]+" /etc/fstab | grep -qE "(^|,)${opt}(,|$)"; then
-			sed -i "s|^\([^#].*[[:space:]]${mp}[[:space:]].*\)$|\1,${opt}|" /etc/fstab 2>/dev/null || true
-		fi
-		mountpoint -q "$mp" 2>/dev/null && mount -o remount,${opt} "$mp" >/dev/null 2>&1 || true
-	fi
+	sec_audit_remember_mount "$mp"
+	grep -qE "^[^#[:space:]]+[[:space:]]+${mp}[[:space:]]+" /etc/fstab 2>/dev/null || return 0
+	sec_audit_fstab_add_opt "$mp" "$opt"
+	mountpoint -q "$mp" 2>/dev/null && mount -o "remount,${opt}" "$mp" >/dev/null 2>&1 || true
 }
 
 sec_audit_set_sysctl() {
-	local key="$1" val="$2" f="/etc/sysctl.d/99-linux-cre-sec.conf"
+	local key="$1" val="$2" f="/etc/sysctl.d/99-zz-secaudit.conf" old
 	mkdir -p /etc/sysctl.d
+	sec_audit_guard_file "$f"
+	old=$(sysctl -n "$key" 2>/dev/null || true)
+	[ -n "$old" ] && sec_audit_journal_once sysctl "$key" "$old"
 	if [[ -f "$f" ]] && grep -qE "^[[:space:]]*${key}[[:space:]]*=" "$f"; then
-		sed -i "s|^[[:space:]]*${key}[[:space:]]*=.*|${key} = ${val}|" "$f"
+		sed -i "s|^[[:space:]]*${key}[[:space:]]*=.*|${key}=${val}|" "$f"
 	else
-		echo "${key} = ${val}" >>"$f"
+		echo "${key}=${val}" >>"$f"
 	fi
 	sysctl -w "${key}=${val}" >/dev/null 2>&1 || true
 }
@@ -122,6 +212,7 @@ sec_audit_set_sysctl() {
 sec_audit_set_dnf_main_kv() {
 	local key="$1" val="$2" f=/etc/dnf/dnf.conf
 	[[ -f $f ]] || return 0
+	sec_audit_guard_file "$f"
 	if grep -qE "^[[:space:]]*${key}[[:space:]]*=" "$f"; then
 		sed -i "s/^[[:space:]]*${key}[[:space:]]*=.*/${key}=${val}/" "$f"
 	elif grep -qE '^\[main\]' "$f"; then
@@ -133,7 +224,11 @@ sec_audit_set_dnf_main_kv() {
 
 sec_audit_set_sshd_kv() {
 	local key="$1" val="$2" f=/etc/ssh/sshd_config
-	[[ -f $f ]] || return 0
+	if [[ ! -f $f ]]; then
+		mkdir -p /etc/ssh/sshd_config.d
+		f=/etc/ssh/sshd_config.d/99-secaudit.conf
+	fi
+	sec_audit_guard_file "$f"
 	if grep -qE "^[[:space:]]*#?[[:space:]]*${key}[[:space:]]" "$f"; then
 		sed -i "s/^[[:space:]]*#\?[[:space:]]*${key}.*/${key} ${val}/" "$f"
 	else
@@ -144,6 +239,7 @@ sec_audit_set_sshd_kv() {
 sec_audit_set_login_defs_kv() {
 	local key="$1" val="$2" f=/etc/login.defs
 	[[ -f $f ]] || return 0
+	sec_audit_guard_file "$f"
 	if grep -qE "^${key}[[:space:]]" "$f"; then
 		sed -i "s/^${key}[[:space:]].*/${key}   ${val}/" "$f"
 	else
@@ -154,6 +250,7 @@ sec_audit_set_login_defs_kv() {
 sec_audit_set_pwquality_kv() {
 	local key="$1" val="$2" f=/etc/security/pwquality.conf
 	mkdir -p /etc/security/pwquality.conf.d
+	sec_audit_guard_file "$f"
 	if grep -qE "^[[:space:]]*${key}[[:space:]]*=" "$f" 2>/dev/null; then
 		sed -i "s/^[[:space:]]*${key}[[:space:]]*=.*/${key} = ${val}/" "$f"
 	else
@@ -164,6 +261,7 @@ sec_audit_set_pwquality_kv() {
 sec_audit_set_faillock_kv() {
 	local key="$1" val="$2" f=/etc/security/faillock.conf
 	mkdir -p /etc/security
+	sec_audit_guard_file "$f"
 	if [[ -f $f ]] && grep -qE "^[[:space:]]*${key}[[:space:]]*=" "$f"; then
 		sed -i "s/^[[:space:]]*${key}[[:space:]]*=.*/${key} = ${val}/" "$f"
 	else
@@ -174,6 +272,7 @@ sec_audit_set_faillock_kv() {
 sec_audit_harden_path() {
 	local path="$1" mode="$2" owner="${3:-root:root}"
 	[[ -e "$path" ]] || return 0
+	sec_audit_guard_file "$path"
 	chmod "$mode" "$path" 2>/dev/null || true
 	chown "$owner" "$path" 2>/dev/null || true
 }
@@ -181,6 +280,7 @@ sec_audit_harden_path() {
 sec_audit_authselect_enable() {
 	local feat="$1" profile
 	sec_audit_have_bin authselect || return 0
+	sec_audit_guard_file /etc/authselect/authselect.conf
 	profile=$(head -1 /etc/authselect/authselect.conf 2>/dev/null)
 	[[ -n $profile ]] || profile=sssd
 	if ! authselect current 2>/dev/null | grep -q "$feat"; then
@@ -364,6 +464,7 @@ fi
 sec_audit_remediate_done 43 "removed selinux=0 from bootloader"
 
 # RULE44:
+sec_audit_guard_file /etc/selinux/config
 [[ -f /etc/selinux/config ]] && {
 sed -i "s/^SELINUXTYPE=.*/SELINUXTYPE=targeted/" /etc/selinux/config 2>/dev/null || true
 grep -q "^SELINUXTYPE=" /etc/selinux/config || echo "SELINUXTYPE=targeted" >>/etc/selinux/config
@@ -371,6 +472,8 @@ grep -q "^SELINUXTYPE=" /etc/selinux/config || echo "SELINUXTYPE=targeted" >>/et
 sec_audit_remediate_done 44 "SELINUXTYPE=targeted"
 
 # RULE45:
+sec_audit_guard_file /etc/selinux/config
+sec_audit_have_bin getenforce && sec_audit_journal_once selinux getenforce "$(getenforce 2>/dev/null || true)"
 [[ -f /etc/selinux/config ]] && sed -i "s/^SELINUX=.*/SELINUX=enforcing/" /etc/selinux/config 2>/dev/null || true
 sec_audit_have_bin setenforce && setenforce 1 >/dev/null 2>&1 || true
 sec_audit_remediate_done 45 "SELinux not disabled"
@@ -401,8 +504,10 @@ sec_audit_remediate_done 50 "hardened grub permissions"
 
 sec_audit_remediate_process_hardening() {
 # RULE51:
+sec_audit_guard_file /etc/security/limits.conf
 grep -q "hard core" /etc/security/limits.conf 2>/dev/null || echo "* hard core 0" >>/etc/security/limits.conf
 mkdir -p /etc/systemd/coredump.conf.d
+sec_audit_guard_file /etc/systemd/coredump.conf.d/99-cre-sec.conf
 cat >/etc/systemd/coredump.conf.d/99-cre-sec.conf <<'EOF'
 [Coredump]
 Storage=none
@@ -444,6 +549,7 @@ sec_audit_remediate_done 59 "coredump limits via sysctl/coredump.conf"
 
 # RULE60:
 mkdir -p /etc/systemd/coredump.conf.d
+sec_audit_guard_file /etc/systemd/coredump.conf.d/99-cre-sec.conf
 cat >/etc/systemd/coredump.conf.d/99-cre-sec.conf <<'EOF'
 [Coredump]
 Storage=none
@@ -454,6 +560,7 @@ sec_audit_remediate_done 60 "systemd-coredump Storage=none"
 
 sec_audit_remediate_crypto_policy() {
 # RULE61:
+sec_audit_have_bin update-crypto-policies && sec_audit_journal_once crypto policy "$(update-crypto-policies --show 2>/dev/null || true)"
 sec_audit_have_bin update-crypto-policies && update-crypto-policies --set DEFAULT >/dev/null 2>&1 || true
 sec_audit_remediate_done 61 "crypto policy not LEGACY"
 
@@ -467,16 +574,19 @@ sec_audit_remediate_skip 63 "system wide crypto policy disables cbc for ssh"
 
 sec_audit_remediate_banners() {
 # RULE64:
+sec_audit_guard_file /etc/motd
 [[ -f /etc/motd ]] || echo "Authorized use only." >/etc/motd
 sed -i 's/\\[vVrms]//g' /etc/motd 2>/dev/null || true
 sec_audit_remediate_done 64 "sanitized banner /etc/motd"
 
 # RULE65:
+sec_audit_guard_file /etc/issue
 [[ -f /etc/issue ]] || echo "Authorized use only." >/etc/issue
 sed -i 's/\\[vVrms]//g' /etc/issue 2>/dev/null || true
 sec_audit_remediate_done 65 "sanitized banner /etc/issue"
 
 # RULE66:
+sec_audit_guard_file /etc/issue.net
 [[ -f /etc/issue.net ]] || echo "Authorized use only." >/etc/issue.net
 sed -i 's/\\[vVrms]//g' /etc/issue.net 2>/dev/null || true
 sec_audit_remediate_done 66 "sanitized banner /etc/issue.net"
@@ -646,6 +756,7 @@ sec_audit_remediate_done 100 "installed chrony"
 
 # RULE101:
 sec_audit_pkg_install chrony
+sec_audit_guard_file /etc/chrony.conf
 grep -q "^pool \|^server " /etc/chrony.conf 2>/dev/null || echo "pool 2.pool.ntp.org iburst" >>/etc/chrony.conf
 sec_audit_start_service chronyd
 sec_audit_remediate_done 101 "configured chrony"
@@ -661,6 +772,7 @@ sec_audit_start_service crond
 sec_audit_remediate_done 103 "enabled crond"
 
 # RULE104:
+sec_audit_guard_file /etc/crontab
 chmod 600 /etc/crontab 2>/dev/null || true
 chown root:root /etc/crontab 2>/dev/null || true
 sec_audit_remediate_done 104 "restricted /etc/crontab"
@@ -909,6 +1021,7 @@ sec_audit_remediate_skip 169 "review remediation: sudo sec_audit_log file exists
 sec_audit_remediate_skip 170 "review remediation: users must provide password for escalation"
 
 # RULE171:
+sec_audit_guard_file /etc/sudoers.d/99-cre-timeout
 echo "Defaults timestamp_timeout=5" >/etc/sudoers.d/99-cre-timeout
 chmod 440 /etc/sudoers.d/99-cre-timeout
 sec_audit_remediate_done 171 "sudo timestamp_timeout=5"
@@ -933,6 +1046,7 @@ sec_audit_remediate_done 175 "password quality"
 
 # RULE176:
 sec_audit_authselect_enable with-pwhistory
+sec_audit_guard_file /etc/security/pwhistory.conf
 grep -q '^remember' /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 sec_audit_remediate_done 176 "password history"
 
@@ -963,16 +1077,19 @@ sec_audit_remediate_done 183 "password quality"
 
 # RULE184:
 sec_audit_authselect_enable with-pwhistory
+sec_audit_guard_file /etc/security/pwhistory.conf
 grep -q '^remember' /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 sec_audit_remediate_done 184 "password history"
 
 # RULE185:
 sec_audit_authselect_enable with-pwhistory
+sec_audit_guard_file /etc/security/pwhistory.conf
 grep -q '^remember' /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 sec_audit_remediate_done 185 "password history"
 
 # RULE186:
 sec_audit_authselect_enable with-pwhistory
+sec_audit_guard_file /etc/security/pwhistory.conf
 grep -q '^remember' /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 sec_audit_remediate_done 186 "password history"
 
@@ -981,6 +1098,7 @@ sec_audit_remediate_skip 187 "review remediation: pam_unix does not include null
 
 # RULE188:
 sec_audit_authselect_enable with-pwhistory
+sec_audit_guard_file /etc/security/pwhistory.conf
 grep -q '^remember' /etc/security/pwhistory.conf 2>/dev/null || echo 'remember = 24' >>/etc/security/pwhistory.conf
 sec_audit_remediate_done 188 "password history"
 
@@ -1025,6 +1143,7 @@ sec_audit_remediate_skip 200 "root path integrity"
 
 # RULE201:
 sec_audit_set_login_defs_kv UMASK 027
+sec_audit_guard_file /etc/profile.d/99-cre-umask.sh
 cat >/etc/profile.d/99-cre-umask.sh <<'EOF'
 umask 027
 EOF
@@ -1040,6 +1159,7 @@ sec_audit_remediate_skip 203 "accounts without a valid login shell are locked"
 sec_audit_remediate_skip 204 "review remediation: nologin is not listed in /etc/shells"
 
 # RULE205:
+sec_audit_guard_file /etc/profile.d/99-cre-timeout.sh
 cat >/etc/profile.d/99-cre-timeout.sh <<'EOF'
 TMOUT=600
 readonly TMOUT
@@ -1049,6 +1169,7 @@ sec_audit_remediate_done 205 "TMOUT=600"
 
 # RULE206:
 sec_audit_set_login_defs_kv UMASK 027
+sec_audit_guard_file /etc/profile.d/99-cre-umask.sh
 cat >/etc/profile.d/99-cre-umask.sh <<'EOF'
 umask 027
 EOF
@@ -1093,6 +1214,8 @@ sec_audit_remediate_skip 216 "configure central logging per site policy before e
 
 # RULE217:
 mkdir -p /etc/systemd/journald.conf.d
+mkdir -p /etc/systemd/journald.conf.d
+sec_audit_guard_file /etc/systemd/journald.conf.d/99-opensuse16-cre.conf
 cat >/etc/systemd/journald.conf.d/99-opensuse16-cre.conf <<'EOF'
 [Journal]
 ForwardToSyslog=no
@@ -1104,6 +1227,8 @@ sec_audit_remediate_done 217 "journald configuration"
 
 # RULE218:
 mkdir -p /etc/systemd/journald.conf.d
+mkdir -p /etc/systemd/journald.conf.d
+sec_audit_guard_file /etc/systemd/journald.conf.d/99-opensuse16-cre.conf
 cat >/etc/systemd/journald.conf.d/99-opensuse16-cre.conf <<'EOF'
 [Journal]
 ForwardToSyslog=no
@@ -1151,6 +1276,8 @@ sec_audit_remediate_done 226 "auditd running"
 # RULE227:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1172,6 +1299,8 @@ sec_audit_remediate_done 228 "auditd running"
 # RULE229:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1240,6 +1369,8 @@ sec_audit_remediate_skip 246 "the running and on disk configuration is the same"
 # RULE247:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1256,6 +1387,8 @@ sec_audit_remediate_done 247 "audit rules baseline"
 # RULE248:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1272,6 +1405,8 @@ sec_audit_remediate_done 248 "audit rules baseline"
 # RULE249:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1291,6 +1426,8 @@ sec_audit_remediate_skip 250 "audit sec_audit_log files group owner is configure
 # RULE251:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1307,6 +1444,8 @@ sec_audit_remediate_done 251 "audit rules baseline"
 # RULE252:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1326,6 +1465,8 @@ sec_audit_remediate_skip 253 "audit configuration files group owner is configure
 # RULE254:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192
@@ -1342,6 +1483,8 @@ sec_audit_remediate_done 254 "audit rules baseline"
 # RULE255:
 sec_audit_pkg_install audit auditd 2>/dev/null || true
 mkdir -p /etc/audit/rules.d
+mkdir -p /etc/audit/rules.d
+sec_audit_guard_file /etc/audit/rules.d/99-opensuse16-cre.rules
 cat >/etc/audit/rules.d/99-opensuse16-cre.rules <<'EOF'
 -D
 -b 8192

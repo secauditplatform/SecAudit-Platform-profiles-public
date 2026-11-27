@@ -1,0 +1,623 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "SYSCTL_FS_PROTECTED_HARDLINKS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required fs.protected_hardlinks value.",
+      "requirement_ids": [
+        "RULE52"
+      ]
+    },
+    {
+      "name": "SYSCTL_FS_PROTECTED_SYMLINKS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required fs.protected_symlinks value.",
+      "requirement_ids": [
+        "RULE53"
+      ]
+    },
+    {
+      "name": "SYSCTL_FS_SUID_DUMPABLE",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2,
+      "description": "Required fs.suid_dumpable value.",
+      "requirement_ids": [
+        "RULE54"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_SEND_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.conf.all.send_redirects value.",
+      "requirement_ids": [
+        "RULE124"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_DEF_SEND_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.conf.default.send_redirects value.",
+      "requirement_ids": [
+        "RULE125"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESP",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required value of net.ipv4.icmp_ignore_bogus_error_responses. The check fails when the kernel value differs.",
+      "requirement_ids": [
+        "RULE126"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_ACCEPT_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.conf.all.accept_redirects value.",
+      "requirement_ids": [
+        "RULE127"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_SECURE_REDIRECTS",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.conf.all.secure_redirects value.",
+      "requirement_ids": [
+        "RULE129"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_RP_FILTER",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 2,
+      "description": "Required net.ipv4.conf.all.rp_filter value.",
+      "requirement_ids": [
+        "RULE130"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_DEF_RP_FILTER",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 2,
+      "description": "Required net.ipv4.conf.default.rp_filter value.",
+      "requirement_ids": [
+        "RULE131"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_DEF_LOG_MARTIANS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.conf.default.log_martians value.",
+      "requirement_ids": [
+        "RULE132"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_ALL_LOG_MARTIANS",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.conf.all.log_martians value.",
+      "requirement_ids": [
+        "RULE133"
+      ]
+    },
+    {
+      "name": "SYSCTL_IPV4_TCP_SYNCOOKIES",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.ipv4.tcp_syncookies value.",
+      "requirement_ids": [
+        "RULE134"
+      ]
+    },
+    {
+      "name": "PASS_MAX_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum password age in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE197"
+      ]
+    },
+    {
+      "name": "PASS_MIN_DAYS",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 365,
+      "description": "Minimum days between password changes. The check fails below this.",
+      "requirement_ids": [
+        "RULE198"
+      ]
+    },
+    {
+      "name": "SELINUX_POLICY",
+      "type": "string",
+      "default": "targeted,mls",
+      "description": "Comma-separated SELINUXTYPE values accepted in /etc/selinux/config.",
+      "requirement_ids": [
+        "RULE43"
+      ]
+    },
+    {
+      "name": "SELINUX_MODE",
+      "type": "enum",
+      "default": "enforcing",
+      "enum": [
+        "enforcing",
+        "permissive",
+        "disabled"
+      ],
+      "description": "Required SELinux mode. Runtime and /etc/selinux/config must both match.",
+      "requirement_ids": [
+        "RULE45"
+      ]
+    },
+    {
+      "name": "MODE_GRUB_CFG",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for grub.cfg. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE50"
+      ]
+    },
+    {
+      "name": "MODE_MOTD",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/motd. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE65"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/issue. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE66"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE_NET",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/issue.net. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE67"
+      ]
+    },
+    {
+      "name": "MODE_CRONTAB",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for /etc/crontab. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE109"
+      ]
+    },
+    {
+      "name": "MODE_CRON_HOURLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode for /etc/cron.hourly. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE110"
+      ]
+    },
+    {
+      "name": "MODE_CRON_DAILY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode for /etc/cron.daily. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE111"
+      ]
+    },
+    {
+      "name": "MODE_CRON_WEEKLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode for /etc/cron.weekly. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE112"
+      ]
+    },
+    {
+      "name": "MODE_CRON_MONTHLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode for /etc/cron.monthly. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE113"
+      ]
+    },
+    {
+      "name": "MODE_CRON_YEARLY",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode for /etc/cron.yearly. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE114"
+      ]
+    },
+    {
+      "name": "MODE_CRON_D",
+      "type": "string",
+      "default": "700",
+      "description": "Maximum octal mode for /etc/cron.d. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE115"
+      ]
+    },
+    {
+      "name": "MODE_AT_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /etc/at.allow. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE116"
+      ]
+    },
+    {
+      "name": "MODE_SSHD_CONFIG",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for /etc/ssh/sshd_config. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE143"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for SSH private host keys. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE144"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY_PUB",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for SSH public host keys. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE145"
+      ]
+    },
+    {
+      "name": "FAILLOCK_UNLOCK_TIME",
+      "type": "int",
+      "default": 900,
+      "min": 0,
+      "max": 86400,
+      "description": "Minimum faillock unlock_time in seconds. 0 (lock until an administrator unlocks) still passes.",
+      "requirement_ids": [
+        "RULE181"
+      ]
+    },
+    {
+      "name": "PASSWORD_MINLEN",
+      "type": "int",
+      "default": 14,
+      "min": 1,
+      "max": 72,
+      "description": "Minimum pwquality minlen. The check fails below this.",
+      "requirement_ids": [
+        "RULE184"
+      ]
+    },
+    {
+      "name": "PASS_WARN_AGE",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 90,
+      "description": "Days of warning before a password expires. The check fails below this.",
+      "requirement_ids": [
+        "RULE199"
+      ]
+    },
+    {
+      "name": "INACTIVE_DAYS",
+      "type": "int",
+      "default": 45,
+      "min": 1,
+      "max": 90,
+      "description": "Days before an inactive password is locked. The check fails above this.",
+      "requirement_ids": [
+        "RULE201"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR_750",
+      "type": "string",
+      "default": "750",
+      "description": "Required octal mode (750). The default keeps the original exact check; any other value must match exactly.",
+      "requirement_ids": [
+        "RULE266"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/passwd. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE276"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/passwd-. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE277"
+      ]
+    },
+    {
+      "name": "MODE_GROUP",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/group. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE278"
+      ]
+    },
+    {
+      "name": "MODE_GROUP_DASH",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/group-. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE279"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /etc/shadow. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE280"
+      ]
+    },
+    {
+      "name": "MODE_SHADOW_DASH",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /etc/shadow-. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE281"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /etc/gshadow. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE282"
+      ]
+    },
+    {
+      "name": "MODE_GSHADOW_DASH",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /etc/gshadow-. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE283"
+      ]
+    },
+    {
+      "name": "MODE_SHELLS",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/shells. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE284"
+      ]
+    },
+    {
+      "name": "MODE_OPASSWD",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for /etc/security/opasswd. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE285"
+      ]
+    },
+    {
+      "name": "CLIENT_ALIVE_INTERVAL",
+      "type": "int",
+      "default": 2147483647,
+      "min": 1,
+      "max": 2147483647,
+      "description": "Maximum sshd ClientAliveInterval in seconds. 0 fails. Set 300 to require a short idle timeout. ClientAliveCountMax must still be at least 1.",
+      "requirement_ids": [
+        "RULE149"
+      ]
+    },
+    {
+      "name": "LOGIN_GRACE_TIME",
+      "type": "int",
+      "default": 60,
+      "min": 1,
+      "max": 600,
+      "description": "Maximum sshd LoginGraceTime in seconds. The check fails outside 1 and this value.",
+      "requirement_ids": [
+        "RULE155"
+      ]
+    },
+    {
+      "name": "SSH_LOG_LEVEL",
+      "type": "string",
+      "default": "verbose,info",
+      "description": "Comma-separated sshd LogLevel values that pass.",
+      "requirement_ids": [
+        "RULE156"
+      ]
+    },
+    {
+      "name": "MAX_AUTH_TRIES",
+      "type": "int",
+      "default": 4,
+      "min": 1,
+      "max": 20,
+      "description": "Maximum sshd MaxAuthTries. The check fails outside 1 and this value.",
+      "requirement_ids": [
+        "RULE158"
+      ]
+    },
+    {
+      "name": "MAX_STARTUPS",
+      "type": "string",
+      "default": "10:30:60",
+      "description": "Maximum sshd MaxStartups as start:rate:full. Each field on the host must be at or below the matching field.",
+      "requirement_ids": [
+        "RULE159"
+      ]
+    },
+    {
+      "name": "MAX_SESSIONS",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "description": "Maximum sshd MaxSessions. The check fails outside 1 and this value.",
+      "requirement_ids": [
+        "RULE160"
+      ]
+    },
+    {
+      "name": "SSH_PERMIT_ROOT",
+      "type": "string",
+      "default": "no,prohibit-password,without-password",
+      "description": "Comma-separated sshd PermitRootLogin values that pass.",
+      "requirement_ids": [
+        "RULE162"
+      ]
+    },
+    {
+      "name": "SUDO_TIMESTAMP_TIMEOUT",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 60,
+      "description": "Maximum sudo authentication timestamp timeout in minutes. Empty sudo -V output still passes.",
+      "requirement_ids": [
+        "RULE170"
+      ]
+    },
+    {
+      "name": "FAILLOCK_DENY",
+      "type": "int",
+      "default": 5,
+      "min": 1,
+      "max": 10,
+      "description": "Maximum failed-login attempts before faillock locks the account. The check fails outside 1 and this value.",
+      "requirement_ids": [
+        "RULE180"
+      ]
+    },
+    {
+      "name": "ENCRYPT_METHOD",
+      "type": "string",
+      "default": "sha512,yescrypt",
+      "description": "Comma-separated ENCRYPT_METHOD values accepted in /etc/login.defs.",
+      "requirement_ids": [
+        "RULE195",
+        "RULE200"
+      ]
+    },
+    {
+      "name": "UMASK",
+      "type": "string",
+      "default": "027",
+      "description": "Required default umask. profile.d must set this value. login.defs and the root shell must be this strict or stricter.",
+      "requirement_ids": [
+        "RULE208",
+        "RULE213"
+      ]
+    },
+    {
+      "name": "TMOUT",
+      "type": "int",
+      "default": 999,
+      "min": 1,
+      "max": 86400,
+      "description": "Maximum interactive shell TMOUT in seconds. The check fails when no TMOUT is inside 1 and this value.",
+      "requirement_ids": [
+        "RULE212"
+      ]
+    },
+    {
+      "name": "JOURNALD_STORAGE",
+      "type": "string",
+      "default": "persistent",
+      "description": "Required journald Storage value.",
+      "requirement_ids": [
+        "RULE227"
+      ]
+    },
+    {
+      "name": "AUDIT_MAX_LOG_FILE_ACTION",
+      "type": "string",
+      "default": "keep_logs",
+      "description": "Required auditd max_log_file_action.",
+      "requirement_ids": [
+        "RULE242"
+      ]
+    },
+    {
+      "name": "AUDIT_LOG_GROUP",
+      "type": "string",
+      "default": "root,adm",
+      "description": "Comma-separated auditd log_group names that pass. Audit log files must use one of these groups.",
+      "requirement_ids": [
+        "RULE269"
+      ]
+    }
+  ]
+}

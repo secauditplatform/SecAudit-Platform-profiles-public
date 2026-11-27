@@ -63,12 +63,10 @@ sec_audit_rule_end() {
 # cp-backup case: both exist → overwrite path from bak.
 # mv case: only bak exists → move bak back to path.
 sec_audit_restore_bak() {
-    local f="$1" bak="${1}.secaudit.bak" mode
+    local f="$1" bak="${1}.secaudit.bak"
     [ -e "$bak" ] || return 1
     if [ -e "$f" ]; then
-        mode=$(stat -f %Lp "$f" 2>/dev/null || stat -c %a "$f" 2>/dev/null)
         cp -p "$bak" "$f" 2>/dev/null || return 1
-        [ -n "$mode" ] && chmod "$mode" "$f" 2>/dev/null
         if [ "$FBSD15_RESTORE_REMOVE_BAK" = "1" ]; then
             rm -f "$bak" 2>/dev/null
         fi
@@ -255,7 +253,60 @@ sec_audit_remove_dropins() {
     fi
 }
 
-# rc.conf is not backed up by FreeBSD15_remediation.sh; undo only when bak exists.
+# Undo journal written by FreeBSD15_remediation.sh (sysrc, live sysctl, modes, created files, packages).
+sec_audit_replay_journal() {
+    local journal="${FBSD15_JOURNAL:-/var/backups/secaudit-fbsd15.journal}"
+    local kind id rest mode owner group n=0 pkg_removed=0
+    if [ ! -f "$journal" ]; then
+        sec_audit_skip_note "no remediation journal"
+        return
+    fi
+    while read -r kind id rest; do
+        [ -n "$kind" ] || continue
+        case "$kind" in
+            \#*) continue ;;
+            sysrc)
+                if [ "$rest" = "__UNSET__" ] || [ "$rest" = "NONE" ]; then
+                    sysrc -f /etc/rc.conf -x "$id" >/dev/null 2>&1 && n=$((n + 1))
+                elif [ "$rest" = "__EMPTY__" ]; then
+                    sysrc "${id}=" >/dev/null 2>&1 && n=$((n + 1))
+                else
+                    sysrc "${id}=${rest}" >/dev/null 2>&1 && n=$((n + 1))
+                fi
+                ;;
+            sysctl)
+                sysctl -w "${id}=${rest}" >/dev/null 2>&1 && n=$((n + 1))
+                ;;
+            mode)
+                mode=${rest%% *}
+                owner=${rest#* }; owner=${owner%% *}
+                group=${rest##* }
+                [ -e "$id" ] || continue
+                chmod "$mode" "$id" 2>/dev/null
+                chown "${owner}:${group}" "$id" 2>/dev/null
+                n=$((n + 1))
+                ;;
+            created)
+                if [ -e "$id" ] && rm -f "$id" 2>/dev/null; then
+                    FBSD15_REMOVED=$((FBSD15_REMOVED + 1))
+                    n=$((n + 1))
+                fi
+                ;;
+            pkg_add)
+                if sec_audit_have_bin pkg && pkg query %n "$id" >/dev/null 2>&1; then
+                    pkg remove -y "$id" >/dev/null 2>&1 && n=$((n + 1))
+                    pkg_removed=1
+                fi
+                ;;
+        esac
+    done < "$journal"
+    if [ "$pkg_removed" = "1" ] && sec_audit_have_bin pkg; then
+        pkg autoremove -y >/dev/null 2>&1 && n=$((n + 1))
+    fi
+    rm -f "$journal"
+    sec_audit_note "replayed ${n} journal entries"
+}
+
 sec_audit_restore_rc_conf() {
     if [ -e /etc/rc.conf.secaudit.bak ]; then
         if sec_audit_restore_bak /etc/rc.conf; then
@@ -265,8 +316,7 @@ sec_audit_restore_rc_conf() {
         sec_audit_fail_note "could not restore /etc/rc.conf"
         return
     fi
-    sec_audit_warn "no /etc/rc.conf.secaudit.bak; sysrc toggles (ntpd/syslogd/auditd/savecore/dumpdev/disabled services) were not reverted"
-    sec_audit_skip_note "rc.conf not backed up by remediation; service enable flags left as-is"
+    sec_audit_note "rc.conf sysrc changes are reverted from the remediation journal"
 }
 
 sec_audit_restore_packages() {
@@ -294,9 +344,8 @@ sec_audit_restore_packages() {
 }
 
 sec_audit_irreversible_notes() {
-    sec_audit_note "file modes/ownership set by remediation are not restored (no prior mode bak)"
+    sec_audit_note "modes recorded in the remediation journal are restored; home/dotfile normalization is not"
     sec_audit_note "system-account shell changes and empty-password locks are not restored"
-    sec_audit_note "home/dotfile permission normalization is not restored"
     sec_audit_note "pkg upgrades / freebsd-update installs are not rolled back"
     sec_audit_note "kernel modules unloaded at remediate time need reboot or kldload if still disabled in loader.conf after restore"
 }
@@ -332,7 +381,10 @@ sec_audit_main() {
     # 6) Optional package undo
     sec_audit_rule_start; sec_audit_restore_packages; sec_audit_rule_end 12
 
-    # 7) Explicit irreversible surface
+    # 7) Journal: prior sysrc/sysctl/mode/created/pkg
+    sec_audit_rule_start; sec_audit_replay_journal; sec_audit_rule_end 14
+
+    # 8) Explicit irreversible surface
     sec_audit_rule_start; sec_audit_irreversible_notes; sec_audit_rule_end 13
 
     if [ ${#FBSD15_WARN[@]} -gt 0 ]; then

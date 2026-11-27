@@ -22,6 +22,27 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+secaudit_var_token() {
+    local value
+    value=$(secaudit_var "$1" "$2")
+    value=${value%%,*}
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -98,11 +119,16 @@ secaudit_exec_with_timeout() {
 }
 
 secaudit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-psql.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ]; then
+        if [ ! -f "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 secaudit_harden_path() {
@@ -477,11 +503,11 @@ secaudit_remediate_systemd_and_cluster() {
 
     # RULE2
     if [ -n "$_PG_DATADIR" ] && [ -d "$_PG_DATADIR" ]; then
-        chmod 700 "$_PG_DATADIR" 2>/dev/null || true
+        chmod "$(secaudit_var MODE_PGDATA 700)" "$_PG_DATADIR" 2>/dev/null || true
         if getent passwd postgres >/dev/null 2>&1; then
             chown postgres:postgres "$_PG_DATADIR" 2>/dev/null || true
         fi
-        secaudit_remediate_done 2 "PGDATA ${_PG_DATADIR} mode 700 owner postgres:postgres"
+        secaudit_remediate_done 2 "PGDATA ${_PG_DATADIR} mode $(secaudit_var MODE_PGDATA 700) owner postgres:postgres"
     else
         secaudit_remediate_skip 2 "PGDATA not found"
     fi
@@ -493,11 +519,14 @@ secaudit_remediate_systemd_and_cluster() {
         mkdir -p "$home" 2>/dev/null || true
         f="${home}/.bash_profile"
         touch "$f" 2>/dev/null || true
-        if ! grep -Eq '^[[:space:]]*umask[[:space:]]+0?077' "$f" 2>/dev/null; then
-            printf '\n# secaudit\numask 077\n' >>"$f" 2>/dev/null || true
+        local umask_val umask_n
+        umask_val=$(secaudit_var UMASK 077)
+        umask_n=${umask_val#0}; umask_n=${umask_n#0}
+        if ! grep -Eq "^[[:space:]]*umask[[:space:]]+0*${umask_n}([[:space:]]|$)" "$f" 2>/dev/null; then
+            printf '\n# secaudit\numask %s\n' "$umask_val" >>"$f" 2>/dev/null || true
         fi
         chown postgres:postgres "$f" 2>/dev/null || true
-        secaudit_remediate_done 3 "umask 077 in ${f}"
+        secaudit_remediate_done 3 "umask ${umask_val} in ${f}"
     else
         secaudit_remediate_skip 3 "postgres OS user / home not found"
     fi
@@ -538,14 +567,14 @@ secaudit_remediate_logging_core() {
     secaudit_set_guc log_directory "$(secaudit_sql_quote "$_PG_LOG_DIR")" 0
     secaudit_remediate_done 7 "log_directory=${_PG_LOG_DIR}"
     # RULE8,63
-    secaudit_set_guc log_file_mode "'0600'" 0
-    secaudit_remediate_done 8 "log_file_mode=0600"
+    secaudit_set_guc log_file_mode "'$(secaudit_var_token LOG_FILE_MODE "0600,0640")'" 0
+    secaudit_remediate_done 8 "log_file_mode=$(secaudit_var_token LOG_FILE_MODE "0600,0640")"
     # RULE9,66
-    secaudit_set_guc syslog_facility "'local0'" 0
-    secaudit_remediate_done 9 "syslog_facility=local0"
+    secaudit_set_guc syslog_facility "'$(secaudit_var_token SYSLOG_FACILITY "local0,local1,local2,local3,local4,local5,local6,local7")'" 0
+    secaudit_remediate_done 9 "syslog_facility=$(secaudit_var_token SYSLOG_FACILITY "local0,local1,local2,local3,local4,local5,local6,local7")"
     # RULE10,70
-    secaudit_set_guc log_min_messages "'warning'" 0
-    secaudit_remediate_done 10 "log_min_messages=warning"
+    secaudit_set_guc log_min_messages "'$(secaudit_var_token LOG_MIN_MESSAGES "warning,log,notice,info,debug1,debug2,debug3,debug4,debug5")'" 0
+    secaudit_remediate_done 10 "log_min_messages=$(secaudit_var_token LOG_MIN_MESSAGES "warning,log,notice,info,debug1,debug2,debug3,debug4,debug5")"
     # RULE11-13
     secaudit_set_guc debug_print_parse off 0
     secaudit_remediate_done 11 "debug_print_parse=off"
@@ -568,8 +597,8 @@ secaudit_remediate_logging_core() {
     secaudit_set_guc log_statement "'ddl'" 0
     secaudit_remediate_done 18 "log_statement=ddl"
     # RULE19,65
-    secaudit_set_guc log_timezone "'UTC'" 0
-    secaudit_remediate_done 19 "log_timezone=UTC"
+    secaudit_set_guc log_timezone "'$(secaudit_var_token TIMEZONE "UTC,GMT,Etc/UTC")'" 0
+    secaudit_remediate_done 19 "log_timezone=$(secaudit_var_token TIMEZONE "UTC,GMT,Etc/UTC")"
     # RULE20
     secaudit_remediate_skip 20 "install/configure pgaudit (package + shared_preload_libraries; restart required)"
 }
@@ -650,7 +679,7 @@ secaudit_remediate_auth_and_roles() {
 secaudit_remediate_runtime_bundles() {
     # RULE27/42
     secaudit_set_guc ignore_system_indexes off 0
-    secaudit_set_guc post_auth_delay 0 0
+    secaudit_set_guc post_auth_delay "$(secaudit_var POST_AUTH_DELAY 0)" 0
     secaudit_set_guc log_connections on 0
     secaudit_set_guc log_disconnections on 0
     secaudit_remediate_done 27 "ignore_system_indexes=off post_auth_delay=0 log_connections/disconnections=on"
@@ -765,8 +794,8 @@ secaudit_remediate_postmaster_detail() {
     # RULE55-56
     secaudit_set_guc unix_socket_group "'postgres'" 1
     secaudit_remediate_done 55 "unix_socket_group=postgres (restart may be required)"
-    secaudit_set_guc unix_socket_permissions "'0770'" 1
-    secaudit_remediate_done 56 "unix_socket_permissions=0770 (restart may be required)"
+    secaudit_set_guc unix_socket_permissions "'$(secaudit_var_token UNIX_SOCKET_MODE "0770,0700,0750")'" 1
+    secaudit_remediate_done 56 "unix_socket_permissions=$(secaudit_var_token UNIX_SOCKET_MODE "0770,0700,0750") (restart may be required)"
 }
 
 secaudit_remediate_sighup_detail() {
@@ -796,11 +825,11 @@ secaudit_remediate_sighup_detail() {
     # RULE61-67 (duplicates of earlier settings)
     secaudit_remediate_done 61 "log_destination=stderr"
     secaudit_remediate_done 62 "log_directory=${_PG_LOG_DIR}"
-    secaudit_remediate_done 63 "log_file_mode=0600"
+    secaudit_remediate_done 63 "log_file_mode=$(secaudit_var_token LOG_FILE_MODE "0600,0640")"
     secaudit_set_guc log_rotation_age "'1d'" 0
     secaudit_remediate_done 64 "log_rotation_age=1d"
     secaudit_remediate_done 65 "log_timezone=UTC"
-    secaudit_remediate_done 66 "syslog_facility=local0"
+    secaudit_remediate_done 66 "syslog_facility=$(secaudit_var_token SYSLOG_FACILITY "local0,local1,local2,local3,local4,local5,local6,local7")"
     secaudit_set_guc syslog_ident "'postgres'" 0
     secaudit_remediate_done 67 "syslog_ident=postgres"
 }
@@ -809,19 +838,19 @@ secaudit_remediate_super_detail() {
     secaudit_set_guc ignore_checksum_failure off 0
     secaudit_remediate_done 68 "ignore_checksum_failure=off"
     secaudit_remediate_done 69 "log_error_verbosity=default"
-    secaudit_remediate_done 70 "log_min_messages=warning"
+    secaudit_remediate_done 70 "log_min_messages=$(secaudit_var_token LOG_MIN_MESSAGES "warning,log,notice,info,debug1,debug2,debug3,debug4,debug5")"
     secaudit_remediate_done 71 "log_statement=ddl"
 }
 
 secaudit_remediate_user_detail() {
     secaudit_set_guc backslash_quote "'safe_encoding'" 0
     secaudit_remediate_done 72 "backslash_quote=safe_encoding"
-    secaudit_set_guc default_transaction_isolation "'read committed'" 0
+    secaudit_set_guc default_transaction_isolation "'$(secaudit_var ISOLATION "read committed")'" 0
     secaudit_remediate_done 73 "default_transaction_isolation='read committed'"
     secaudit_set_guc idle_in_transaction_session_timeout "'15min'" 0
     secaudit_remediate_done 74 "idle_in_transaction_session_timeout=15min"
-    secaudit_set_guc password_encryption "'scram-sha-256'" 0
-    secaudit_remediate_done 75 "password_encryption=scram-sha-256"
+    secaudit_set_guc password_encryption "'$(secaudit_var_token PASSWORD_ENCRYPTION "scram-sha-256,md5,on")'" 0
+    secaudit_remediate_done 75 "password_encryption=$(secaudit_var_token PASSWORD_ENCRYPTION "scram-sha-256,md5,on")"
     secaudit_set_guc tcp_keepalives_idle 60 0
     secaudit_remediate_done 76 "tcp_keepalives_idle=60"
 }

@@ -22,6 +22,32 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Keep the installed value at the package preference when the ceiling is higher.
+secaudit_cap() {
+    local prefer="$1" ceiling="$2"
+    [[ "$prefer" =~ ^[0-9]+$ && "$ceiling" =~ ^[0-9]+$ ]] || {
+        printf '%s' "$prefer"
+        return 0
+    }
+    if [ "$ceiling" -lt "$prefer" ]; then
+        printf '%s' "$ceiling"
+    else
+        printf '%s' "$prefer"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -43,14 +69,16 @@ _NGINX_RULE_COUNT=66
 _NGINX_DROPIN_NAME="${NGINX_REMEDIATE_DROPIN:-${SECAUDIT_NGINX_REMEDIATE_DROPIN:-zz-secaudit-hardening.conf}}"
 _NGINX_SYSLOG_TARGET="${NGINX_REMEDIATE_SYSLOG:-${SECAUDIT_NGINX_SYSLOG:-127.0.0.1:514}}"
 _NGINX_DHPARAM_PATH="${NGINX_REMEDIATE_DHPARAM:-${SECAUDIT_NGINX_DHPARAM:-}}"
-_NGINX_HSTS_MIN_AGE="${NGINX_HSTS_MIN_AGE:-${SECAUDIT_NGINX_HSTS_MIN_AGE:-15768000}}"
+_NGINX_HSTS_MIN_AGE=$(secaudit_var HSTS_MIN_AGE "${NGINX_HSTS_MIN_AGE:-${SECAUDIT_NGINX_HSTS_MIN_AGE:-15768000}}")
+_NGINX_TIMEOUT_SOFT_MAX=$(secaudit_var TIMEOUT_SOFT_MAX "${NGINX_TIMEOUT_SOFT_MAX:-${SECAUDIT_NGINX_TIMEOUT_SOFT_MAX:-10}}")
+_NGINX_TIMEOUT_APPLY=$(secaudit_cap 5 "$_NGINX_TIMEOUT_SOFT_MAX")
 _NGINX_STRONG_CIPHERS="EECDH+AESGCM:EDH+AESGCM:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
 _NGINX_REMEDIATE_APPLY_PERMS="${NGINX_REMEDIATE_APPLY_PERMS:-1}"
 _NGINX_REMEDIATE_APPLY_ACCOUNT="${NGINX_REMEDIATE_APPLY_ACCOUNT:-1}"
 _NGINX_REMEDIATE_APPLY_CONFIG="${NGINX_REMEDIATE_APPLY_CONFIG:-1}"
 _NGINX_REMEDIATE_APPLY_TLS="${NGINX_REMEDIATE_APPLY_TLS:-1}"
 _NGINX_REMEDIATE_RELOAD="${NGINX_REMEDIATE_RELOAD:-1}"
-_NGINX_REMEDIATE_DHPARAM_BITS="${NGINX_REMEDIATE_DHPARAM_BITS:-2048}"
+_NGINX_REMEDIATE_DHPARAM_BITS=$(secaudit_var DH_MIN_BITS "${NGINX_REMEDIATE_DHPARAM_BITS:-2048}")
 
 # --- runtime ---
 _NGINX_PRIMARY_CONF=""
@@ -89,11 +117,16 @@ secaudit_exec_with_timeout() {
 }
 
 secaudit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-nginx.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ]; then
+        if [ ! -f "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 secaudit_harden_path() {
@@ -300,10 +333,10 @@ secaudit_apply_http_scalars() {
     secaudit_upsert_http_directive gzip_static off
     secaudit_upsert_http_directive autoindex off
     secaudit_upsert_http_directive server_tokens off
-    secaudit_upsert_http_directive keepalive_timeout 5s
-    secaudit_upsert_http_directive send_timeout 5s
-    secaudit_upsert_http_directive client_header_timeout 5s
-    secaudit_upsert_http_directive client_body_timeout 5s
+    secaudit_upsert_http_directive keepalive_timeout "${_NGINX_TIMEOUT_APPLY}s"
+    secaudit_upsert_http_directive send_timeout "${_NGINX_TIMEOUT_APPLY}s"
+    secaudit_upsert_http_directive client_header_timeout "${_NGINX_TIMEOUT_APPLY}s"
+    secaudit_upsert_http_directive client_body_timeout "${_NGINX_TIMEOUT_APPLY}s"
     secaudit_upsert_http_directive client_max_body_size 1m
     secaudit_upsert_http_directive "large_client_header_buffers" "4 8k"
 }
@@ -358,18 +391,23 @@ secaudit_write_http_dropin() {
     secaudit_config_has 'listen[[:space:]]+.*default_server' && grep -REh 'listen[[:space:]]+.*default_server' "$_NGINX_CONF_ROOT" 2>/dev/null | grep -v "/${_NGINX_DROPIN_NAME}" | grep -Eq '443|ssl' && have_https_default=1
     secaudit_config_has 'listen[[:space:]]+443[[:space:]].*default_server|listen[[:space:]]+\[::\]:443[[:space:]].*default_server' && have_https_default=1
 
+    local err_level frame_opt nosniff_opt
+    err_level=$(secaudit_var ERROR_LOG_LEVELS "info,debug"); err_level=${err_level%%,*}
+    frame_opt=$(secaudit_var X_FRAME_OPTIONS "SAMEORIGIN,DENY"); frame_opt=${frame_opt%%,*}
+    nosniff_opt=$(secaudit_var X_CONTENT_TYPE_OPTIONS nosniff)
+    secaudit_backup_file "$_NGINX_DROPIN"
     cat >"$_NGINX_DROPIN" <<EOF
 # SecAudit NGINX remediation drop-in (managed)
 # http-context include via conf.d — safe to re-run remediator.
 # Non-duplicable scalars (gzip/timeouts/server_tokens/...) are upserted into nginx.conf.
 
 access_log /var/log/nginx/access.log main;
-error_log /var/log/nginx/error.log info;
+error_log /var/log/nginx/error.log ${err_level};
 access_log syslog:server=${syslog},tag=nginx,facility=local7 main;
-error_log syslog:server=${syslog},tag=nginx info;
+error_log syslog:server=${syslog},tag=nginx ${err_level};
 
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "${frame_opt}" always;
+add_header X-Content-Type-Options "${nosniff_opt}" always;
 add_header Content-Security-Policy "default-src 'self'" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header Strict-Transport-Security "max-age=${hsts}; includeSubDomains" always;
@@ -543,28 +581,38 @@ PY
 secaudit_ensure_logrotate() {
     mkdir -p "$(dirname "$_NGINX_LOGROTATE")" 2>/dev/null || true
     if [ ! -f "$_NGINX_LOGROTATE" ]; then
-        cat >"$_NGINX_LOGROTATE" <<'EOF'
+        local period rotate_n
+        period=$(secaudit_var LOGROTATE_PERIODS "daily,weekly"); period=${period%%,*}
+        rotate_n=$(secaudit_var LOGROTATE_MIN 1)
+        [ "$rotate_n" -lt 14 ] && rotate_n=14
+        secaudit_backup_file "$_NGINX_LOGROTATE"
+        cat >"$_NGINX_LOGROTATE" <<EOF
 /var/log/nginx/*.log {
-    daily
+    ${period}
     missingok
-    rotate 14
+    rotate ${rotate_n}
     compress
     delaycompress
     notifempty
     create 0640 nginx adm
     sharedscripts
     postrotate
-        [ -f /var/run/nginx/nginx.pid ] && kill -USR1 `cat /var/run/nginx/nginx.pid`
-        [ -f /var/run/nginx.pid ] && kill -USR1 `cat /var/run/nginx.pid`
+        [ -f /var/run/nginx/nginx.pid ] && kill -USR1 \$(cat /var/run/nginx/nginx.pid)
+        [ -f /var/run/nginx.pid ] && kill -USR1 \$(cat /var/run/nginx.pid)
     endscript
 }
 EOF
         return 0
     fi
+    local period rotate_n periods
+    period=$(secaudit_var LOGROTATE_PERIODS "daily,weekly"); period=${period%%,*}
+    periods=$(secaudit_var LOGROTATE_PERIODS "daily,weekly"); periods=${periods//,/|}
+    rotate_n=$(secaudit_var LOGROTATE_MIN 1)
+    [ "$rotate_n" -lt 14 ] && rotate_n=14
     secaudit_backup_file "$_NGINX_LOGROTATE"
-    grep -Eq '^[[:space:]]*(daily|weekly)[[:space:]]*$' "$_NGINX_LOGROTATE" || printf '\ndaily\n' >>"$_NGINX_LOGROTATE"
+    grep -Eq "^[[:space:]]*(${periods})[[:space:]]*$" "$_NGINX_LOGROTATE" || printf '\n%s\n' "$period" >>"$_NGINX_LOGROTATE"
     if ! grep -Eq '^[[:space:]]*rotate[[:space:]]+[0-9]+' "$_NGINX_LOGROTATE"; then
-        printf '\nrotate 14\n' >>"$_NGINX_LOGROTATE"
+        printf '\nrotate %s\n' "$rotate_n" >>"$_NGINX_LOGROTATE"
     fi
     return 0
 }
@@ -776,7 +824,7 @@ secaudit_remediate_file_perms() {
         while IFS= read -r path; do
             [ -f "$path" ] || continue
             case "$path" in
-                *.key|*/ssl/*key*) chmod 600 "$path" 2>/dev/null || true ;;
+                *.key|*/ssl/*key*) key_mode=$(secaudit_var KEY_MODES "600,400,440"); chmod "${key_mode%%,*}" "$path" 2>/dev/null || true ;;
                 *) chmod 640 "$path" 2>/dev/null || chmod o-rwx "$path" 2>/dev/null || true ;;
             esac
         done < <(find "$_NGINX_CONF_ROOT" -type f 2>/dev/null | head -400)

@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -99,11 +111,16 @@ secaudit_exec_with_timeout() {
 }
 
 secaudit_backup_file() {
-    local f="$1"
-    [ -f "$f" ] || return 0
-    if [ ! -f "${f}.secaudit.bak" ]; then
-        cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+    local f="$1" journal="${SECAUDIT_JOURNAL:-/var/backups/secaudit-kubernetes.journal}"
+    [ -n "$f" ] || return 0
+    if [ -f "$f" ]; then
+        if [ ! -f "${f}.secaudit.bak" ]; then
+            cp -a "$f" "${f}.secaudit.bak" 2>/dev/null || true
+        fi
+        return 0
     fi
+    mkdir -p /var/backups 2>/dev/null || return 0
+    grep -qxF "created $f" "$journal" 2>/dev/null || printf 'created %s\n' "$f" >>"$journal"
 }
 
 secaudit_harden_path() {
@@ -436,7 +453,7 @@ secaudit_ensure_etcd_user() {
 secaudit_write_minimal_audit_policy() {
     local path="$1"
     mkdir -p "$(dirname "$path")" 2>/dev/null || true
-    [ -f "$path" ] && secaudit_backup_file "$path"
+    secaudit_backup_file "$path"
     cat >"$path" <<'EOF'
 apiVersion: audit.k8s.io/v1
 kind: Policy
@@ -467,6 +484,7 @@ secaudit_write_minimal_encryption() {
     else
         return 1
     fi
+    secaudit_backup_file "$path"
     cat >"$path" <<EOF
 apiVersion: apiserver.config.k8s.io/v1
 kind: EncryptionConfiguration
@@ -614,7 +632,7 @@ secaudit_remediate_apiserver_auth() {
         return 0
     fi
 
-    secaudit_manifest_set_flag "$m" anonymous-auth false
+    secaudit_manifest_set_flag "$m" anonymous-auth "$(secaudit_var ANONYMOUS_AUTH false)"
     secaudit_remediate_done 22 "kube-apiserver --anonymous-auth=false"
     secaudit_manifest_remove_flag "$m" token-auth-file
     secaudit_remediate_done 23 "removed --token-auth-file if present"
@@ -675,16 +693,16 @@ secaudit_remediate_apiserver_audit_tls() {
         return 0
     fi
 
-    secaudit_manifest_set_flag "$m" profiling false
+    secaudit_manifest_set_flag "$m" profiling "$(secaudit_var PROFILING false)"
     secaudit_remediate_done 36 "kube-apiserver --profiling=false"
     secaudit_manifest_set_flag "$m" audit-log-path /var/log/kubernetes/audit.log
     mkdir -p /var/log/kubernetes 2>/dev/null || true
     secaudit_remediate_done 37 "audit-log-path=/var/log/kubernetes/audit.log"
-    secaudit_manifest_set_flag "$m" audit-log-maxage 30
+    secaudit_manifest_set_flag "$m" audit-log-maxage "$(secaudit_var AUDIT_LOG_MAXAGE 30)"
     secaudit_remediate_done 38 "audit-log-maxage=30"
-    secaudit_manifest_set_flag "$m" audit-log-maxbackup 10
+    secaudit_manifest_set_flag "$m" audit-log-maxbackup "$(secaudit_var AUDIT_LOG_MAXBACKUP 10)"
     secaudit_remediate_done 39 "audit-log-maxbackup=10"
-    secaudit_manifest_set_flag "$m" audit-log-maxsize 100
+    secaudit_manifest_set_flag "$m" audit-log-maxsize "$(secaudit_var AUDIT_LOG_MAXSIZE 100)"
     secaudit_remediate_done 40 "audit-log-maxsize=100"
     secaudit_remediate_done 41 "request-timeout left at default/positive value (no zero timeout forced)"
     secaudit_manifest_set_flag "$m" service-account-lookup true
@@ -763,12 +781,12 @@ secaudit_remediate_controller_scheduler() {
 
     if [ -n "$cm" ] && [ -f "$cm" ]; then
         secaudit_manifest_set_flag "$cm" terminated-pod-gc-threshold 12500
-        secaudit_manifest_set_flag "$cm" profiling false
-        secaudit_manifest_set_flag "$cm" use-service-account-credentials true
+        secaudit_manifest_set_flag "$cm" profiling "$(secaudit_var PROFILING false)"
+        secaudit_manifest_set_flag "$cm" use-service-account-credentials "$(secaudit_var SA_CREDENTIALS true)"
         [ -f "${_KUBE_PKI_DIR}/sa.key" ] && secaudit_manifest_set_flag "$cm" service-account-private-key-file "${_KUBE_PKI_DIR}/sa.key"
         [ -f "${_KUBE_PKI_DIR}/ca.crt" ] && secaudit_manifest_set_flag "$cm" root-ca-file "${_KUBE_PKI_DIR}/ca.crt"
         secaudit_manifest_set_flag "$cm" feature-gates RotateKubeletServerCertificate=true
-        secaudit_manifest_set_flag "$cm" bind-address 127.0.0.1
+        secaudit_manifest_set_flag "$cm" bind-address "$(secaudit_var BIND_ADDRESS 127.0.0.1)"
         secaudit_harden_path "$cm" 600 "root:root"
         secaudit_remediate_done 51 "terminated-pod-gc-threshold=12500"
         secaudit_remediate_done 52 "controller-manager --profiling=false"
@@ -785,8 +803,8 @@ secaudit_remediate_controller_scheduler() {
     fi
 
     if [ -n "$sch" ] && [ -f "$sch" ]; then
-        secaudit_manifest_set_flag "$sch" profiling false
-        secaudit_manifest_set_flag "$sch" bind-address 127.0.0.1
+        secaudit_manifest_set_flag "$sch" profiling "$(secaudit_var PROFILING false)"
+        secaudit_manifest_set_flag "$sch" bind-address "$(secaudit_var BIND_ADDRESS 127.0.0.1)"
         secaudit_harden_path "$sch" 600 "root:root"
         secaudit_remediate_done 58 "scheduler --profiling=false"
         secaudit_remediate_done 59 "scheduler --bind-address=127.0.0.1"
@@ -821,7 +839,7 @@ secaudit_remediate_etcd() {
     else
         secaudit_remediate_skip 60 "provision etcd server TLS cert/key"
     fi
-    secaudit_manifest_set_flag "$m" client-cert-auth true
+    secaudit_manifest_set_flag "$m" client-cert-auth "$(secaudit_var ETCD_CLIENT_CERT_AUTH true)"
     secaudit_remediate_done 61 "etcd --client-cert-auth=true"
     secaudit_manifest_set_flag "$m" auto-tls false
     secaudit_remediate_done 62 "etcd --auto-tls=false"
@@ -833,7 +851,7 @@ secaudit_remediate_etcd() {
     else
         secaudit_remediate_skip 63 "provision etcd peer TLS cert/key"
     fi
-    secaudit_manifest_set_flag "$m" peer-client-cert-auth true
+    secaudit_manifest_set_flag "$m" peer-client-cert-auth "$(secaudit_var ETCD_PEER_CERT_AUTH true)"
     secaudit_remediate_done 64 "etcd --peer-client-cert-auth=true"
     secaudit_manifest_set_flag "$m" peer-auto-tls false
     secaudit_remediate_done 65 "etcd --peer-auto-tls=false"
@@ -954,6 +972,7 @@ secaudit_remediate_kubelet_runtime() {
         mkdir -p /var/lib/kubelet 2>/dev/null || true
         yml="$_KUBE_KUBELET_YAML_DEFAULT"
         if [ ! -f "$yml" ]; then
+            secaudit_backup_file "$yml"
             cat >"$yml" <<'EOF'
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
@@ -1012,6 +1031,7 @@ EOF
     else
         mkdir -p "$_KUBE_DROPIN_ETC" 2>/dev/null || true
         drop="${_KUBE_DROPIN_ETC}/99-secaudit-kubelet.conf"
+        secaudit_backup_file "$drop"
         cat >"$drop" <<EOF
 [Service]
 Environment="KUBELET_EXTRA_ARGS=--tls-cipher-suites=${_KUBE_STRONG_TLS} --config=${yml}"
@@ -1019,7 +1039,7 @@ EOF
         _KUBE_KUBELET_DROPIN="$drop"
     fi
     secaudit_remediate_done 93 "kubelet tlsCipherSuites / --tls-cipher-suites set to strong suites"
-    secaudit_kubelet_yaml_set "$yml" podPidsLimit 1024
+    secaudit_kubelet_yaml_set "$yml" podPidsLimit "$(pids=$(secaudit_var POD_PIDS_MIN 1); [ "$pids" -gt 1024 ] && printf %s "$pids" || printf %s 1024)"
     secaudit_remediate_done 94 "kubelet podPidsLimit=1024"
     secaudit_remediate_skip 95 "bind kube-proxy metricsBindAddress to 127.0.0.1 in kube-proxy ConfigMap/DaemonSet"
 

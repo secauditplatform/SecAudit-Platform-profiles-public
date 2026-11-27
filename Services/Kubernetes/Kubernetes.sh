@@ -22,6 +22,18 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -51,8 +63,9 @@ _KUBE_DROPIN_LIB="/usr/lib/systemd/system/kubelet.service.d"
 _KUBE_DROPIN_LIB2="/lib/systemd/system/kubelet.service.d"
 _KUBE_FIND_CAP="${KUBE_FIND_CAP:-25}"
 _KUBE_CMD_CAP="${KUBE_CMD_CAP:-20}"
+_KUBE_MODE_MASK=$(secaudit_var MODE_MASK "${KUBE_MODE_MASK:-077}")
 _KUBE_RULE_COUNT=130
-_KUBE_STRONG_TLS="TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"
+_KUBE_STRONG_TLS=$(secaudit_var STRONG_TLS "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256")
 
 # --- runtime state ---
 _KUBE_HOST="$(hostname 2>/dev/null || printf '%s' unknown)"
@@ -79,10 +92,10 @@ _KUBE_KUBELET_DROPIN_TEXT=""
 _KUBE_PROXY_FLAGS=""
 
 # --- bootstrap / reporting ---
-secaudit_report_pass() { printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
-secaudit_report_fail() { printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
-secaudit_report_skip() { printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
-secaudit_report_error() { printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
+secaudit_report_pass() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= PASS: %s\n' "$1" "$2"; }
+secaudit_report_fail() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= FAIL: %s\n' "$1" "${3:-$2}"; }
+secaudit_report_skip() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= SKIP: %s\n' "$1" "$2"; }
+secaudit_report_error() { secaudit_rule_enabled "$1" || return 0; printf 'RULE%s= ERROR: %s\n' "$1" "$2"; }
 
 # --- string / cmd utils ---
 secaudit_have_bin() { command -v "$1" >/dev/null 2>&1; }
@@ -136,7 +149,7 @@ secaudit_path_listing() {
 }
 
 secaudit_mode_bits_clear() {
-    local mode="$1" mask="${2:-077}"
+    local mode="$1" mask="${2:-$_KUBE_MODE_MASK}"
     [[ "$mode" =~ ^[0-7]+$ ]] || return 1
     (( (8#$mode & 8#$mask) == 0 ))
 }
@@ -622,7 +635,7 @@ secaudit_probe_api() {
 
 # --- generic file / flag checks ---
 secaudit_check_path_mode() {
-    local num="$1" path="$2" desc="$3" mask="${4:-077}"
+    local num="$1" path="$2" desc="$3" mask="${4:-$_KUBE_MODE_MASK}"
     local mode own
     mode=$(secaudit_path_mode_octal "$path")
     own=$(secaudit_path_owner_pair "$path")
@@ -659,7 +672,7 @@ secaudit_check_path_owner() {
 secaudit_check_plane_mode() {
     local num="$1" path="$2" desc="$3"
     secaudit_not_control_plane "$num" "$desc" && return 0
-    secaudit_check_path_mode "$num" "$path" "$desc" 077
+    secaudit_check_path_mode "$num" "$path" "$desc" "$_KUBE_MODE_MASK"
 }
 
 secaudit_check_plane_owner() {
@@ -679,7 +692,7 @@ secaudit_check_static_pod_mode() {
     mode=$(secaudit_path_mode_octal "$path")
     own=$(secaudit_path_owner_pair "$path")
     flags=$(secaudit_static_pod_flags "$path" | wc -l | tr -d ' ')
-    if ! secaudit_mode_bits_clear "$mode" 077; then
+    if ! secaudit_mode_bits_clear "$mode" "$_KUBE_MODE_MASK"; then
         secaudit_report_fail "$num" "${component} manifest ${path} mode=${mode} owner=${own}, expected 600 or more restrictive"
         return 0
     fi
@@ -714,7 +727,7 @@ secaudit_check_dir_files_mode() {
         [ -n "$f" ] || continue
         count=$((count + 1))
         mode=$(secaudit_path_mode_octal "$f")
-        secaudit_mode_bits_clear "$mode" 077 || bad="${bad}${f}(mode=${mode}) "
+        secaudit_mode_bits_clear "$mode" "$_KUBE_MODE_MASK" || bad="${bad}${f}(mode=${mode}) "
     done < <(secaudit_exec_with_timeout "$_KUBE_FIND_CAP" find "$dir" -type f 2>/dev/null)
     if [ "$count" -eq 0 ]; then
         secaudit_report_fail "$num" "${desc}: no files under ${dir}"
@@ -876,7 +889,7 @@ secaudit_check_etcd_datadir_mode() {
         secaudit_report_fail "$num" "etcd data dir ${path} is missing (data-dir flag=$(secaudit_flag_val "$_KUBE_ETCD_FLAGS" data-dir))"
         return 0
     fi
-    if secaudit_mode_bits_clear "$mode" 077; then
+    if secaudit_mode_bits_clear "$mode" "$_KUBE_MODE_MASK"; then
         secaudit_report_pass "$num" "etcd data dir ${path} mode=${mode} owner=${own} (700 or more restrictive)"
     else
         secaudit_report_fail "$num" "etcd data dir ${path} mode=${mode} owner=${own}, expected 700 or more restrictive"
@@ -916,9 +929,9 @@ secaudit_check_admin_kubeconfig_mode() {
         secaudit_report_fail "$num" "admin kubeconfig not found (${_KUBE_ADMIN_CONF})"
         return 0
     fi
-    if secaudit_mode_bits_clear "$worst" 077 && [ "$kube_ok" = 1 ]; then
+    if secaudit_mode_bits_clear "$worst" "$_KUBE_MODE_MASK" && [ "$kube_ok" = 1 ]; then
         secaudit_report_pass "$num" "admin kubeconfig files (${files}) worst-mode=${worst} valid-kubeconfig=yes"
-    elif secaudit_mode_bits_clear "$worst" 077; then
+    elif secaudit_mode_bits_clear "$worst" "$_KUBE_MODE_MASK"; then
         secaudit_report_fail "$num" "admin kubeconfig mode=${worst} but file does not look like a kubeconfig"
     else
         secaudit_report_fail "$num" "admin kubeconfig worst-mode=${worst} files=${files}, expected 600"
@@ -963,7 +976,7 @@ secaudit_check_pki_cert_modes() {
         [ -f "$f" ] || continue
         count=$((count + 1))
         mode=$(secaudit_path_mode_octal "$f")
-        secaudit_mode_bits_clear "$mode" 077 || bad="${bad}${f}(mode=${mode}) "
+        secaudit_mode_bits_clear "$mode" "$_KUBE_MODE_MASK" || bad="${bad}${f}(mode=${mode}) "
         if secaudit_have_openssl; then
             if ! secaudit_cert_alive "$f"; then
                 expired="${expired}${f} "
@@ -996,7 +1009,7 @@ secaudit_check_pki_key_modes() {
         [ -f "$f" ] || continue
         count=$((count + 1))
         mode=$(secaudit_path_mode_octal "$f")
-        secaudit_mode_bits_clear "$mode" 077 || bad="${bad}${f}(mode=${mode}) "
+        secaudit_mode_bits_clear "$mode" "$_KUBE_MODE_MASK" || bad="${bad}${f}(mode=${mode}) "
         if [[ "$mode" =~ ^[0-7]+$ ]] && (( 8#$mode & 8#004 )); then
             world="${world}${f} "
         fi
@@ -1030,7 +1043,7 @@ secaudit_check_kubelet_client_certs() {
     cert=$(secaudit_flag_val "$_KUBE_APISERVER_FLAGS" kubelet-client-certificate)
     key=$(secaudit_flag_val "$_KUBE_APISERVER_FLAGS" kubelet-client-key)
     if [ -n "$cert" ] && [ -n "$key" ] && [ -f "$cert" ] && [ -f "$key" ]; then
-        if secaudit_mode_bits_clear "$(secaudit_path_mode_octal "$key")" 077; then
+        if secaudit_mode_bits_clear "$(secaudit_path_mode_octal "$key")" "$_KUBE_MODE_MASK"; then
             secaudit_report_pass "$num" "kubelet client cert=${cert} key=${key} key-mode=$(secaudit_path_mode_octal "$key")"
         else
             secaudit_report_fail "$num" "kubelet client key ${key} mode=$(secaudit_path_mode_octal "$key") is too open"
@@ -1169,7 +1182,7 @@ secaudit_check_tls_pair() {
         secaudit_report_fail "$num" "${cert_key}=${cert:-unset} ${key_key}=${key:-unset} (files must exist)"
         return 0
     fi
-    if [ "$check_key_mode" = 1 ] && ! secaudit_mode_bits_clear "$(secaudit_path_mode_octal "$key")" 077; then
+    if [ "$check_key_mode" = 1 ] && ! secaudit_mode_bits_clear "$(secaudit_path_mode_octal "$key")" "$_KUBE_MODE_MASK"; then
         secaudit_report_fail "$num" "${key_key} ${key} mode=$(secaudit_path_mode_octal "$key") is too open"
         return 0
     fi
@@ -1251,7 +1264,7 @@ secaudit_check_terminated_pod_gc() {
         secaudit_report_fail "$num" "terminated-pod-gc-threshold is not set"
         return 0
     fi
-    if [ "$(secaudit_as_uint "$val")" -gt 0 ]; then
+    if [ "$(secaudit_as_uint "$val")" -ge "$(secaudit_var POD_GC_MIN 1)" ]; then
         secaudit_report_pass "$num" "terminated-pod-gc-threshold=${val}"
     else
         secaudit_report_fail "$num" "terminated-pod-gc-threshold=${val} is not a positive integer"
@@ -1263,7 +1276,7 @@ secaudit_check_cm_sa_key() {
     secaudit_not_control_plane "$num" "controller-manager service-account-private-key-file" && return 0
     path=$(secaudit_flag_val "$_KUBE_CONTROLLER_FLAGS" service-account-private-key-file)
     if [ -n "$path" ] && [ -f "$path" ]; then
-        if secaudit_mode_bits_clear "$(secaudit_path_mode_octal "$path")" 077; then
+        if secaudit_mode_bits_clear "$(secaudit_path_mode_octal "$path")" "$_KUBE_MODE_MASK"; then
             secaudit_report_pass "$num" "service-account-private-key-file=${path} mode=$(secaudit_path_mode_octal "$path")"
         else
             secaudit_report_fail "$num" "service-account-private-key-file ${path} mode=$(secaudit_path_mode_octal "$path") is too open"
@@ -1360,7 +1373,7 @@ secaudit_check_user_sa_tokens() {
     local num="$1" n
     secaudit_no_api "$num" "service account token auth for users" && return 0
     n=$(secaudit_kubectl get clusterrolebindings -o json 2>/dev/null | grep -cE '"kind": "ServiceAccount"|system:serviceaccount:' || true)
-    if [ "$(secaudit_as_uint "$n")" -gt 20 ]; then
+    if [ "$(secaudit_as_uint "$n")" -gt "$(secaudit_var SA_BINDING_MAX 20)" ]; then
         secaudit_report_fail "$num" "clusterrolebindings reference many ServiceAccounts (count=${n}); review user SA-token auth"
     else
         secaudit_report_pass "$num" "ServiceAccount clusterrolebindings count=${n} (review remaining user token use)"
@@ -1427,7 +1440,7 @@ secaudit_check_kubelet_unit_mode() {
         secaudit_report_fail "$num" "kubelet systemd unit/drop-in not found"
         return 0
     fi
-    secaudit_check_path_mode "$num" "$path" "kubelet systemd unit ${path}" 077
+    secaudit_check_path_mode "$num" "$path" "kubelet systemd unit ${path}" "$_KUBE_MODE_MASK"
 }
 
 secaudit_check_kubelet_unit_owner() {
@@ -1450,7 +1463,7 @@ secaudit_check_proxy_kubeconfig_mode() {
         secaudit_report_skip "$num" "kube-proxy kubeconfig file is not used on this node (DaemonSet/ConfigMap or no kube-proxy)"
         return 0
     fi
-    secaudit_check_path_mode "$num" "$_KUBE_PROXY_KUBECONFIG" "kube-proxy kubeconfig" 077
+    secaudit_check_path_mode "$num" "$_KUBE_PROXY_KUBECONFIG" "kube-proxy kubeconfig" "$_KUBE_MODE_MASK"
 }
 
 secaudit_check_proxy_kubeconfig_owner() {
@@ -1482,7 +1495,7 @@ secaudit_check_client_ca_mode() {
         return 0
     fi
     _KUBE_CLIENT_CA="$ca"
-    secaudit_check_path_mode "$num" "$ca" "kubelet client CA" 077
+    secaudit_check_path_mode "$num" "$ca" "kubelet client CA" "$_KUBE_MODE_MASK"
 }
 
 secaudit_check_client_ca_owner() {
@@ -1502,7 +1515,7 @@ secaudit_check_kubelet_yaml_mode() {
         secaudit_report_skip "$num" "kubelet --config YAML is not in use on this node"
         return 0
     fi
-    secaudit_check_path_mode "$num" "$_KUBE_KUBELET_YAML" "kubelet config.yaml" 077
+    secaudit_check_path_mode "$num" "$_KUBE_KUBELET_YAML" "kubelet config.yaml" "$_KUBE_MODE_MASK"
 }
 
 secaudit_check_kubelet_yaml_owner() {
@@ -1518,12 +1531,14 @@ secaudit_check_kubelet_yaml_owner() {
 secaudit_check_kubelet_anonymous() {
     local num="$1" val
     val=$(secaudit_lower "$(secaudit_kubelet_val anonymous-auth authentication.anonymous.enabled)")
-    if [ "$val" = false ]; then
-        secaudit_report_pass "$num" "kubelet anonymous auth is false (cli/config.yaml)"
+    local want
+    want=$(secaudit_var ANONYMOUS_AUTH false)
+    if [ "$val" = "$want" ]; then
+        secaudit_report_pass "$num" "kubelet anonymous auth is ${want} (cli/config.yaml)"
     elif [ -z "$val" ]; then
-        secaudit_report_fail "$num" "kubelet anonymous-auth / authentication.anonymous.enabled is not set to false"
+        secaudit_report_fail "$num" "kubelet anonymous-auth / authentication.anonymous.enabled is not set to ${want}"
     else
-        secaudit_report_fail "$num" "kubelet anonymous auth=${val}, expected false"
+        secaudit_report_fail "$num" "kubelet anonymous auth=${val}, expected ${want}"
     fi
 }
 
@@ -1555,12 +1570,14 @@ secaudit_check_kubelet_client_ca_flag() {
 secaudit_check_kubelet_readonly_port() {
     local num="$1" val
     val=$(secaudit_kubelet_val read-only-port readOnlyPort)
-    if [ "$val" = 0 ]; then
-        secaudit_report_pass "$num" "kubelet readOnlyPort=0"
-    elif [ -z "$val" ]; then
+    local want
+    want=$(secaudit_var READONLY_PORT 0)
+    if [ "$val" = "$want" ]; then
+        secaudit_report_pass "$num" "kubelet readOnlyPort=${want}"
+    elif [ -z "$val" ] && [ "$want" = 0 ]; then
         secaudit_report_pass "$num" "kubelet readOnlyPort unset (default 0 on kubelet 1.18+)"
     else
-        secaudit_report_fail "$num" "kubelet readOnlyPort=${val}, expected 0"
+        secaudit_report_fail "$num" "kubelet readOnlyPort=${val:-unset}, expected ${want}"
     fi
 }
 
@@ -1659,8 +1676,10 @@ secaudit_check_kubelet_ciphers() {
 secaudit_check_kubelet_pod_pids() {
     local num="$1" val
     val=$(secaudit_kubelet_val pod-max-pids podPidsLimit)
-    if [ -z "$val" ] || [ "$val" = "-1" ] || [ "$val" = 0 ]; then
-        secaudit_report_fail "$num" "kubelet podPidsLimit=${val:-unset} (no PID limit)"
+    local min
+    min=$(secaudit_var POD_PIDS_MIN 1)
+    if [ -z "$val" ] || [ "$val" = "-1" ] || [ "$val" = 0 ] || [ "$val" -lt "$min" ] 2>/dev/null; then
+        secaudit_report_fail "$num" "kubelet podPidsLimit=${val:-unset} (required >= ${min})"
     else
         secaudit_report_pass "$num" "kubelet podPidsLimit=${val}"
     fi
@@ -1770,7 +1789,7 @@ for item in data.get("items") or []:
             break
 print(n)
 ' 2>/dev/null || printf 0)
-    if [ "$(secaudit_as_uint "$n")" -gt 5 ]; then
+    if [ "$(secaudit_as_uint "$n")" -gt "$(secaudit_var SECRETS_RBAC_MAX 5)" ]; then
         secaudit_report_fail "$num" "non-system Roles/ClusterRoles grant secrets get/list/watch (count=${n})"
     else
         secaudit_report_pass "$num" "non-system secrets RBAC roles count=${n}"
@@ -1798,7 +1817,7 @@ for item in data.get("items") or []:
             break
 print(n)
 ' 2>/dev/null || printf 0)
-    if [ "$(secaudit_as_uint "$n")" -gt 3 ]; then
+    if [ "$(secaudit_as_uint "$n")" -gt "$(secaudit_var WILDCARD_RBAC_MAX 3)" ]; then
         secaudit_report_fail "$num" "custom Roles/ClusterRoles use wildcards (count=${n})"
     else
         secaudit_report_pass "$num" "custom wildcard RBAC roles count=${n}"
@@ -1828,7 +1847,7 @@ for item in data.get("items") or []:
             break
 print(n)
 ' 2>/dev/null || printf 0)
-    if [ "$(secaudit_as_uint "$n")" -gt 3 ]; then
+    if [ "$(secaudit_as_uint "$n")" -gt "$(secaudit_var POD_CREATE_MAX 3)" ]; then
         secaudit_report_fail "$num" "non-system roles allow pod create (count=${n})"
     else
         secaudit_report_pass "$num" "non-system pod-create roles count=${n}"
@@ -1925,7 +1944,7 @@ for item in data.get("items") or []:
             break
 print(n)
 ' 2>/dev/null || printf 0)
-    if [ "$(secaudit_as_uint "$n")" -gt 2 ]; then
+    if [ "$(secaudit_as_uint "$n")" -gt "$(secaudit_var BIND_RBAC_MAX 2)" ]; then
         secaudit_report_fail "$num" "custom roles grant bind/impersonate/escalate or * verbs (count=${n})"
     else
         secaudit_report_pass "$num" "custom bind/impersonate/escalate roles count=${n}"
@@ -1951,7 +1970,7 @@ secaudit_check_webhook_config_rbac() {
     secaudit_no_python "$num" "admission webhook configuration RBAC" && return 0
     n1=$(secaudit_rbac_hits validatingwebhookconfigurations "create,update,patch,delete")
     n2=$(secaudit_rbac_hits mutatingwebhookconfigurations "create,update,patch,delete")
-    if [ "$(secaudit_as_uint "$n1")" -gt 1 ] || [ "$(secaudit_as_uint "$n2")" -gt 1 ]; then
+    if [ "$(secaudit_as_uint "$n1")" -gt "$(secaudit_var WEBHOOK_RBAC_MAX 1)" ] || [ "$(secaudit_as_uint "$n2")" -gt "$(secaudit_var WEBHOOK_RBAC_MAX 1)" ]; then
         secaudit_report_fail "$num" "custom roles can mutate webhook configurations (validating=${n1} mutating=${n2})"
     else
         secaudit_report_pass "$num" "custom webhook-config roles validating=${n1} mutating=${n2}"
@@ -2117,7 +2136,7 @@ secaudit_check_namespace_boundaries() {
     local num="$1" n
     secaudit_no_api "$num" "namespace administrative boundaries" && return 0
     n=$(secaudit_as_uint "$(secaudit_kubectl get namespaces --no-headers 2>/dev/null | wc -l)")
-    if [ "$n" -gt 4 ]; then
+    if [ "$n" -gt "$(secaudit_var NAMESPACE_MIN 4)" ]; then
         secaudit_report_pass "$num" "namespaces in use (count=${n})"
     else
         secaudit_report_fail "$num" "insufficient namespace separation (count=${n})"
@@ -2183,7 +2202,7 @@ secaudit_run_control_plane_files() {
 
 secaudit_run_apiserver_auth() {
     # RULE22-35
-    secaudit_check_comp_eq 22 apiserver anonymous-auth false "kube-apiserver anonymous-auth"
+    secaudit_check_comp_eq 22 apiserver anonymous-auth "$(secaudit_var ANONYMOUS_AUTH false)" "kube-apiserver anonymous-auth"
     secaudit_check_comp_absent 23 apiserver token-auth-file "kube-apiserver token-auth-file"
     secaudit_check_admission_on 24 DenyServiceExternalIPs "DenyServiceExternalIPs admission" 0
     secaudit_check_kubelet_client_certs 25
@@ -2201,11 +2220,11 @@ secaudit_run_apiserver_auth() {
 
 secaudit_run_apiserver_audit_tls() {
     # RULE36-50
-    secaudit_check_comp_eq 36 apiserver profiling false "kube-apiserver profiling"
+    secaudit_check_comp_eq 36 apiserver profiling "$(secaudit_var PROFILING false)" "kube-apiserver profiling"
     secaudit_check_audit_log_path 37
-    secaudit_check_audit_log_min 38 audit-log-maxage 30 "apiserver audit-log-maxage"
-    secaudit_check_audit_log_min 39 audit-log-maxbackup 10 "apiserver audit-log-maxbackup"
-    secaudit_check_audit_log_min 40 audit-log-maxsize 100 "apiserver audit-log-maxsize"
+    secaudit_check_audit_log_min 38 audit-log-maxage "$(secaudit_var AUDIT_LOG_MAXAGE 30)" "apiserver audit-log-maxage"
+    secaudit_check_audit_log_min 39 audit-log-maxbackup "$(secaudit_var AUDIT_LOG_MAXBACKUP 10)" "apiserver audit-log-maxbackup"
+    secaudit_check_audit_log_min 40 audit-log-maxsize "$(secaudit_var AUDIT_LOG_MAXSIZE 100)" "apiserver audit-log-maxsize"
     secaudit_check_request_timeout 41
     secaudit_check_sa_lookup 42
     secaudit_check_existing_flag_file 43 apiserver service-account-key-file "apiserver service-account-key-file"
@@ -2221,23 +2240,23 @@ secaudit_run_apiserver_audit_tls() {
 secaudit_run_controller_scheduler() {
     # RULE51-59
     secaudit_check_terminated_pod_gc 51
-    secaudit_check_comp_eq 52 controller profiling false "kube-controller-manager profiling"
-    secaudit_check_comp_eq 53 controller use-service-account-credentials true "controller-manager use-service-account-credentials"
+    secaudit_check_comp_eq 52 controller profiling "$(secaudit_var PROFILING false)" "kube-controller-manager profiling"
+    secaudit_check_comp_eq 53 controller use-service-account-credentials "$(secaudit_var SA_CREDENTIALS true)" "controller-manager use-service-account-credentials"
     secaudit_check_cm_sa_key 54
     secaudit_check_cm_root_ca 55
     secaudit_check_cm_rotate_kubelet_cert 56
-    secaudit_check_comp_eq 57 controller bind-address 127.0.0.1 "controller-manager bind-address"
-    secaudit_check_comp_eq 58 scheduler profiling false "kube-scheduler profiling"
-    secaudit_check_comp_eq 59 scheduler bind-address 127.0.0.1 "kube-scheduler bind-address"
+    secaudit_check_comp_eq 57 controller bind-address "$(secaudit_var BIND_ADDRESS 127.0.0.1)" "controller-manager bind-address"
+    secaudit_check_comp_eq 58 scheduler profiling "$(secaudit_var PROFILING false)" "kube-scheduler profiling"
+    secaudit_check_comp_eq 59 scheduler bind-address "$(secaudit_var BIND_ADDRESS 127.0.0.1)" "kube-scheduler bind-address"
 }
 
 secaudit_run_etcd() {
     # RULE60-66
     secaudit_check_etcd_tls_pair 60 "etcd client cert-file/key-file" cert-file key-file 1
-    secaudit_check_comp_eq 61 etcd client-cert-auth true "etcd client-cert-auth"
+    secaudit_check_comp_eq 61 etcd client-cert-auth "$(secaudit_var ETCD_CLIENT_CERT_AUTH true)" "etcd client-cert-auth"
     secaudit_check_comp_not_true 62 etcd auto-tls "etcd auto-tls"
     secaudit_check_etcd_tls_pair 63 "etcd peer TLS certificates" peer-cert-file peer-key-file 0
-    secaudit_check_comp_eq 64 etcd peer-client-cert-auth true "etcd peer-client-cert-auth"
+    secaudit_check_comp_eq 64 etcd peer-client-cert-auth "$(secaudit_var ETCD_PEER_CERT_AUTH true)" "etcd peer-client-cert-auth"
     secaudit_check_comp_not_true 65 etcd peer-auto-tls "etcd peer-auto-tls"
     secaudit_check_etcd_unique_ca 66
 }
@@ -2257,7 +2276,7 @@ secaudit_run_kubelet_files() {
     secaudit_check_kubelet_unit_owner 73
     secaudit_check_proxy_kubeconfig_mode 74
     secaudit_check_proxy_kubeconfig_owner 75
-    secaudit_check_path_mode 76 "$_KUBE_KUBELET_CONF" "kubelet.conf" 077
+    secaudit_check_path_mode 76 "$_KUBE_KUBELET_CONF" "kubelet.conf" "$_KUBE_MODE_MASK"
     secaudit_check_path_owner 77 "$_KUBE_KUBELET_CONF" "root:root" "kubelet.conf"
     secaudit_check_client_ca_mode 78
     secaudit_check_client_ca_owner 79

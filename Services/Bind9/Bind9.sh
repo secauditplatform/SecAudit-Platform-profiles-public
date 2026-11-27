@@ -22,6 +22,30 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+# Return 0 when $1 equals one comma-separated token of $2.
+secaudit_in_csv() {
+    local want="$1" list="$2" token
+    local IFS=','
+    for token in $list; do
+        token="${token#"${token%%[![:space:]]*}"}"
+        token="${token%"${token##*[![:space:]]}"}"
+        [ "$want" = "$token" ] && return 0
+    done
+    return 1
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -36,11 +60,11 @@ set -o pipefail
 
 BIND9_FIND_CAP="${BIND9_FIND_CAP:-25}"
 BIND9_CMD_CAP="${BIND9_CMD_CAP:-8}"
-BIND9_XFER_CAP="${BIND9_XFER_CAP:-3}"
-BIND9_XFER_PER_NS_CAP="${BIND9_XFER_PER_NS_CAP:-3}"
-BIND9_XFER_IN_CAP="${BIND9_XFER_IN_CAP:-10}"
-BIND9_KEY_MAX_AGE_DAYS="${BIND9_KEY_MAX_AGE_DAYS:-365}"
-BIND9_LOG_VERSIONS_MIN="${BIND9_LOG_VERSIONS_MIN:-3}"
+BIND9_XFER_CAP=$(secaudit_var XFER_CAP "${BIND9_XFER_CAP:-3}")
+BIND9_XFER_PER_NS_CAP=$(secaudit_var XFER_PER_NS_CAP "${BIND9_XFER_PER_NS_CAP:-3}")
+BIND9_XFER_IN_CAP=$(secaudit_var XFER_IN_CAP "${BIND9_XFER_IN_CAP:-10}")
+BIND9_KEY_MAX_AGE_DAYS=$(secaudit_var KEY_MAX_AGE_DAYS "${BIND9_KEY_MAX_AGE_DAYS:-365}")
+BIND9_LOG_VERSIONS_MIN=$(secaudit_var LOG_VERSIONS_MIN "${BIND9_LOG_VERSIONS_MIN:-3}")
 
 PRIV_USERS="root named bind"
 PRIV_GROUPS="root named bind dns"
@@ -1110,7 +1134,7 @@ sec_audit_print_flag_in_channels() {
 }
 
 sec_audit_check_print_severity() {
-    sec_audit_print_flag_in_channels "$1" "print-severity" "yes"
+    sec_audit_print_flag_in_channels "$1" "print-severity" "$(secaudit_var PRINT_SEVERITY yes)"
 }
 sec_audit_check_print_time() {
     sec_audit_print_flag_in_channels "$1" "print-time" "yes"
@@ -1244,9 +1268,7 @@ sec_audit_check_tsig_mode() {
         [ -z "$f" ] && continue
         n=$((n + 1))
         mode=$(sec_audit_path_mode_octal "$f")
-        if [ "$mode" != "600" ] && [ "$mode" != "640" ] && [ "$mode" != "400" ] && [ "$mode" != "440" ]; then
-            bad=$((bad + 1))
-        elif sec_audit_mode_world_writable "$mode"; then
+        if ! secaudit_in_csv "$mode" "$(secaudit_var TSIG_MODES "600,640,400,440")" || sec_audit_mode_world_writable "$mode"; then
             bad=$((bad + 1))
         fi
     done <<< "$files"
@@ -1494,7 +1516,7 @@ sec_audit_check_keygen_group() {
     sec_audit_scan_keygen "$1" group root "group-owned by root"
 }
 sec_audit_check_keygen_mode() {
-    sec_audit_scan_keygen "$1" mode 400 "mode 400 (owner-read only)"
+    sec_audit_scan_keygen "$1" mode "$(secaudit_var KEYGEN_MODE 400)" "mode $(secaudit_var KEYGEN_MODE 400) (owner-read only)"
 }
 sec_audit_check_zsk_owner() {
     local num="$1"
@@ -1897,9 +1919,7 @@ sec_audit_check_conf_mode() {
         n=$((n + 1))
         mode=$(sec_audit_path_mode_octal "$f")
         sample="${sample}$(basename "$f")=$mode "
-        if [ "$mode" != "640" ] && [ "$mode" != "600" ] && [ "$mode" != "440" ] && [ "$mode" != "400" ]; then
-            bad=$((bad + 1))
-        elif sec_audit_mode_world_writable "$mode"; then
+        if ! secaudit_in_csv "$mode" "$(secaudit_var CONF_MODES "640,600,440,400")" || sec_audit_mode_world_writable "$mode"; then
             bad=$((bad + 1))
         fi
     done < <(sec_audit_core_conf_paths)
@@ -1965,7 +1985,7 @@ sec_audit_check_log_severity() {
     local num="$1"
     local logb
     logb=$(sec_audit_logging_body)
-    if sec_audit_blob_has "$logb" 'severity[[:space:]]+(info|dynamic|debug)'; then
+    if levels=$(secaudit_var LOG_SEVERITY "info,dynamic,debug"); levels=${levels//,/|}; sec_audit_blob_has "$logb" "severity[[:space:]]+(${levels})"; then
         sec_audit_report_pass "$num" "logging channel severity is info (or more verbose)"
     else
         sec_audit_report_fail "$num" "severity info not configured in logging channel"
@@ -1979,7 +1999,7 @@ sec_audit_check_listen_port() {
     while IFS= read -r line; do
         [ -z "$line" ] && continue
         port=$(printf '%s' "$line" | sed -nE 's/.*port[[:space:]]+([0-9]+).*/\1/p')
-        [ -n "$port" ] && [ "$port" != "53" ] && bad=1
+        [ -n "$port" ] && [ "$port" != "$(secaudit_var LISTEN_PORT 53)" ] && bad=1
     done < <(printf '%s\n' "$opt" | grep -iE 'listen-on(-v6)?')
     val=$(sec_audit_scalar_in "$opt" "version")
     hn=$(sec_audit_scalar_in "$opt" "hostname")
@@ -2117,9 +2137,7 @@ sec_audit_check_dnssec_mode() {
         [ -z "$f" ] && continue
         n=$((n + 1))
         mode=$(sec_audit_path_mode_octal "$f")
-        if [ "$mode" != "400" ] && [ "$mode" != "440" ] && [ "$mode" != "600" ]; then
-            bad=$((bad + 1))
-        elif sec_audit_mode_world_writable "$mode"; then
+        if ! secaudit_in_csv "$mode" "$(secaudit_var DNSSEC_MODES "400,440,600")" || sec_audit_mode_world_writable "$mode"; then
             bad=$((bad + 1))
         fi
     done < <(sec_audit_dnssec_material_paths)

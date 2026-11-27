@@ -22,6 +22,41 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+
+secaudit_var_token() {
+    local value
+    value=$(secaudit_var "$1" "$2")
+    value=${value%%,*}
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+# Keep the installed value at the package preference when the ceiling is higher.
+secaudit_cap() {
+    local prefer="$1" ceiling="$2"
+    [[ "$prefer" =~ ^[0-9]+$ && "$ceiling" =~ ^[0-9]+$ ]] || {
+        printf '%s' "$prefer"
+        return 0
+    }
+    if [ "$ceiling" -lt "$prefer" ]; then
+        printf '%s' "$ceiling"
+    else
+        printf '%s' "$prefer"
+    fi
+}
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -58,6 +93,56 @@ FBSD15_FAIL=""
 
 sec_audit_have_bin() { command -v "$1" >/dev/null 2>&1; }
 sec_audit_log() { printf '[remediation] %s\n' "$*"; }
+
+FBSD15_JOURNAL="${FBSD15_JOURNAL:-/var/backups/secaudit-fbsd15.journal}"
+
+# First-seen prior state so restore can undo sysrc/sysctl/modes/new files/packages.
+sec_audit_journal_once() {
+    local kind="$1" id="$2"
+    shift 2
+    mkdir -p "$(dirname "$FBSD15_JOURNAL")" 2>/dev/null || return 0
+    touch "$FBSD15_JOURNAL" 2>/dev/null || return 0
+    grep -q "^${kind} ${id} " "$FBSD15_JOURNAL" 2>/dev/null && return 0
+    grep -qxF "${kind} ${id}" "$FBSD15_JOURNAL" 2>/dev/null && return 0
+    if [ $# -eq 0 ]; then
+        printf '%s %s\n' "$kind" "$id" >> "$FBSD15_JOURNAL"
+    else
+        printf '%s %s %s\n' "$kind" "$id" "$*" >> "$FBSD15_JOURNAL"
+    fi
+}
+
+sec_audit_remember_new() {
+    local f="$1"
+    [ -e "$f" ] && return 0
+    sec_audit_journal_once created "$f"
+}
+
+sec_audit_remember_mode() {
+    local f="$1" mode owner group
+    [ -e "$f" ] || return 0
+    mode=$(stat -Lf %Lp "$f" 2>/dev/null || stat -f %Lp "$f" 2>/dev/null) || return 0
+    owner=$(stat -Lf %Su "$f" 2>/dev/null || stat -f %Su "$f" 2>/dev/null) || owner=root
+    group=$(stat -Lf %Sg "$f" 2>/dev/null || stat -f %Sg "$f" 2>/dev/null) || group=wheel
+    sec_audit_journal_once mode "$f" "$mode" "$owner" "$group"
+}
+
+sec_audit_remember_sysrc() {
+    local name="$1" old
+    # sysrc -n returns defaults (or the string NONE) even when /etc/rc.conf has no assignment.
+    if grep -q "^${name}=" /etc/rc.conf 2>/dev/null; then
+        old=$(sysrc -f /etc/rc.conf -n "$name" 2>/dev/null)
+        [ -n "$old" ] && [ "$old" != "NONE" ] || old=__EMPTY__
+    else
+        old=__UNSET__
+    fi
+    sec_audit_journal_once sysrc "$name" "$old"
+}
+
+sec_audit_remember_sysctl() {
+    local key="$1" old
+    old=$(sysctl -n "$key" 2>/dev/null) || return 0
+    sec_audit_journal_once sysctl "$key" "$old"
+}
 
 sec_audit_rule_start() { FBSD15_NOTES=(); FBSD15_SKIP=""; FBSD15_FAIL=""; }
 sec_audit_note() { FBSD15_NOTES+=("$1"); }
@@ -121,6 +206,7 @@ sec_audit_rewrite() {
 
 sec_audit_ensure_line() {
     local f="$1" line="$2"
+    sec_audit_remember_new "$f"
     touch "$f" 2>/dev/null || return 1
     grep -qxF -- "$line" "$f" 2>/dev/null && return 0
     printf '%s\n' "$line" >> "$f"
@@ -128,6 +214,7 @@ sec_audit_ensure_line() {
 
 sec_audit_set_kv() {
     local f="$1" key="$2" val="$3" sep="${4:-=}" esc
+    sec_audit_remember_new "$f"
     [ -f "$f" ] || touch "$f" 2>/dev/null
     sec_audit_backup "$f"
     esc=$(printf '%s' "$key" | sed 's/[][\\.*^$/]/\\&/g')
@@ -153,6 +240,7 @@ sec_audit_kld_disable() {
 
 sec_audit_sysctl() {
     local key="$1" val="$2"
+    sec_audit_remember_sysctl "$key"
     sec_audit_set_kv "$FBSD15_SYSCTL_CONF" "$key" "$val"
     if sec_audit_have_bin sysctl && sysctl -w "${key}=${val}" >/dev/null 2>&1; then
         sec_audit_note "${key}=${val} (persistent and live)"
@@ -167,11 +255,13 @@ sec_audit_sysrc() {
         sec_audit_fail_note "sysrc not available"
         return
     fi
+    sec_audit_remember_sysrc "$name"
     if sysrc "${name}=${val}" >/dev/null 2>&1; then
         sec_audit_note "${name}=${val} in /etc/rc.conf"
-    else
-        sec_audit_fail_note "could not set ${name}=${val}"
+        return 0
     fi
+    sec_audit_fail_note "could not set ${name}=${val}"
+    return 1
 }
 
 sec_audit_disable_service() {
@@ -180,20 +270,33 @@ sec_audit_disable_service() {
         sec_audit_fail_note "sysrc not available"
         return
     fi
+    sec_audit_remember_sysrc "${svc}_enable"
     sysrc "${svc}_enable=NO" >/dev/null 2>&1
     service "$svc" stop >/dev/null 2>&1
     sec_audit_note "${svc}_enable=NO"
 }
 
 sec_audit_pkg_install() {
+    local p removed="" missing=""
     if ! sec_audit_have_bin pkg; then
         sec_audit_fail_note "pkg not available"
         return
     fi
-    if pkg install -y "$@" >/dev/null 2>&1; then
-        sec_audit_note "installed: $*"
+    for p in "$@"; do
+        if pkg query %n "$p" >/dev/null 2>&1; then
+            continue
+        fi
+        sec_audit_journal_once pkg_add "$p"
+        missing="${missing}${p} "
+    done
+    if [ -z "$missing" ]; then
+        sec_audit_note "already installed: $*"
+        return
+    fi
+    if pkg install -y $missing >/dev/null 2>&1; then
+        sec_audit_note "installed: ${missing}"
     else
-        sec_audit_fail_note "package install failed (repository unreachable?): $*"
+        sec_audit_fail_note "package install failed (repository unreachable?): ${missing}"
     fi
 }
 
@@ -219,6 +322,7 @@ sec_audit_file_perms() {
     local f any=0
     for f in "$@"; do
         [ -e "$f" ] || continue
+        sec_audit_remember_mode "$f"
         chmod "$mode" "$f" 2>/dev/null
         chown "${owner}:${group}" "$f" 2>/dev/null
         any=1
@@ -501,13 +605,14 @@ sec_audit_newsyslog_modes() {
 }
 
 sec_audit_cron_allow() {
-    local f="$1" deny="$2"
+    local f="$1" deny="$2" mode="${3:-640}"
     [ -d "$(dirname "$f")" ] || mkdir -p "$(dirname "$f")" 2>/dev/null
     if ! sec_audit_ensure_line "$f" root; then
         sec_audit_fail_note "cannot write ${f}"
         return
     fi
-    chmod 640 "$f" 2>/dev/null
+    sec_audit_remember_mode "$f"
+    chmod "$mode" "$f" 2>/dev/null
     chown root:wheel "$f" 2>/dev/null
     if [ -n "$deny" ] && [ -e "$deny" ]; then
         mv "$deny" "${deny}.secaudit.bak" 2>/dev/null
@@ -719,12 +824,19 @@ sec_audit_umask_secure() {
     fi
 }
 
-sec_audit_main() {
-    sec_audit_log "starting remediation (FreeBSD 15 / sec_audit_* style)"
+# =============================================================================
+# Remediation section runners (RULE1 .. RULE159)
+# =============================================================================
 
+sec_audit_remediate_kernel_modules() {
+    # RULE1-3 kernel modules
     sec_audit_rule_start; sec_audit_rule_1; sec_audit_rule_end 1
     sec_audit_rule_start; sec_audit_rule_2; sec_audit_rule_end 2
     sec_audit_rule_start; sec_audit_rule_3; sec_audit_rule_end 3
+}
+
+sec_audit_remediate_filesystem_partitions() {
+    # RULE4-19 filesystem partitions
     sec_audit_rule_start; sec_audit_manual "create a dedicated /tmp mount, or set tmpmfs=YES in /etc/rc.conf"; sec_audit_rule_end 4
     sec_audit_rule_start; sec_audit_fstab_option /tmp nosuid; sec_audit_rule_end 5
     sec_audit_rule_start; sec_audit_fstab_option /tmp noexec; sec_audit_rule_end 6
@@ -741,7 +853,10 @@ sec_audit_main() {
     sec_audit_rule_start; sec_audit_manual "create a dedicated /var/audit mount in /etc/fstab"; sec_audit_rule_end 17
     sec_audit_rule_start; sec_audit_fstab_option /var/audit nosuid; sec_audit_rule_end 18
     sec_audit_rule_start; sec_audit_fstab_option /var/audit noexec; sec_audit_rule_end 19
+}
 
+sec_audit_remediate_package_security() {
+    # RULE20-22 package security
     sec_audit_rule_start; sec_audit_manual "verify freebsd-update and pkg trust anchors against the vendor-signed fingerprints"; sec_audit_rule_end 20
     sec_audit_rule_start; sec_audit_manual "configure pkg repositories in /usr/local/etc/pkg/repos/*.conf for the site mirror"; sec_audit_rule_end 21
     sec_audit_rule_start
@@ -763,25 +878,44 @@ sec_audit_main() {
         sec_audit_skip_note "set FBSD15_REMEDIATE_UPDATES=1 to install pending base-system and package updates"
     fi
     sec_audit_rule_end 22
+}
+
+sec_audit_remediate_bootloader() {
+    # RULE23-24 bootloader
     sec_audit_rule_start; sec_audit_manual "set a bootloader password interactively; the password is site-specific"; sec_audit_rule_end 23
-    sec_audit_rule_start; sec_audit_file_perms 600 root wheel /boot/loader.conf /boot/loader.conf.local; sec_audit_rule_end 24
-    sec_audit_rule_start; sec_audit_sysctl kern.elf64.aslr.enable 1; sec_audit_rule_end 25
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_LOADER 600)" root wheel /boot/loader.conf /boot/loader.conf.local; sec_audit_rule_end 24
+}
+
+sec_audit_remediate_process_hardening() {
+    # RULE25-27 process hardening
+    sec_audit_rule_start; sec_audit_sysctl kern.elf64.aslr.enable "$(secaudit_var SYSCTL_ASLR 1)"; sec_audit_rule_end 25
     sec_audit_rule_start; sec_audit_sysrc savecore_enable NO; sec_audit_rule_end 26
     sec_audit_rule_start; sec_audit_sysrc dumpdev NO; sec_audit_rule_end 27
+}
+
+sec_audit_remediate_banners() {
+    # RULE28-32 banners
     sec_audit_rule_start; sec_audit_banner_file /etc/motd; sec_audit_rule_end 28
     sec_audit_rule_start; sec_audit_banner_file /etc/issue; sec_audit_rule_end 29
     sec_audit_rule_start; sec_audit_banner_file /etc/issue.net; sec_audit_rule_end 30
-    sec_audit_rule_start; sec_audit_file_perms 644 root wheel /etc/motd; sec_audit_rule_end 31
-    sec_audit_rule_start; sec_audit_file_perms 644 root wheel /etc/issue; sec_audit_rule_end 32
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_MOTD 644)" root wheel /etc/motd; sec_audit_rule_end 31
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_ISSUE 644)" root wheel /etc/issue; sec_audit_rule_end 32
+}
 
+sec_audit_remediate_time_sync() {
+    # RULE33 time synchronization
     sec_audit_rule_start
-    if sec_audit_have_bin sysrc && sysrc ntpd_enable=YES >/dev/null 2>&1; then
+    if sec_audit_have_bin sysrc && sec_audit_sysrc ntpd_enable YES; then
         service ntpd start >/dev/null 2>&1
-        sec_audit_note "ntpd_enable=YES, ntpd started"
+        sec_audit_note "ntpd started"
     else
         sec_audit_fail_note "could not enable ntpd"
     fi
     sec_audit_rule_end 33
+}
+
+sec_audit_remediate_unused_services() {
+    # RULE34-43 unused services
     sec_audit_rule_start; sec_audit_disable_service autofs; sec_audit_rule_end 34
     sec_audit_rule_start; sec_audit_inetd_disable ftp; sec_audit_pkg_remove vsftpd; sec_audit_rule_end 35
     sec_audit_rule_start; sec_audit_pkg_remove dovecot cyrus-imapd; sec_audit_disable_service dovecot; sec_audit_rule_end 36
@@ -792,29 +926,42 @@ sec_audit_main() {
     sec_audit_rule_start; sec_audit_inetd_disable telnet; sec_audit_pkg_remove freebsd-telnetd; sec_audit_rule_end 41
     sec_audit_rule_start; sec_audit_inetd_disable tftp; sec_audit_rule_end 42
     sec_audit_rule_start; sec_audit_pkg_remove squid; sec_audit_disable_service squid; sec_audit_rule_end 43
+}
+
+sec_audit_remediate_network_stack() {
+    # RULE44-54 network stack
     sec_audit_rule_start; sec_audit_manual "reconfigure the MTA to listen on loopback only (for example inet_interfaces = loopback-only)"; sec_audit_rule_end 44
     sec_audit_rule_start; sec_audit_manual "review the listening-service inventory and stop anything not approved by site policy"; sec_audit_rule_end 45
     sec_audit_rule_start; sec_audit_manual "informational check: record whether IPv6 is enabled for this host"; sec_audit_rule_end 46
-
     sec_audit_rule_start; sec_audit_kld_disable sctp; sec_audit_rule_end 47
     sec_audit_rule_start; sec_audit_sysctl net.inet.ip.forwarding 0; sec_audit_sysctl net.inet6.ip6.forwarding 0; sec_audit_rule_end 48
     sec_audit_rule_start; sec_audit_sysctl net.inet.ip.redirect 0; sec_audit_sysctl net.inet6.ip6.redirect 0; sec_audit_rule_end 49
     sec_audit_rule_start; sec_audit_sysctl net.inet.icmp.bmcastecho 0; sec_audit_sysctl net.inet.icmp.tstamprepl 0; sec_audit_rule_end 50
     sec_audit_rule_start; sec_audit_sysctl net.inet.icmp.drop_redirect 1; sec_audit_sysctl net.inet6.icmp6.rediraccept 0; sec_audit_rule_end 51
-    sec_audit_rule_start; sec_audit_sysctl net.inet.ip.accept_sourceroute 0; sec_audit_rule_end 52
-    sec_audit_rule_start; sec_audit_sysctl net.inet.tcp.syncookies 1; sec_audit_rule_end 53
-    sec_audit_rule_start; sec_audit_sysctl net.inet6.ip6.accept_rtadv 0; sec_audit_rule_end 54
+    sec_audit_rule_start; sec_audit_sysctl net.inet.ip.accept_sourceroute "$(secaudit_var SYSCTL_ACCEPT_SOURCEROUTE 0)"; sec_audit_rule_end 52
+    sec_audit_rule_start; sec_audit_sysctl net.inet.tcp.syncookies "$(secaudit_var SYSCTL_TCP_SYNCOOKIES 1)"; sec_audit_rule_end 53
+    sec_audit_rule_start; sec_audit_sysctl net.inet6.ip6.accept_rtadv "$(secaudit_var SYSCTL_ACCEPT_RTADV 0)"; sec_audit_rule_end 54
+}
+
+sec_audit_remediate_firewall() {
+    # RULE55-56 firewall
     sec_audit_rule_start; sec_audit_manual "enabling ipfw without a reviewed rule set can lock out the host; load the site rule set first"; sec_audit_rule_end 55
     sec_audit_rule_start; sec_audit_manual "keep exactly one of firewall_enable, ipfilter_enable and pf_enable per site design"; sec_audit_rule_end 56
+}
 
+sec_audit_remediate_cron_at() {
+    # RULE57-60 cron and at
     sec_audit_rule_start; sec_audit_file_perms 600 root wheel /etc/crontab; sec_audit_rule_end 57
     sec_audit_rule_start; sec_audit_file_perms 700 root wheel /etc/cron.d; sec_audit_rule_end 58
-    sec_audit_rule_start; sec_audit_cron_allow /var/cron/allow /var/cron/deny; sec_audit_rule_end 59
-    sec_audit_rule_start; sec_audit_cron_allow /var/at/at.allow /var/at/at.deny; sec_audit_rule_end 60
+    sec_audit_rule_start; sec_audit_cron_allow /var/cron/allow /var/cron/deny "$(secaudit_var MODE_CRON_ALLOW 640)"; sec_audit_rule_end 59
+    sec_audit_rule_start; sec_audit_cron_allow /var/at/at.allow /var/at/at.deny "$(secaudit_var MODE_AT_ALLOW 640)"; sec_audit_rule_end 60
+}
 
-    sec_audit_rule_start; sec_audit_file_perms 600 root wheel /etc/ssh/sshd_config; sec_audit_rule_end 61
-    sec_audit_rule_start; sec_audit_ssh_host_keys 'ssh_host_*_key' 600 -; sec_audit_rule_end 62
-    sec_audit_rule_start; sec_audit_ssh_host_keys 'ssh_host_*_key.pub' 644 wheel; sec_audit_rule_end 63
+sec_audit_remediate_sshd() {
+    # RULE61-81 sshd
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_cap 600 "$(secaudit_var MODE_SSHD_CONFIG 644)")" root wheel /etc/ssh/sshd_config; sec_audit_rule_end 61
+    sec_audit_rule_start; sec_audit_ssh_host_keys 'ssh_host_*_key' "$(secaudit_var MODE_SSH_HOSTKEY 600)" -; sec_audit_rule_end 62
+    sec_audit_rule_start; sec_audit_ssh_host_keys 'ssh_host_*_key.pub' "$(secaudit_var MODE_SSH_HOSTKEY_PUB 644)" wheel; sec_audit_rule_end 63
     sec_audit_rule_start; sec_audit_manual "define AllowUsers, AllowGroups, DenyUsers or DenyGroups for the site account policy"; sec_audit_rule_end 64
     sec_audit_rule_start; sec_audit_sshd_set Banner "$FBSD15_SSH_BANNER"; sec_audit_rule_end 65
     sec_audit_rule_start; sec_audit_sshd_set Ciphers "$FBSD15_SSHD_CIPHERS"; sec_audit_rule_end 66
@@ -823,17 +970,20 @@ sec_audit_main() {
     sec_audit_rule_start; sec_audit_sshd_set HostbasedAuthentication no; sec_audit_rule_end 69
     sec_audit_rule_start; sec_audit_sshd_set IgnoreRhosts yes; sec_audit_rule_end 70
     sec_audit_rule_start; sec_audit_sshd_set KexAlgorithms "$FBSD15_SSHD_KEX"; sec_audit_rule_end 71
-    sec_audit_rule_start; sec_audit_sshd_set LoginGraceTime 60; sec_audit_rule_end 72
-    sec_audit_rule_start; sec_audit_sshd_set LogLevel INFO; sec_audit_rule_end 73
+    sec_audit_rule_start; sec_audit_sshd_set LoginGraceTime "$(secaudit_var LOGIN_GRACE_TIME 60)"; sec_audit_rule_end 72
+    sec_audit_rule_start; sec_audit_sshd_set LogLevel "$(secaudit_var_token SSH_LOG_LEVEL 'INFO,VERBOSE')"; sec_audit_rule_end 73
     sec_audit_rule_start; sec_audit_sshd_set MACs "$FBSD15_SSHD_MACS"; sec_audit_rule_end 74
-    sec_audit_rule_start; sec_audit_sshd_set MaxAuthTries 4; sec_audit_rule_end 75
-    sec_audit_rule_start; sec_audit_sshd_set MaxSessions 10; sec_audit_rule_end 76
-    sec_audit_rule_start; sec_audit_sshd_set MaxStartups 10:30:60; sec_audit_rule_end 77
+    sec_audit_rule_start; sec_audit_sshd_set MaxAuthTries "$(secaudit_var MAX_AUTH_TRIES 4)"; sec_audit_rule_end 75
+    sec_audit_rule_start; sec_audit_sshd_set MaxSessions "$(secaudit_var MAX_SESSIONS 10)"; sec_audit_rule_end 76
+    sec_audit_rule_start; sec_audit_sshd_set MaxStartups "$(secaudit_var MAX_STARTUPS 10:30:60)"; sec_audit_rule_end 77
     sec_audit_rule_start; sec_audit_sshd_set PermitEmptyPasswords no; sec_audit_rule_end 78
-    sec_audit_rule_start; sec_audit_sshd_set PermitRootLogin no; sec_audit_rule_end 79
+    sec_audit_rule_start; sec_audit_sshd_set PermitRootLogin "$(secaudit_var_token SSH_PERMIT_ROOT no)"; sec_audit_rule_end 79
     sec_audit_rule_start; sec_audit_sshd_set PermitUserEnvironment no; sec_audit_rule_end 80
     sec_audit_rule_start; sec_audit_sshd_set UsePAM yes; sec_audit_rule_end 81
+}
 
+sec_audit_remediate_sudo_su() {
+    # RULE82-88 sudo and su
     sec_audit_rule_start; sec_audit_pkg_install sudo; sec_audit_rule_end 82
     sec_audit_rule_start; sec_audit_sudoers_flag use_pty; sec_audit_rule_end 83
     sec_audit_rule_start
@@ -844,8 +994,12 @@ sec_audit_main() {
     sec_audit_rule_end 84
     sec_audit_rule_start; sec_audit_sudoers_edit 's/NOPASSWD/PASSWD/g' "NOPASSWD replaced with PASSWD"; sec_audit_rule_end 85
     sec_audit_rule_start; sec_audit_sudoers_edit 's/!authenticate/authenticate/g' "!authenticate removed"; sec_audit_rule_end 86
-    sec_audit_rule_start; sec_audit_sudoers_flag "timestamp_timeout=5"; sec_audit_rule_end 87
+    sec_audit_rule_start; sec_audit_sudoers_flag "timestamp_timeout=$(secaudit_cap 5 "$(secaudit_var SUDO_TIMESTAMP_TIMEOUT 15)")"; sec_audit_rule_end 87
     sec_audit_rule_start; sec_audit_pam_option pam_group.so 'group=wheel'; sec_audit_rule_end 88
+}
+
+sec_audit_remediate_pam_auth() {
+    # RULE89-92 PAM
     sec_audit_rule_start
     for f in /etc/pam.d/*; do
         [ -f "$f" ] || continue
@@ -853,14 +1007,17 @@ sec_audit_main() {
         sec_audit_backup "$f"
         sec_audit_sed_inplace "$f" 's/[[:space:]]+minlen=[^[:space:]]+//g'
     done
-    sec_audit_pam_setv pam_passwdqc.so min 14
+    sec_audit_pam_setv pam_passwdqc.so min "$(secaudit_var PASS_MINLEN 14)"
     sec_audit_rule_end 89
     sec_audit_rule_start; sec_audit_pam_setv pam_passwdqc.so enforce everyone; sec_audit_rule_end 90
     sec_audit_rule_start; sec_audit_pam_unix_no_nullok; sec_audit_rule_end 91
-
     sec_audit_rule_start; sec_audit_login_conf passwd_format sha512; sec_audit_rule_end 92
-    sec_audit_rule_start; sec_audit_login_conf passwordtime 365d; sec_audit_rule_end 93
-    sec_audit_rule_start; sec_audit_login_conf warnpassword 7d; sec_audit_rule_end 94
+}
+
+sec_audit_remediate_accounts() {
+    # RULE93-99 accounts
+    sec_audit_rule_start; sec_audit_login_conf passwordtime "$(secaudit_var PASS_MAX_DAYS 365)d"; sec_audit_rule_end 93
+    sec_audit_rule_start; sec_audit_login_conf warnpassword "$(secaudit_var PASS_WARN_AGE 7)d"; sec_audit_rule_end 94
     sec_audit_rule_start
     if sec_audit_have_bin pw && pw usermod root -g wheel >/dev/null 2>&1; then
         sec_audit_note "root primary group set to wheel (GID 0)"
@@ -880,12 +1037,15 @@ sec_audit_main() {
     fi
     sec_audit_rule_end 98
     sec_audit_rule_start; sec_audit_umask_secure /etc/profile /etc/login.conf /etc/profile /etc/csh.cshrc /etc/profile.d/*.sh; sec_audit_rule_end 99
+}
 
+sec_audit_remediate_logging() {
+    # RULE100-107 logging
     sec_audit_rule_start; sec_audit_sysrc syslogd_enable YES; sec_audit_rule_end 100
     sec_audit_rule_start
-    if sec_audit_have_bin sysrc && sysrc syslogd_enable=YES >/dev/null 2>&1; then
+    if sec_audit_have_bin sysrc && sec_audit_sysrc syslogd_enable YES; then
         service syslogd start >/dev/null 2>&1
-        sec_audit_note "syslogd_enable=YES, syslogd started"
+        sec_audit_note "syslogd started"
     else
         sec_audit_fail_note "could not enable syslogd"
     fi
@@ -909,8 +1069,11 @@ sec_audit_main() {
         sec_audit_skip_note "${FBSD15_NEWSYSLOG_CONF} missing; restore the base newsyslog configuration"
     fi
     sec_audit_rule_end 106
-    sec_audit_rule_start; sec_audit_file_perms 640 root wheel /var/log/messages /var/log/cron /var/log/auth.log /var/log/maillog; sec_audit_rule_end 107
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_VAR_LOG 640)" root wheel /var/log/messages /var/log/cron /var/log/auth.log /var/log/maillog; sec_audit_rule_end 107
+}
 
+sec_audit_remediate_auditd() {
+    # RULE108-128 auditd
     sec_audit_rule_start; sec_audit_sysrc auditd_enable YES; sec_audit_rule_end 108
     sec_audit_rule_start
     if [ -f "$FBSD15_AUDIT_CONTROL" ]; then
@@ -938,23 +1101,26 @@ sec_audit_main() {
     adir=$(sec_audit_audit_dir)
     [ -n "$adir" ] || adir=/var/audit
     if [ -d "$adir" ]; then
-        chmod 750 "$adir" 2>/dev/null
+        chmod "$(secaudit_var MODE_AUDIT_LOG_DIR 750)" "$adir" 2>/dev/null
         chown root:wheel "$adir" 2>/dev/null
-        sec_audit_note "${adir} mode=750 root:wheel"
+        sec_audit_note "${adir} mode=$(secaudit_var MODE_AUDIT_LOG_DIR 750) root:wheel"
     else
         sec_audit_skip_note "${adir} not present"
     fi
     sec_audit_rule_end 119
-    sec_audit_rule_start; sec_audit_audit_logs 640 root wheel; sec_audit_rule_end 120
-    sec_audit_rule_start; sec_audit_audit_logs 640 root wheel; sec_audit_rule_end 121
-    sec_audit_rule_start; sec_audit_audit_logs 640 root wheel; sec_audit_rule_end 122
+    sec_audit_rule_start; sec_audit_audit_logs "$(secaudit_var MODE_AUDIT_LOGS 640)" root wheel; sec_audit_rule_end 120
+    sec_audit_rule_start; sec_audit_audit_logs "$(secaudit_var MODE_AUDIT_LOGS 640)" root wheel; sec_audit_rule_end 121
+    sec_audit_rule_start; sec_audit_audit_logs "$(secaudit_var MODE_AUDIT_LOGS 640)" root wheel; sec_audit_rule_end 122
     sec_audit_rule_start; sec_audit_file_perms 600 root wheel /etc/security/audit_control /etc/security/audit_user; sec_audit_rule_end 123
     sec_audit_rule_start; sec_audit_file_perms 444 root wheel /etc/security/audit_event /etc/security/audit_class; sec_audit_rule_end 124
     sec_audit_rule_start; sec_audit_file_perms 444 root wheel /etc/security/audit_event /etc/security/audit_class; sec_audit_rule_end 125
     sec_audit_rule_start; sec_audit_file_perms 555 root wheel /usr/sbin/audit /usr/sbin/auditd /usr/sbin/auditreduce /usr/sbin/praudit; sec_audit_rule_end 126
     sec_audit_rule_start; sec_audit_file_perms 555 root wheel /usr/sbin/audit /usr/sbin/auditd /usr/sbin/auditreduce /usr/sbin/praudit; sec_audit_rule_end 127
     sec_audit_rule_start; sec_audit_file_perms 555 root wheel /usr/sbin/audit /usr/sbin/auditd /usr/sbin/auditreduce /usr/sbin/praudit; sec_audit_rule_end 128
+}
 
+sec_audit_remediate_aide() {
+    # RULE129-130 AIDE
     sec_audit_rule_start; sec_audit_pkg_install aide; sec_audit_rule_end 129
     sec_audit_rule_start
     if [ -d /etc/cron.d ]; then
@@ -966,15 +1132,21 @@ sec_audit_main() {
         sec_audit_skip_note "/etc/cron.d not present; schedule the AIDE check manually"
     fi
     sec_audit_rule_end 130
+}
 
-    sec_audit_rule_start; sec_audit_file_perms 644 root wheel /etc/passwd; sec_audit_rule_end 131
-    sec_audit_rule_start; sec_audit_file_perms 644 root wheel /etc/group; sec_audit_rule_end 132
-    sec_audit_rule_start; sec_audit_file_perms 600 root wheel /etc/master.passwd; sec_audit_rule_end 133
-    sec_audit_rule_start; sec_audit_file_perms 644 root wheel /etc/shells; sec_audit_rule_end 134
+sec_audit_remediate_identity_files() {
+    # RULE131-134 identity files
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_PASSWD 644)" root wheel /etc/passwd; sec_audit_rule_end 131
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_GROUP 644)" root wheel /etc/group; sec_audit_rule_end 132
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_MASTER_PASSWD 600)" root wheel /etc/master.passwd; sec_audit_rule_end 133
+    sec_audit_rule_start; sec_audit_file_perms "$(secaudit_var MODE_SHELLS 644)" root wheel /etc/shells; sec_audit_rule_end 134
+}
+
+sec_audit_remediate_filesystem_integrity() {
+    # RULE135-148 filesystem integrity
     sec_audit_rule_start; sec_audit_manual "review the world-writable inventory; bulk mode changes can break applications"; sec_audit_rule_end 135
     sec_audit_rule_start; sec_audit_manual "review unowned and ungrouped paths and reassign them explicitly"; sec_audit_rule_end 136
     sec_audit_rule_start; sec_audit_manual "review the SUID/SGID inventory against site policy"; sec_audit_rule_end 137
-
     sec_audit_rule_start
     if sec_audit_have_bin pwd_mkdb && [ -f /etc/master.passwd ]; then
         pwd_mkdb -p /etc/master.passwd >/dev/null 2>&1
@@ -1004,7 +1176,10 @@ sec_audit_main() {
     sec_audit_rule_start; sec_audit_manual "keep UID 0 for root only; decide on the optional toor account per site policy"; sec_audit_rule_end 146
     sec_audit_rule_start; sec_audit_local_homes; sec_audit_rule_end 147
     sec_audit_rule_start; sec_audit_dotfiles; sec_audit_rule_end 148
+}
 
+sec_audit_remediate_platform() {
+    # RULE149-159 FreeBSD 15 platform
     sec_audit_rule_start
     if sec_audit_pkgbase_state; then
         if sec_audit_have_bin freebsd-update; then
@@ -1091,6 +1266,32 @@ sec_audit_main() {
     sec_audit_file_perms 644 root wheel /etc/security/audit_warn
     sec_audit_file_perms 444 root wheel /etc/security/audit_event /etc/security/audit_class
     sec_audit_rule_end 159
+}
+
+sec_audit_main() {
+    sec_audit_log "starting remediation (FreeBSD 15 / sec_audit_* style)"
+
+    sec_audit_remediate_kernel_modules
+    sec_audit_remediate_filesystem_partitions
+    sec_audit_remediate_package_security
+    sec_audit_remediate_bootloader
+    sec_audit_remediate_process_hardening
+    sec_audit_remediate_banners
+    sec_audit_remediate_time_sync
+    sec_audit_remediate_unused_services
+    sec_audit_remediate_network_stack
+    sec_audit_remediate_firewall
+    sec_audit_remediate_cron_at
+    sec_audit_remediate_sshd
+    sec_audit_remediate_sudo_su
+    sec_audit_remediate_pam_auth
+    sec_audit_remediate_accounts
+    sec_audit_remediate_logging
+    sec_audit_remediate_auditd
+    sec_audit_remediate_aide
+    sec_audit_remediate_identity_files
+    sec_audit_remediate_filesystem_integrity
+    sec_audit_remediate_platform
 
     sec_audit_log "remediation complete (FreeBSD15_remediation.sh)"
     exit 0

@@ -151,6 +151,8 @@ rem_done() { sec_audit_log "REMEDIATE RULE${1}= applied: ${2}"; }
 
 sec_audit_log "starting remediation (sec_Debian_Linux_12_v1.1.0)"
 
+sec_audit_remediate_kernel_modules() {
+# RULE1-9
 # RULE1:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 1; then
 sec_audit_disable_kmod cramfs
@@ -205,6 +207,10 @@ sec_audit_disable_kmod firewire-core
 rem_done 9 "blacklisted kernel module firewire-core"
 
 fi
+}
+
+sec_audit_remediate_filesystem_partitions() {
+# RULE10-30
 # RULE10:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 10; then
 rem_skip 10 "Ensure /tmp is a separate partition"
@@ -322,6 +328,10 @@ ensure_mount_option /var/sec_audit_log/audit noexec
 rem_done 30 "set noexec on /var/sec_audit_log/audit"
 
 fi
+}
+
+sec_audit_remediate_package_security() {
+# RULE31-33
 # RULE31:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 31; then
 rem_skip 31 "Ensure GPG keys are configured"
@@ -337,6 +347,10 @@ if secaudit_rule_enabled 33; then
 rem_skip 33 "review remediation: Ensure updates, patches, and additional security software are installed"
 
 fi
+}
+
+sec_audit_remediate_apparmor() {
+# RULE34-35
 # RULE34:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 34; then
 sec_audit_pkg_install apparmor apparmor-utils
@@ -351,6 +365,10 @@ harden_file /boot/grub2/user.cfg 600 root:root
 rem_done 35 "hardened grub permissions"
 
 fi
+}
+
+sec_audit_remediate_bootloader() {
+# RULE36-37
 # RULE36:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 36; then
 rem_skip 36 "Ensure bootloader password is set"
@@ -363,6 +381,10 @@ harden_file /boot/grub2/user.cfg 600 root:root
 rem_done 37 "hardened grub permissions"
 
 fi
+}
+
+sec_audit_remediate_process_hardening() {
+# RULE38-40
 # RULE38:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 38; then
 rem_skip 38 "review remediation: Ensure address space layout randomization is enabled"
@@ -387,6 +409,10 @@ sec_audit_have_bin systemctl && systemctl daemon-reload >/dev/null 2>&1 || true
 rem_done 40 "disabled core dumps"
 
 fi
+}
+
+sec_audit_remediate_banners() {
+# RULE41-49
 # RULE41:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 41; then
 rem_skip 41 "review remediation: Ensure message of the day is configured properly"
@@ -442,6 +468,10 @@ sec_audit_have_bin dconf && dconf update >/dev/null 2>&1 || true
 rem_done 49 "configured GDM hardening"
 
 fi
+}
+
+sec_audit_remediate_gdm() {
+# RULE50-56
 # RULE50:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 50; then
 mkdir -p /etc/dconf/db/gdm.d
@@ -489,6 +519,10 @@ sec_audit_have_bin dconf && dconf update >/dev/null 2>&1 || true
 rem_done 56 "configured GDM hardening"
 
 fi
+}
+
+sec_audit_remediate_unused_services() {
+# RULE57-68
 # RULE57:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 57; then
 rem_skip 57 "review remediation: Ensure chargen services are not enabled"
@@ -550,6 +584,10 @@ sec_audit_pkg_remove nis
 rem_done 68 "removed nis"
 
 fi
+}
+
+sec_audit_remediate_client_tools() {
+# RULE69-72
 # RULE69:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 69; then
 sec_audit_pkg_remove rsh-client
@@ -574,6 +612,10 @@ sec_audit_pkg_remove ldap-utils
 rem_done 72 "removed ldap-utils"
 
 fi
+}
+
+sec_audit_remediate_chrony() {
+# RULE73-74
 # RULE73:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 73; then
 sec_audit_pkg_install chrony
@@ -590,11 +632,19 @@ sec_audit_start_svc chronyd
 rem_done 74 "configured chrony"
 
 fi
+}
+
+sec_audit_remediate_unused_services_2() {
+# RULE75-75
 # RULE75:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 75; then
 rem_skip 75 "review remediation: Ensure X Window System is not installed"
 
 fi
+}
+
+sec_audit_remediate_network_stack() {
+# RULE76-87
 # RULE76:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 76; then
 rem_skip 76 "review remediation: Ensure packet redirect sending is disabled"
@@ -656,11 +706,19 @@ if secaudit_rule_enabled 87; then
 rem_skip 87 "Ensure IPv6 redirects are not accepted"
 
 fi
+}
+
+sec_audit_remediate_unused_services_3() {
+# RULE88-88
 # RULE88:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 88; then
 rem_skip 88 "review remediation: Ensure auditing is enabled"
 
 fi
+}
+
+sec_audit_remediate_auditd() {
+# RULE89-89
 # RULE89:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 89; then
 sec_audit_pkg_install auditd audispd-plugins
@@ -668,6 +726,10 @@ sec_audit_start_svc auditd
 rem_done 89 "auditd running"
 
 fi
+}
+
+sec_audit_remediate_bootloader_2() {
+# RULE90-91
 # RULE90:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 90; then
 sec_audit_pkg_install auditd audispd-plugins
@@ -680,6 +742,10 @@ if secaudit_rule_enabled 91; then
 rem_skip 91 "review remediation: Ensure audit_backlog_limit is sufficient"
 
 fi
+}
+
+sec_audit_remediate_auditd_2() {
+# RULE92-96
 # RULE92:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 92; then
 sec_audit_pkg_install audit auditd 2>/dev/null || true
@@ -718,6 +784,10 @@ if secaudit_rule_enabled 96; then
 rem_skip 96 "review remediation: Ensure audit configuration is immutable"
 
 fi
+}
+
+sec_audit_remediate_logging() {
+# RULE97-102
 # RULE97:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 97; then
 sec_audit_pkg_install rsyslog
@@ -768,6 +838,10 @@ if secaudit_rule_enabled 102; then
 rem_skip 102 "Ensure logrotate is configured"
 
 fi
+}
+
+sec_audit_remediate_cron_at() {
+# RULE103-111
 # RULE103:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 103; then
 sec_audit_pkg_install cron
@@ -817,6 +891,10 @@ if secaudit_rule_enabled 111; then
 rem_skip 111 "review remediation: Ensure password creation requirements are configured"
 
 fi
+}
+
+sec_audit_remediate_pam_auth() {
+# RULE112-113
 # RULE112:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 112; then
 pam_faillock_debian >/dev/null 2>&1 || true
@@ -829,11 +907,19 @@ set_login_defs_kv ENCRYPT_METHOD SHA512
 rem_done 113 "ENCRYPT_METHOD SHA512"
 
 fi
+}
+
+sec_audit_remediate_sshd() {
+# RULE114-114
 # RULE114:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 114; then
 rem_skip 114 "review remediation: Ensure root login is restricted to system console"
 
 fi
+}
+
+sec_audit_remediate_sudo_su() {
+# RULE115-118
 # RULE115:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 115; then
 rem_skip 115 "review remediation: Ensure su command access is restricted"
@@ -855,6 +941,10 @@ if secaudit_rule_enabled 118; then
 rem_skip 118 "review remediation: Ensure sudo sec_audit_log file exists"
 
 fi
+}
+
+sec_audit_remediate_identity_files() {
+# RULE119-120
 # RULE119:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 119; then
 rem_skip 119 "review remediation: Ensure users must provide password for escalation"
@@ -865,6 +955,10 @@ if secaudit_rule_enabled 120; then
 rem_skip 120 "review remediation: Ensure re-authentication for privilege escalation is configured"
 
 fi
+}
+
+sec_audit_remediate_sudo_su_2() {
+# RULE121-126
 # RULE121:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 121; then
 rem_skip 121 "review remediation: Ensure sudo authentication uses strong hashing"
@@ -895,6 +989,10 @@ if secaudit_rule_enabled 126; then
 rem_skip 126 "review remediation: Ensure password reuse is limited"
 
 fi
+}
+
+sec_audit_remediate_identity_files_2() {
+# RULE127-128
 # RULE127:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 127; then
 rem_skip 127 "review remediation: Ensure all users have a password"
@@ -905,6 +1003,10 @@ if secaudit_rule_enabled 128; then
 rem_skip 128 "Ensure system accounts are secured"
 
 fi
+}
+
+sec_audit_remediate_accounts() {
+# RULE129-131
 # RULE129:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 129; then
 rem_skip 129 "Ensure default group for root account is GID 0"
@@ -929,11 +1031,19 @@ EOF
 rem_done 131 "TMOUT=600"
 
 fi
+}
+
+sec_audit_remediate_sshd_2() {
+# RULE132-132
 # RULE132:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 132; then
 rem_skip 132 "Ensure root account is secured"
 
 fi
+}
+
+sec_audit_remediate_identity_files_3() {
+# RULE133-135
 # RULE133:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 133; then
 rem_skip 133 "Ensure all accounts have unique UID"
@@ -944,6 +1054,10 @@ if secaudit_rule_enabled 135; then
 rem_skip 135 "review remediation: Ensure all users' home directories exist"
 
 fi
+}
+
+sec_audit_remediate_filesystem_integrity() {
+# RULE136-139
 # RULE136:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 136; then
 rem_skip 136 "review remediation: Ensure users own their home directories"
@@ -964,6 +1078,10 @@ if secaudit_rule_enabled 139; then
 rem_skip 139 "review remediation: Ensure users' .forward files are not present"
 
 fi
+}
+
+sec_audit_remediate_sshd_3() {
+# RULE140-152
 # RULE140:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 140; then
 rem_skip 140 "review remediation: Ensure users' .rhosts files are not present"
@@ -1037,6 +1155,10 @@ set_sshd_kv MaxStartups 10:30:60
 rem_done 152 "sshd MaxStartups"
 
 fi
+}
+
+sec_audit_remediate_aide() {
+# RULE153-154
 # RULE153:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 153; then
 set_sshd_kv MaxSessions 10
@@ -1049,6 +1171,10 @@ sec_audit_pkg_install aide
 rem_done 154 "installed AIDE"
 
 fi
+}
+
+sec_audit_remediate_identity_files_4() {
+# RULE155-168
 # RULE155:  # SECAUDIT_RULE_WRAP
 if secaudit_rule_enabled 155; then
 harden_file /etc/passwd 644 root:root
@@ -1123,10 +1249,352 @@ fi
 if secaudit_rule_enabled 168; then
 rem_skip 168 "Ensure no duplicate group names exist"
 
+fi
+
 DEBIAN_FRONTEND=noninteractive apt-get update >/dev/null 2>&1 || true
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1 || true
 
 sec_audit_log " remediation complete (Debian12_remediation.sh)"
-exit 0
+}
 
+sec_audit_main() {
+    sec_audit_remediate_kernel_modules
+    sec_audit_remediate_filesystem_partitions
+    sec_audit_remediate_package_security
+    sec_audit_remediate_apparmor
+    sec_audit_remediate_bootloader
+    sec_audit_remediate_process_hardening
+    sec_audit_remediate_banners
+    sec_audit_remediate_gdm
+    sec_audit_remediate_unused_services
+    sec_audit_remediate_client_tools
+    sec_audit_remediate_chrony
+    sec_audit_remediate_unused_services_2
+    sec_audit_remediate_network_stack
+    sec_audit_remediate_unused_services_3
+    sec_audit_remediate_auditd
+    sec_audit_remediate_bootloader_2
+    sec_audit_remediate_auditd_2
+    sec_audit_remediate_logging
+    sec_audit_remediate_cron_at
+    sec_audit_remediate_pam_auth
+    sec_audit_remediate_sshd
+    sec_audit_remediate_sudo_su
+    sec_audit_remediate_identity_files
+    sec_audit_remediate_sudo_su_2
+    sec_audit_remediate_identity_files_2
+    sec_audit_remediate_accounts
+    sec_audit_remediate_sshd_2
+    sec_audit_remediate_identity_files_3
+    sec_audit_remediate_filesystem_integrity
+    sec_audit_remediate_sshd_3
+    sec_audit_remediate_aide
+    sec_audit_remediate_identity_files_4
+    exit 0
+}
+
+# secaudit-restore-journal: paired with Debian12_remediation.sh
+SECAUDIT_JOURNAL="${SECAUDIT_JOURNAL:-/var/backups/secaudit-debian12.journal}"
+SECAUDIT_PKG="${SECAUDIT_PKG:-apt}"
+
+sec_audit_journal_once() {
+	local kind="$1" id="$2"
+	shift 2
+	mkdir -p "$(dirname "$SECAUDIT_JOURNAL")" 2>/dev/null || return 0
+	touch "$SECAUDIT_JOURNAL" 2>/dev/null || return 0
+	grep -q "^${kind} ${id} " "$SECAUDIT_JOURNAL" 2>/dev/null && return 0
+	grep -qxF "${kind} ${id}" "$SECAUDIT_JOURNAL" 2>/dev/null && return 0
+	if [ $# -eq 0 ]; then
+		printf '%s %s\n' "$kind" "$id" >>"$SECAUDIT_JOURNAL"
+	else
+		printf '%s %s %s\n' "$kind" "$id" "$*" >>"$SECAUDIT_JOURNAL"
+	fi
+}
+
+sec_audit_guard_file() {
+	local f="$1"
+	[ -n "$f" ] || return 0
+	case "$f" in *.secaudit.bak) return 0 ;; esac
+	if [ -e "$f" ]; then
+		[ -e "${f}.secaudit.bak" ] && return 0
+		cp -p "$f" "${f}.secaudit.bak" 2>/dev/null || true
+	else
+		sec_audit_journal_once created "$f"
+	fi
+}
+
+sec_audit_pkg_table() {
+	case "$SECAUDIT_PKG" in
+		apt) dpkg-query -W -f='${Package} ${Version}\n' 2>/dev/null | sort -u ;;
+		zypper|dnf|yum) rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 2>/dev/null | sort -u ;;
+	esac
+}
+
+sec_audit_journal_pkg_diff() {
+	local kind="$1" before="$2" after="$3" name ver
+	comm -13 "$before" "$after" | while read -r name ver; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once "$kind" "$name" "$ver"
+	done
+}
+
+sec_audit_remember_unit() {
+	local u="$1" state
+	command -v systemctl >/dev/null 2>&1 || return 0
+	[ -n "$u" ] || return 0
+	state=$(systemctl is-enabled "$u" 2>/dev/null || true)
+	case "$state" in
+		enabled|enabled-runtime) state=enabled ;;
+		disabled|masked|static|indirect|absent) ;;
+		*) state=absent ;;
+	esac
+	sec_audit_journal_once unit "$u" "$state"
+}
+
+sec_audit_remember_mount() {
+	local mp="$1" opts
+	[ -n "$mp" ] || return 0
+	mountpoint -q "$mp" 2>/dev/null || return 0
+	opts=$(findmnt -kn -T "$mp" -o OPTIONS -n 2>/dev/null | head -n1)
+	[ -n "$opts" ] && sec_audit_journal_once mount "$mp" "$opts"
+}
+
+sec_audit_rename_fn() {
+	local src="$1" dst="${1}_raw" body
+	declare -f "$src" >/dev/null 2>&1 || return 1
+	declare -f "$dst" >/dev/null 2>&1 && return 0
+	body=$(declare -f "$src") || return 1
+	eval "${body/#"$src"/"$dst"}"
+}
+
+sed() {
+	local arg
+	for arg in "$@"; do
+		case "$arg" in
+			/etc/*|/boot/*|/usr/*|/var/*) sec_audit_guard_file "$arg" ;;
+		esac
+	done
+	command sed "$@"
+}
+
+chmod() {
+	local path="${!#}" mode owner
+	if [ -n "${path:-}" ] && [ -e "$path" ]; then
+		mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+		owner=$(stat -c '%U:%G' "$path" 2>/dev/null || true)
+		[ -n "$mode" ] && sec_audit_journal_once mode "$path" "$mode ${owner:-root:root}"
+	fi
+	command chmod "$@"
+}
+
+chown() {
+	local path="${!#}" mode owner
+	if [ -n "${path:-}" ] && [ -e "$path" ]; then
+		mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+		owner=$(stat -c '%U:%G' "$path" 2>/dev/null || true)
+		[ -n "$mode" ] && sec_audit_journal_once mode "$path" "$mode ${owner:-root:root}"
+	fi
+	command chown "$@"
+}
+
+
+if sec_audit_rename_fn sec_audit_pkg_install; then
+sec_audit_pkg_install() {
+	local before after
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_pkg_table >"$before"
+	sec_audit_pkg_install_raw "$@"
+	sec_audit_pkg_table >"$after"
+	sec_audit_journal_pkg_diff pkg_add "$before" "$after"
+	rm -f "$before" "$after"
+}
 fi
+
+
+if sec_audit_rename_fn sec_audit_pkg_remove; then
+sec_audit_pkg_remove() {
+	local before after
+	before=$(mktemp)
+	after=$(mktemp)
+	sec_audit_pkg_table >"$before"
+	sec_audit_pkg_remove_raw "$@"
+	sec_audit_pkg_table >"$after"
+	sec_audit_journal_pkg_diff pkg_del "$before" "$after"
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_start_svc; then
+sec_audit_start_svc() {
+	local u
+	for u in "$@"; do
+		sec_audit_remember_unit "$u"
+	done
+	sec_audit_start_svc_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_disable_svc; then
+sec_audit_disable_svc() {
+	local u
+	for u in "$@"; do
+		sec_audit_remember_unit "$u"
+	done
+	sec_audit_disable_svc_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_disable_kmod; then
+sec_audit_disable_kmod() {
+	local mod="$1" before after name
+	if awk '{print $1}' /proc/modules 2>/dev/null | grep -qx "$mod"; then
+		sec_audit_journal_once kmod "$mod"
+	fi
+	before=$(mktemp)
+	after=$(mktemp)
+	find /etc/modprobe.d -type f -printf '%f\n' 2>/dev/null | sort >"$before"
+	sec_audit_disable_kmod_raw "$@"
+	find /etc/modprobe.d -type f -printf '%f\n' 2>/dev/null | sort >"$after"
+	comm -13 "$before" "$after" | while read -r name; do
+		[ -n "${name:-}" ] || continue
+		sec_audit_journal_once created "/etc/modprobe.d/$name"
+	done
+	rm -f "$before" "$after"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_ensure_fstab_mount; then
+sec_audit_ensure_fstab_mount() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	sec_audit_ensure_fstab_mount_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn ensure_mount_option; then
+ensure_mount_option() {
+		sec_audit_guard_file /etc/fstab
+	sec_audit_remember_mount "$1"
+	ensure_mount_option_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn set_sysctl; then
+set_sysctl() {
+	local key="$1" old
+		sec_audit_guard_file /etc/sysctl.d/99-debian12-cre-sec.conf
+	sec_audit_guard_file /etc/sysctl.d
+	old=$(sysctl -n "$key" 2>/dev/null || true)
+	[ -n "$old" ] && sec_audit_journal_once sysctl "$key" "$old"
+	set_sysctl_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn set_sshd_kv; then
+set_sshd_kv() {
+		sec_audit_guard_file /etc/ssh/sshd_config
+	set_sshd_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn set_login_defs_kv; then
+set_login_defs_kv() {
+		sec_audit_guard_file /etc/login.defs
+	set_login_defs_kv_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn pam_faillock_debian; then
+pam_faillock_debian() {
+		sec_audit_guard_file /etc/pam.d/common-auth
+	sec_audit_guard_file /etc/security
+	sec_audit_guard_file /etc/security/faillock.conf
+	pam_faillock_debian_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_process_hardening; then
+sec_audit_remediate_process_hardening() {
+		sec_audit_guard_file /etc/security/limits.conf
+	sec_audit_guard_file /etc/systemd/coredump.conf.d
+	sec_audit_guard_file /etc/systemd/coredump.conf.d/99-cre-sec.conf
+	sec_audit_remediate_process_hardening_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_chrony; then
+sec_audit_remediate_chrony() {
+		sec_audit_guard_file /etc/chrony.conf
+	sec_audit_remediate_chrony_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_auditd_2; then
+sec_audit_remediate_auditd_2() {
+		sec_audit_guard_file /etc/audit/rules.d
+	sec_audit_guard_file /etc/audit/rules.d/99-debian12-cre.rules
+	sec_audit_guard_file /etc/sudoers
+	sec_audit_guard_file /etc/passwd
+	sec_audit_guard_file /etc/shadow
+	sec_audit_guard_file /var/sec_audit_log/audit
+	sec_audit_remediate_auditd_2_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_logging; then
+sec_audit_remediate_logging() {
+		sec_audit_guard_file /etc/systemd/journald.conf.d
+	sec_audit_guard_file /etc/systemd/journald.conf.d/99-debian12-cre.conf
+	sec_audit_remediate_logging_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_cron_at; then
+sec_audit_remediate_cron_at() {
+		sec_audit_guard_file /etc/crontab
+	sec_audit_guard_file /etc/cron.hourly
+	sec_audit_guard_file /etc/cron.daily
+	sec_audit_guard_file /etc/cron.weekly
+	sec_audit_guard_file /etc/cron.monthly
+	sec_audit_guard_file /etc/cron.d
+	sec_audit_remediate_cron_at_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_accounts; then
+sec_audit_remediate_accounts() {
+		sec_audit_guard_file /etc/profile.d/99-cre-umask.sh
+	sec_audit_guard_file /etc/profile.d/99-cre-timeout.sh
+	sec_audit_remediate_accounts_raw "$@"
+}
+fi
+
+
+if sec_audit_rename_fn sec_audit_remediate_identity_files_4; then
+sec_audit_remediate_identity_files_4() {
+		sec_audit_guard_file /etc/passwd
+	sec_audit_guard_file /etc/shadow
+	sec_audit_guard_file /etc/group
+	sec_audit_guard_file /etc/gshadow
+	sec_audit_remediate_identity_files_4_raw "$@"
+}
+fi
+
+sec_audit_main "$@"
+

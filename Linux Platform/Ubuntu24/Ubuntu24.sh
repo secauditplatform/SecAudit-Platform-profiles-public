@@ -22,6 +22,33 @@ secaudit_rule_enabled() {
     return 1
 }
 
+# Package default when SECAUDIT_VAR_<NAME> is unset. Name is [A-Z][A-Z0-9_]*
+secaudit_var() {
+    local name="$1" fallback="$2" key value
+    key="SECAUDIT_VAR_${name}"
+    value="${!key-}"
+    if [ -n "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$fallback"
+    fi
+}
+sec_audit_mode_policy() {
+    local path="$1" max="$2" legacy="$3" kind="$4" legacy_re="$5" got
+    got=$(stat -Lc '%a' "$path" 2>/dev/null) || return 1
+    if [ "$max" = "$legacy" ]; then
+        printf '%s\n' "$got" | grep -qE -- "$legacy_re"
+        return $?
+    fi
+    [[ "$got" =~ ^[0-7]+$ && "$max" =~ ^[0-7]+$ ]] || return 1
+    if [ "$kind" = "exact" ]; then
+        (( 8#$got == 8#$max ))
+    else
+        (( (8#$got & ~8#$max) == 0 ))
+    fi
+}
+
+
 export LC_ALL=C
 
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -1211,17 +1238,17 @@ sec_audit__modprobe_blocked() {
 sec_audit_req_kernel_module_not_available() {
   local num="$1" mod="$2" ko_glob="${3:-${mod}.ko*}" lsmod_pat="${4:-${mod//-/_}}"
   if sec_audit_kernel_mod_in_modules_load "$mod" "${mod//-/_}"; then
-    echo "RULE${num}= FAIL: ${mod} kernel module is listed in modules-load.d (auto-load at boot)"
+    sec_audit_report_fail "$num" "${mod} kernel module is listed in modules-load.d (auto-load at boot)"
     return
   fi
   if ! sec_audit_soft_find --timeout=20 /usr/lib/modules/ /lib/modules/ -xdev -ignore_readdir_race -type f -name "$ko_glob" 2>/dev/null | grep -q .; then
-    echo "RULE${num}= PASS: ${mod} kernel module is not available (no module object in kernel tree)"
+    sec_audit_report_pass "$num" "${mod} kernel module is not available (no module object in kernel tree)"
     return
   fi
   if ! lsmod | grep -q "$lsmod_pat" && sec_audit__modprobe_blocked "$mod"; then
-    echo "RULE${num}= PASS: ${mod} kernel module is disabled and not loaded"
+    sec_audit_report_pass "$num" "${mod} kernel module is disabled and not loaded"
   else
-    echo "RULE${num}= FAIL: ${mod} kernel module is available, loaded, or not effectively blocked (modprobe blacklist/install)"
+    sec_audit_report_fail "$num" "${mod} kernel module is available, loaded, or not effectively blocked (modprobe blacklist/install)"
   fi
 }
 
@@ -1279,9 +1306,9 @@ sec_audit_sysctl_runtime_and_persistent_equals() {
 sec_audit__req_sysctl_dual_check() {
   local num="$1" k1="$2" w1="$3" k2="$4" w2="$5"
   if sec_audit_sysctl_runtime_and_persistent_equals "$k1" "$w1" && sec_audit_sysctl_runtime_and_persistent_equals "$k2" "$w2"; then
-    echo "RULE${num}= PASS: ${k1}=${w1} and ${k2}=${w2} in kernel and persistent config"
+    sec_audit_report_pass "$num" "${k1}=${w1} and ${k2}=${w2} in kernel and persistent config"
   else
-    echo "RULE${num}= FAIL: ${k1} and/or ${k2} not set to expected values in kernel and persistent config$(sec_audit_sysctl_runtime_disk_hint "$k1" "$w1")$(sec_audit_sysctl_runtime_disk_hint "$k2" "$w2")"
+    sec_audit_report_fail "$num" "${k1} and/or ${k2} not set to expected values in kernel and persistent config$(sec_audit_sysctl_runtime_disk_hint "$k1" "$w1")$(sec_audit_sysctl_runtime_disk_hint "$k2" "$w2")"
   fi
 }
 
@@ -1654,7 +1681,7 @@ sec_audit_run_bootloader() {
       sec_audit_report_fail 39 "bootloader superuser or hashed password configuration is missing"
     fi
 
-    if stat -Lc '%a %U %G' /boot/grub/grub.cfg 2>/dev/null | grep -qE '^600 root root$'; then
+    if _o=$(stat -Lc '%U %G' /boot/grub/grub.cfg 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /boot/grub/grub.cfg "$(secaudit_var MODE_GRUB_CFG 600)" 600 exact '^600$'; then
       sec_audit_report_pass 40 "grub.cfg permissions are 600 and owner/group are root"
     else
       sec_audit_report_fail 40 "grub.cfg permissions or ownership are incorrect"
@@ -1713,19 +1740,19 @@ sec_audit_run_banners() {
       sec_audit_report_fail 47 "/etc/issue.net contains OS version or hostname information"
     fi
 
-    if stat -Lc '%a %U %G' /etc/motd 2>/dev/null | grep -qE '^6[04][04] root root$|^[0-5][0-4][04] root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/motd 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$|^[0-5][0-4][04] root root$' && sec_audit_mode_policy /etc/motd "$(secaudit_var MODE_MOTD 644)" 644 within '^6[04][04]$'; then
       sec_audit_report_pass 48 "/etc/motd permissions are correctly set root-owned"
     else
       sec_audit_report_fail 48 "/etc/motd permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/issue 2>/dev/null | grep -qE '^6[04][04] root root$|^[0-5][0-4][04] root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/issue 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$|^[0-5][0-4][04] root root$' && sec_audit_mode_policy /etc/issue "$(secaudit_var MODE_ISSUE 644)" 644 within '^6[04][04]$'; then
       sec_audit_report_pass 49 "/etc/issue permissions are correctly set root-owned"
     else
       sec_audit_report_fail 49 "/etc/issue permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/issue.net 2>/dev/null | grep -qE '^6[04][04] root root$|^[0-5][0-4][04] root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/issue.net 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$|^[0-5][0-4][04] root root$' && sec_audit_mode_policy /etc/issue.net "$(secaudit_var MODE_ISSUE_NET 644)" 644 within '^6[04][04]$'; then
       sec_audit_report_pass 50 "/etc/issue.net permissions are correctly set root-owned"
     else
       sec_audit_report_fail 50 "/etc/issue.net permissions or ownership are incorrect"
@@ -2011,49 +2038,49 @@ sec_audit_run_cron_at() {
       sec_audit_report_fail 93 "cron daemon is not enabled or not running"
     fi
 
-    if stat -Lc '%a %U %G' /etc/crontab 2>/dev/null | grep -qE '^[0-6]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/crontab 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/crontab "$(secaudit_var MODE_CRONTAB 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 94 "/etc/crontab is owned by root with permissions 600"
     else
       sec_audit_report_fail 94 "/etc/crontab permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/cron.hourly 2>/dev/null | grep -qE '^[0-7]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/cron.hourly 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/cron.hourly "$(secaudit_var MODE_CRON_HOURLY 700)" 700 within '^[0-7]00$'; then
       sec_audit_report_pass 95 "/etc/cron.hourly is owned by root with permissions 700"
     else
       sec_audit_report_fail 95 "/etc/cron.hourly permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/cron.daily 2>/dev/null | grep -qE '^[0-7]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/cron.daily 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/cron.daily "$(secaudit_var MODE_CRON_DAILY 700)" 700 within '^[0-7]00$'; then
       sec_audit_report_pass 96 "/etc/cron.daily is owned by root with permissions 700"
     else
       sec_audit_report_fail 96 "/etc/cron.daily permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/cron.weekly 2>/dev/null | grep -qE '^[0-7]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/cron.weekly 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/cron.weekly "$(secaudit_var MODE_CRON_WEEKLY 700)" 700 within '^[0-7]00$'; then
       sec_audit_report_pass 97 "/etc/cron.weekly is owned by root with permissions 700"
     else
       sec_audit_report_fail 97 "/etc/cron.weekly permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/cron.monthly 2>/dev/null | grep -qE '^[0-7]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/cron.monthly 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/cron.monthly "$(secaudit_var MODE_CRON_MONTHLY 700)" 700 within '^[0-7]00$'; then
       sec_audit_report_pass 98 "/etc/cron.monthly is owned by root with permissions 700"
     else
       sec_audit_report_fail 98 "/etc/cron.monthly permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/cron.d 2>/dev/null | grep -qE '^[0-7]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/cron.d 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/cron.d "$(secaudit_var MODE_AUDIT_LOG_DIR 700)" 700 within '^[0-7]00$'; then
       sec_audit_report_pass 99 "/etc/cron.d is owned by root with permissions 700"
     else
       sec_audit_report_fail 99 "/etc/cron.d permissions or ownership are incorrect"
     fi
 
-    if [ ! -f /etc/cron.deny ] && [ -f /etc/cron.allow ] && stat -Lc '%a %U %G' /etc/cron.allow 2>/dev/null | grep -qE '^[0-6][04][04] root root$'; then
+    if [ ! -f /etc/cron.deny ] && [ -f /etc/cron.allow ] && _o=$(stat -Lc '%U %G' /etc/cron.allow 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/cron.allow "$(secaudit_var MODE_CRON_ALLOW 644)" 644 within '^[0-6][04][04]$'; then
       sec_audit_report_pass 100 "crontab access is restricted via /etc/cron.allow"
     else
       sec_audit_report_fail 100 "crontab access is not restricted cron.deny present or cron.allow missing"
     fi
 
-    if [ ! -f /etc/at.deny ] && [ -f /etc/at.allow ] && stat -Lc '%a %U %G' /etc/at.allow 2>/dev/null | grep -qE '^[0-6][04][04] root root$'; then
+    if [ ! -f /etc/at.deny ] && [ -f /etc/at.allow ] && _o=$(stat -Lc '%U %G' /etc/at.allow 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/at.allow "$(secaudit_var MODE_AT_ALLOW 644)" 644 within '^[0-6][04][04]$'; then
       sec_audit_report_pass 101 "at access is restricted via /etc/at.allow"
     else
       sec_audit_report_fail 101 "at access is not restricted at.deny present or at.allow missing"
@@ -2317,7 +2344,7 @@ sec_audit_run_firewall() {
 
 sec_audit_run_sshd() {
     # RULE143-164
-    if stat -Lc '%a %U %G' /etc/ssh/sshd_config 2>/dev/null | grep -qE '^[0-6]00 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/ssh/sshd_config 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/ssh/sshd_config "$(secaudit_var MODE_SSHD_CONFIG 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 143 "sshd_config is owned by root with permissions 600"
     else
       sec_audit_report_fail 143 "sshd_config permissions or ownership are incorrect"
@@ -2354,10 +2381,10 @@ sec_audit_run_sshd() {
       sec_audit_report_fail 148 "SSH ciphers are weak or directive is not explicitly configured"
     fi
 
-    if sec_audit_sshd_effective_dump | awk '
+    if sec_audit_sshd_effective_dump | awk -v interval="$(secaudit_var CLIENT_ALIVE_INTERVAL 900)" -v count="$(secaudit_var CLIENT_ALIVE_COUNT_MAX 3)" '
       /^clientaliveinterval / {i=$2}
       /^clientalivecountmax / {c=$2}
-      END {exit !(i+0>0 && i+0<=900 && c+0>0 && c+0<=3)}
+      END {exit !(i+0>0 && i+0<=interval+0 && c+0>0 && c+0<=count+0)}
     '; then
       sec_audit_report_pass 149 "SSH ClientAliveInterval and ClientAliveCountMax are configured"
     else
@@ -2395,7 +2422,7 @@ sec_audit_run_sshd() {
       sec_audit_report_fail 154 "SSH KexAlgorithms include weak algorithms or directive is not explicitly configured"
     fi
 
-    if sec_audit_sshd_effective_dump | grep -i '^logingracetime' | awk '{if($2+0>0 && $2+0<=60) exit 0; exit 1}'; then
+    if sec_audit_sshd_effective_dump | grep -i '^logingracetime' | awk -v sa_limit="$(secaudit_var LOGIN_GRACE_TIME 60)" '{if($2+0>0 && $2+0<= sa_limit+0) exit 0; exit 1}'; then
       sec_audit_report_pass 155 "SSH LoginGraceTime is set to 60 seconds or less"
     else
       sec_audit_report_fail 155 "SSH LoginGraceTime is not configured or too long"
@@ -2414,13 +2441,13 @@ sec_audit_run_sshd() {
       sec_audit_report_fail 157 "SSH MACs include weak algorithms or directive is not explicitly configured"
     fi
 
-    if sec_audit_sshd_effective_dump | grep -i '^maxauthtries' | awk '{if($2+0>0 && $2+0<=4) exit 0; exit 1}'; then
+    if sec_audit_sshd_effective_dump | grep -i '^maxauthtries' | awk -v sa_limit="$(secaudit_var MAX_AUTH_TRIES 4)" '{if($2+0>0 && $2+0<= sa_limit+0) exit 0; exit 1}'; then
       sec_audit_report_pass 158 "SSH MaxAuthTries is set to 4 or less"
     else
       sec_audit_report_fail 158 "SSH MaxAuthTries is not configured or set too high"
     fi
 
-    if sec_audit_sshd_effective_dump | grep -i '^maxsessions' | awk '{print $2}' | awk '{if($1<=10) exit 0; else exit 1}'; then
+    if sec_audit_sshd_effective_dump | grep -i '^maxsessions' | awk -v sa_limit="$(secaudit_var MAX_SESSIONS 10)" '{print $2}' | awk '{if($1<= sa_limit+0) exit 0; else exit 1}'; then
       sec_audit_report_pass 159 "SSH MaxSessions is set to 10 or less"
     else
       sec_audit_report_fail 159 "SSH MaxSessions is not configured or set too high"
@@ -2574,7 +2601,7 @@ sec_audit_run_pam_auth() {
       sec_audit_report_fail 181 "pwquality difok is not configured or set too low"
     fi
 
-    if grep -qE '^minlen\s*=' /etc/security/pwquality.conf 2>/dev/null && awk -F= '/^minlen/{gsub(/ /,"",$2); if($2+0>=14) exit 0; exit 1}' /etc/security/pwquality.conf; then
+    if grep -qE '^minlen\s*=' /etc/security/pwquality.conf 2>/dev/null && awk -F= -v limit="$(secaudit_var PASS_MINLEN 14)" '/^minlen/{gsub(/ /,"",$2); if($2+0>=limit+0) exit 0; exit 1}' /etc/security/pwquality.conf; then
       sec_audit_report_pass 182 "pwquality minimum password length is set to 14 or more"
     else
       sec_audit_report_fail 182 "pwquality minimum password length is not set or too short"
@@ -2656,13 +2683,13 @@ sec_audit_run_accounts() {
       sec_audit_report_fail 194 "pam_unix is missing use_authtok"
     fi
 
-    if awk '($1=="PASS_MAX_DAYS"){if($2+0<=365 && $2+0>0) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
+    if awk -v limit="$(secaudit_var PASS_MAX_DAYS 365)" '($1=="PASS_MAX_DAYS"){if($2+0<=limit+0 && $2+0>0) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
       sec_audit_report_pass 195 "PASS_MAX_DAYS is set to 365 or less in /etc/login.defs"
     else
       sec_audit_report_fail 195 "PASS_MAX_DAYS is not configured or exceeds 365 days"
     fi
 
-    if awk '($1=="PASS_WARN_AGE"){if($2+0>=7) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
+    if awk -v limit="$(secaudit_var PASS_WARN_AGE 7)" '($1=="PASS_WARN_AGE"){if($2+0>=limit+0) exit 0; exit 1}' /etc/login.defs 2>/dev/null; then
       sec_audit_report_pass 196 "PASS_WARN_AGE is set to 7 or more days in /etc/login.defs"
     else
       sec_audit_report_fail 196 "PASS_WARN_AGE is not configured or set below 7 days"
@@ -2674,7 +2701,7 @@ sec_audit_run_accounts() {
       sec_audit_report_fail 197 "ENCRYPT_METHOD is not set to a strong algorithm"
     fi
 
-    if useradd -D 2>/dev/null | grep -qE '^INACTIVE=[0-9]' && useradd -D 2>/dev/null | awk -F= '/INACTIVE/{if($2+0>0 && $2+0<=30) exit 0; exit 1}'; then
+    if useradd -D 2>/dev/null | grep -qE '^INACTIVE=[0-9]' && useradd -D 2>/dev/null | awk -F= -v limit="$(secaudit_var INACTIVE_DAYS 30)" '/INACTIVE/{if($2+0>0 && $2+0<=limit+0) exit 0; exit 1}'; then
       sec_audit_report_pass 198 "INACTIVE password lock period is configured 1-30 days"
     else
       sec_audit_report_fail 198 "INACTIVE password lock period is not configured or out of range"
@@ -3059,61 +3086,61 @@ sec_audit_run_aide() {
 
 sec_audit_run_identity_files() {
     # RULE258-267
-    if stat -Lc '%a %U %G' /etc/passwd 2>/dev/null | grep -qE '^644 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/passwd 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/passwd "$(secaudit_var MODE_PASSWD 644)" 644 exact '^644$'; then
       sec_audit_report_pass 258 "/etc/passwd has permissions 644 and is owned by root"
     else
       sec_audit_report_fail 258 "/etc/passwd permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/passwd- 2>/dev/null | grep -qE '^[0-6][04][04] root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/passwd- 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/passwd- "$(secaudit_var MODE_PASSWD_DASH 644)" 644 within '^[0-6][04][04]$'; then
       sec_audit_report_pass 259 "/etc/passwd- has permissions 644 or stricter and is owned by root"
     else
       sec_audit_report_fail 259 "/etc/passwd- permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/group 2>/dev/null | grep -qE '^644 root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/group 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/group "$(secaudit_var MODE_GROUP 644)" 644 exact '^644$'; then
       sec_audit_report_pass 260 "/etc/group has permissions 644 and is owned by root"
     else
       sec_audit_report_fail 260 "/etc/group permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/group- 2>/dev/null | grep -qE '^[0-6][04][04] root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/group- 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/group- "$(secaudit_var MODE_GROUP_DASH 644)" 644 within '^[0-6][04][04]$'; then
       sec_audit_report_pass 261 "/etc/group- has permissions 644 or stricter and is owned by root"
     else
       sec_audit_report_fail 261 "/etc/group- permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/shadow 2>/dev/null | grep -qE '^[0-6]00 root (root|shadow)$'; then
+    if _o=$(stat -Lc '%U %G' /etc/shadow 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root (root|shadow)$' && sec_audit_mode_policy /etc/shadow "$(secaudit_var MODE_SHADOW 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 262 "/etc/shadow has permissions 000 or 640 and is owned by root"
     else
       sec_audit_report_fail 262 "/etc/shadow permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/shadow- 2>/dev/null | grep -qE '^[0-6]00 root (root|shadow)$'; then
+    if _o=$(stat -Lc '%U %G' /etc/shadow- 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root (root|shadow)$' && sec_audit_mode_policy /etc/shadow- "$(secaudit_var MODE_SHADOW_DASH 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 263 "/etc/shadow- has permissions 000 or 640 and is owned by root"
     else
       sec_audit_report_fail 263 "/etc/shadow- permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/gshadow 2>/dev/null | grep -qE '^[0-6]00 root (root|shadow)$'; then
+    if _o=$(stat -Lc '%U %G' /etc/gshadow 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root (root|shadow)$' && sec_audit_mode_policy /etc/gshadow "$(secaudit_var MODE_GSHADOW 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 264 "/etc/gshadow has permissions 000 or 640 and is owned by root"
     else
       sec_audit_report_fail 264 "/etc/gshadow permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/gshadow- 2>/dev/null | grep -qE '^[0-6]00 root (root|shadow)$'; then
+    if _o=$(stat -Lc '%U %G' /etc/gshadow- 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root (root|shadow)$' && sec_audit_mode_policy /etc/gshadow- "$(secaudit_var MODE_GSHADOW_DASH 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 265 "/etc/gshadow- has permissions 000 or 640 and is owned by root"
     else
       sec_audit_report_fail 265 "/etc/gshadow- permissions or ownership are incorrect"
     fi
 
-    if stat -Lc '%a %U %G' /etc/shells 2>/dev/null | grep -qE '^[0-6][04][04] root root$'; then
+    if _o=$(stat -Lc '%U %G' /etc/shells 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/shells "$(secaudit_var MODE_SHELLS 644)" 644 within '^[0-6][04][04]$'; then
       sec_audit_report_pass 266 "/etc/shells has correct permissions and is owned by root"
     else
       sec_audit_report_fail 266 "/etc/shells permissions or ownership are incorrect"
     fi
 
-    if [ ! -f /etc/security/opasswd ] || stat -Lc '%a %U %G' /etc/security/opasswd 2>/dev/null | grep -qE '^[0-6]00 root root$'; then
+    if [ ! -f /etc/security/opasswd ] || _o=$(stat -Lc '%U %G' /etc/security/opasswd 2>/dev/null); printf '%s\n' "$_o" | grep -qE -- '^root root$' && sec_audit_mode_policy /etc/security/opasswd "$(secaudit_var MODE_OPASSWD 600)" 600 within '^[0-6]00$'; then
       sec_audit_report_pass 267 "/etc/security/opasswd has permissions 600 and is owned by root"
     else
       sec_audit_report_fail 267 "/etc/security/opasswd permissions or ownership are incorrect"

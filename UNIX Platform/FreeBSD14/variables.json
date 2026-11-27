@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "format": "secaudit.profile_variables",
+  "variables": [
+    {
+      "name": "PASS_MINLEN",
+      "type": "int",
+      "default": 14,
+      "min": 1,
+      "max": 72,
+      "description": "Minimum pam_passwdqc password length. The check fails below this.",
+      "requirement_ids": [
+        "RULE89"
+      ]
+    },
+    {
+      "name": "PASS_MAX_DAYS",
+      "type": "int",
+      "default": 365,
+      "min": 1,
+      "max": 999,
+      "description": "Maximum passwordtime in days. The check fails above this.",
+      "requirement_ids": [
+        "RULE93"
+      ]
+    },
+    {
+      "name": "PASS_WARN_AGE",
+      "type": "int",
+      "default": 7,
+      "min": 0,
+      "max": 90,
+      "description": "Minimum warnpassword in days. The check fails below this.",
+      "requirement_ids": [
+        "RULE94"
+      ]
+    },
+    {
+      "name": "SUDO_TIMESTAMP_TIMEOUT",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 1440,
+      "description": "Maximum sudo timestamp_timeout in minutes. The check fails above this. A missing timeout still passes.",
+      "requirement_ids": [
+        "RULE87"
+      ]
+    },
+    {
+      "name": "LOGIN_GRACE_TIME",
+      "type": "int",
+      "default": 60,
+      "min": 1,
+      "max": 600,
+      "description": "Maximum sshd LoginGraceTime in seconds. The check fails outside 1 and this value.",
+      "requirement_ids": [
+        "RULE72"
+      ]
+    },
+    {
+      "name": "SSH_LOG_LEVEL",
+      "type": "string",
+      "default": "INFO,VERBOSE",
+      "description": "Comma-separated sshd LogLevel values that pass. Remediation applies the first value.",
+      "requirement_ids": [
+        "RULE73"
+      ]
+    },
+    {
+      "name": "MAX_AUTH_TRIES",
+      "type": "int",
+      "default": 4,
+      "min": 1,
+      "max": 20,
+      "description": "Maximum sshd MaxAuthTries. The check fails above this.",
+      "requirement_ids": [
+        "RULE75"
+      ]
+    },
+    {
+      "name": "MAX_SESSIONS",
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "description": "Maximum sshd MaxSessions. The check fails above this.",
+      "requirement_ids": [
+        "RULE76"
+      ]
+    },
+    {
+      "name": "MAX_STARTUPS",
+      "type": "string",
+      "default": "10:30:60",
+      "description": "Maximum sshd MaxStartups as start:rate:full. Each field on the host must be at or below the matching field.",
+      "requirement_ids": [
+        "RULE77"
+      ]
+    },
+    {
+      "name": "SSH_PERMIT_ROOT",
+      "type": "string",
+      "default": "no",
+      "description": "Comma-separated sshd PermitRootLogin values that pass. Remediation applies the first value.",
+      "requirement_ids": [
+        "RULE79"
+      ]
+    },
+    {
+      "name": "SYSCTL_ASLR",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required kern.elf64.aslr.enable value.",
+      "requirement_ids": [
+        "RULE25"
+      ]
+    },
+    {
+      "name": "SYSCTL_ACCEPT_SOURCEROUTE",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.inet.ip.accept_sourceroute value.",
+      "requirement_ids": [
+        "RULE52"
+      ]
+    },
+    {
+      "name": "SYSCTL_TCP_SYNCOOKIES",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.inet.tcp.syncookies value.",
+      "requirement_ids": [
+        "RULE53"
+      ]
+    },
+    {
+      "name": "SYSCTL_ACCEPT_RTADV",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "description": "Required net.inet6.ip6.accept_rtadv value.",
+      "requirement_ids": [
+        "RULE54"
+      ]
+    },
+    {
+      "name": "MODE_LOADER",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for loader.conf. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE24"
+      ]
+    },
+    {
+      "name": "MODE_MOTD",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/motd. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE31"
+      ]
+    },
+    {
+      "name": "MODE_ISSUE",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/issue. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE32"
+      ]
+    },
+    {
+      "name": "MODE_CRON_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /var/cron/allow. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE59"
+      ]
+    },
+    {
+      "name": "MODE_AT_ALLOW",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /var/at/at.allow. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE60"
+      ]
+    },
+    {
+      "name": "MODE_SSHD_CONFIG",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/ssh/sshd_config. A stricter mode passes. Remediation keeps mode 600 unless this ceiling is stricter.",
+      "requirement_ids": [
+        "RULE61"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for SSH private host keys. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE62"
+      ]
+    },
+    {
+      "name": "MODE_SSH_HOSTKEY_PUB",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for SSH public host keys. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE63"
+      ]
+    },
+    {
+      "name": "MODE_VAR_LOG",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for /var/log/messages, cron, auth.log, and maillog. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE107"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOG_DIR",
+      "type": "string",
+      "default": "750",
+      "description": "Maximum octal mode for the audit log directory. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE119"
+      ]
+    },
+    {
+      "name": "MODE_AUDIT_LOGS",
+      "type": "string",
+      "default": "640",
+      "description": "Maximum octal mode for audit log files. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE120"
+      ]
+    },
+    {
+      "name": "MODE_PASSWD",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/passwd. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE131"
+      ]
+    },
+    {
+      "name": "MODE_GROUP",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/group. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE132"
+      ]
+    },
+    {
+      "name": "MODE_MASTER_PASSWD",
+      "type": "string",
+      "default": "600",
+      "description": "Maximum octal mode for /etc/master.passwd. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE133"
+      ]
+    },
+    {
+      "name": "MODE_SHELLS",
+      "type": "string",
+      "default": "644",
+      "description": "Maximum octal mode for /etc/shells. A stricter mode passes.",
+      "requirement_ids": [
+        "RULE134"
+      ]
+    }
+  ]
+}
